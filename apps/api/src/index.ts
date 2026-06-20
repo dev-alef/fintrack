@@ -7,7 +7,7 @@ import transactionRoutes from './routes/transaction.routes'
 const app = express()
 const PORT = process.env.PORT || 3001
 
-app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:5173' }))
+app.use(cors({ origin: true }))
 app.use(express.json())
 
 app.get('/health', (_req, res) => {

@@ -1,15 +1,23 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
+import Login from './pages/Login'
+import Register from './pages/Register'
+import Dashboard from './pages/Dashboard'
+import Transactions from './pages/Transactions'
+import Goals from './pages/Goals'
+import AppLayout from './components/layout/AppLayout'
+import PrivateRoute from './components/PrivateRoute'
 
-function App() {
+export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
-      <Route path="/login" element={<div>Login — em breve</div>} />
-      <Route path="/dashboard" element={<div>Dashboard — em breve</div>} />
-      <Route path="/transactions" element={<div>Transacoes — em breve</div>} />
-      <Route path="/goals" element={<div>Metas — em breve</div>} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+      <Route path="/" element={<PrivateRoute><AppLayout /></PrivateRoute>}>
+        <Route index element={<Navigate to="/dashboard" replace />} />
+        <Route path="dashboard" element={<Dashboard />} />
+        <Route path="transactions" element={<Transactions />} />
+        <Route path="goals" element={<Goals />} />
+      </Route>
     </Routes>
   )
 }
-
-export default App
