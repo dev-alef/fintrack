@@ -5,6 +5,7 @@ import authRoutes from './routes/auth.routes'
 import transactionRoutes from './routes/transaction.routes'
 import goalsRoutes from './routes/goals.routes'
 import insightsRoutes from './routes/insights.routes'
+import financeRoutes from './routes/finance.routes'
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -20,6 +21,7 @@ app.use('/auth', authRoutes)
 app.use('/transactions', transactionRoutes)
 app.use('/goals', goalsRoutes)
 app.use('/insights', insightsRoutes)
+app.use('/finance', financeRoutes)
 
 app.listen(PORT, () => {
   console.log(`API rodando em http://localhost:${PORT}`)

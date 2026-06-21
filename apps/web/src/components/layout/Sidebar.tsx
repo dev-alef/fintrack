@@ -16,7 +16,7 @@ export default function Sidebar() {
     <aside style={{
       width: 220, background: '#1a1a2e', height: '100vh',
       display: 'flex', flexDirection: 'column', padding: '24px 16px',
-      position: 'fixed', left: 0, top: 0,
+      position: 'fixed', left: 0, top: 0, overflowY: 'auto',
     }}>
       <div style={{ marginBottom: 32 }}>
         <h1 style={{ color: '#6366f1', fontSize: 22, margin: 0 }}>💰 FinTrack</h1>
