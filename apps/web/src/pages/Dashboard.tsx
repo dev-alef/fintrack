@@ -5,9 +5,9 @@ import api from '../services/api'
 import { useSummary } from '../hooks/useTransactions'
 
 const fmt = (v: string | number) => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-const MONTHS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
-const CARD_COLORS = ['#6366f1','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899']
-const CHART_COLORS = ['#6366f1','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4']
+const MONTHS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+const CARD_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899']
+const CHART_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4']
 
 interface Card { id: string; name: string; due_day: number; color: string }
 interface Bill { id: string; name: string; amount: string; due_day: number; paid?: boolean }
@@ -60,9 +60,12 @@ export default function Dashboard() {
   const totalPaid = bills.filter(b => b.paid).reduce((s, b) => s + Number(b.amount), 0)
   const totalCards = expenses.reduce((s, e) => s + Number(e.amount), 0)
   const estimatedIncome = Number(config?.estimated_income || 0)
-  const balance = Number(config?.balance || 0)
+  const balanceBase = Number(config?.balance || 0)
   const investments = Number(config?.investments || 0)
   const leftover = estimatedIncome - totalBills - totalCards
+  // Saldo real = saldo base + sobrou no mês
+  const balance = balanceBase + leftover
+  const patrimonio = balance + investments
   const annualTotal = annualSummary.reduce((s, r) => s + Number(r.estimated_income || 0), 0)
   const annualExpenses = annualSummary.reduce((s, r) => s + Number(r.total_fixed_bills || 0) + Number(r.total_card_expenses || 0), 0)
 
@@ -97,21 +100,39 @@ export default function Dashboard() {
       </div>
 
       {/* Cards de resumo */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(155px, 1fr))', gap: 12, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(155px, 1fr))', gap: 12, marginBottom: 16 }}>
         {[
           { label: 'Receita estimada', value: estimatedIncome, color: '#10b981' },
-          { label: 'Mês anterior', value: Number(prevConfig?.estimated_income || 0), color: '#6366f1' },
+          { label: 'Mês anterior', value: Number(prevConfig?.estimated_income || 0), color: '#10b981' },
           { label: 'Contas fixas', value: totalBills, color: '#f59e0b' },
           { label: 'Faturas cartões', value: totalCards, color: '#ef4444' },
           { label: 'Sobrou no mês', value: leftover, color: leftover >= 0 ? '#10b981' : '#ef4444' },
-          { label: 'Saldo atual', value: balance, color: '#8b5cf6' },
-          { label: 'Investimentos', value: investments, color: '#06b6d4' },
+          { label: 'Total contas + faturas', value: totalBills + totalCards, color: '#ef4444' },
         ].map(item => (
           <div key={item.label} style={{ background: '#1a1a2e', borderRadius: 10, padding: '14px 16px', border: '1px solid #2a2a3e' }}>
             <p style={{ color: '#888', fontSize: 11, margin: '0 0 4px' }}>{item.label}</p>
             <p style={{ color: item.color, fontSize: 16, fontWeight: 700, margin: 0 }}>{fmt(item.value)}</p>
           </div>
         ))}
+      </div>
+
+      {/* Patrimônio */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 24 }}>
+        <div style={{ background: '#1a1a2e', borderRadius: 10, padding: '16px 20px', border: '1px solid #2a2a3e' }}>
+          <p style={{ color: '#888', fontSize: 11, margin: '0 0 4px' }}>💜 Saldo atual</p>
+          <p style={{ color: balance >= 0 ? '#8b5cf6' : '#ef4444', fontSize: 20, fontWeight: 700, margin: '0 0 4px' }}>{fmt(balance)}</p>
+          <p style={{ color: '#555', fontSize: 11, margin: 0 }}>Saldo base + sobrou no mês</p>
+        </div>
+        <div style={{ background: '#1a1a2e', borderRadius: 10, padding: '16px 20px', border: '1px solid #2a2a3e' }}>
+          <p style={{ color: '#888', fontSize: 11, margin: '0 0 4px' }}>💎 Investimentos</p>
+          <p style={{ color: '#06b6d4', fontSize: 20, fontWeight: 700, margin: '0 0 4px' }}>{fmt(investments)}</p>
+          <p style={{ color: '#555', fontSize: 11, margin: 0 }}>Valor aplicado</p>
+        </div>
+        <div style={{ background: 'linear-gradient(135deg, #1a1a2e, #2a1a3e)', borderRadius: 10, padding: '16px 20px', border: '1px solid #6366f133' }}>
+          <p style={{ color: '#aaa', fontSize: 11, margin: '0 0 4px' }}>🏆 Patrimônio total</p>
+          <p style={{ color: '#6366f1', fontSize: 20, fontWeight: 700, margin: '0 0 4px' }}>{fmt(patrimonio)}</p>
+          <p style={{ color: '#555', fontSize: 11, margin: 0 }}>Saldo + Investimentos</p>
+        </div>
       </div>
 
       {/* Configuração do mês + Faturas dos cartões */}
@@ -245,14 +266,14 @@ export default function Dashboard() {
           {byMonth.length === 0
             ? <p style={{ color: '#555', fontSize: 13 }}>Nenhuma transação nos últimos 6 meses</p>
             : <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={byMonth}>
-                  <XAxis dataKey="month" tick={{ fill: '#888', fontSize: 11 }} />
-                  <YAxis tick={{ fill: '#888', fontSize: 11 }} />
-                  <Tooltip contentStyle={{ background: '#1a1a2e', border: '1px solid #333', borderRadius: 8 }} formatter={(v: number) => fmt(v)} />
-                  <Bar dataKey="income" name="Receita" fill="#10b981" radius={[4,4,0,0]} />
-                  <Bar dataKey="expense" name="Despesa" fill="#ef4444" radius={[4,4,0,0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              <BarChart data={byMonth}>
+                <XAxis dataKey="month" tick={{ fill: '#888', fontSize: 11 }} />
+                <YAxis tick={{ fill: '#888', fontSize: 11 }} />
+                <Tooltip contentStyle={{ background: '#1a1a2e', border: '1px solid #333', borderRadius: 8 }} formatter={(v: number) => fmt(v)} />
+                <Bar dataKey="income" name="Receita" fill="#10b981" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="expense" name="Despesa" fill="#ef4444" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           }
         </>, { flex: 2, minWidth: 300 })}
 
@@ -261,14 +282,14 @@ export default function Dashboard() {
           {pieData.length === 0
             ? <p style={{ color: '#555', fontSize: 13 }}>Sem dados</p>
             : <ResponsiveContainer width="100%" height={200}>
-                <PieChart>
-                  <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70}>
-                    {pieData.map((_: unknown, i: number) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
-                  </Pie>
-                  <Legend wrapperStyle={{ fontSize: 12, color: '#aaa' }} />
-                  <Tooltip formatter={(v: number) => fmt(v)} />
-                </PieChart>
-              </ResponsiveContainer>
+              <PieChart>
+                <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70}>
+                  {pieData.map((_: unknown, i: number) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+                </Pie>
+                <Legend wrapperStyle={{ fontSize: 12, color: '#aaa' }} />
+                <Tooltip formatter={(v: number) => fmt(v)} />
+              </PieChart>
+            </ResponsiveContainer>
           }
         </>, { flex: 1, minWidth: 260 })}
       </div>
@@ -281,7 +302,7 @@ export default function Dashboard() {
             <thead>
               <tr>
                 {['Mês', 'Receita', 'Gastos', 'Sobrou', ...annual.map((c: AnnualCard) => c.name)].map((h, i) => (
-                  <th key={i} style={{ textAlign: i === 0 ? 'left' : 'right', color: i >= 4 ? (annual[i-4] as AnnualCard)?.color : '#888', padding: '6px 8px', borderBottom: '1px solid #2a2a3e' }}>{h}</th>
+                  <th key={i} style={{ textAlign: i === 0 ? 'left' : 'right', color: i >= 4 ? (annual[i - 4] as AnnualCard)?.color : '#888', padding: '6px 8px', borderBottom: '1px solid #2a2a3e' }}>{h}</th>
                 ))}
               </tr>
             </thead>
