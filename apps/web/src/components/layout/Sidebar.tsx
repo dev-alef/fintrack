@@ -5,6 +5,7 @@ const links = [
   { to: '/dashboard', label: '📊 Dashboard' },
   { to: '/transactions', label: '💸 Transações' },
   { to: '/goals', label: '🎯 Metas' },
+  { to: '/insights', label: '🤖 Insights IA' },
 ]
 
 export default function Sidebar() {

@@ -4,6 +4,7 @@ import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
 import Transactions from './pages/Transactions'
 import Goals from './pages/Goals'
+import Insights from './pages/Insights'
 import AppLayout from './components/layout/AppLayout'
 import PrivateRoute from './components/PrivateRoute'
 
@@ -17,6 +18,7 @@ export default function App() {
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="transactions" element={<Transactions />} />
         <Route path="goals" element={<Goals />} />
+        <Route path="insights" element={<Insights />} />
       </Route>
     </Routes>
   )

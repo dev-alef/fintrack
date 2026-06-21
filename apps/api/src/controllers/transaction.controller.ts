@@ -114,8 +114,7 @@ export async function summary(req: Request, res: Response): Promise<void> {
     const { month, year } = req.query
     const result = await getSummary(userId, month as string, year as string)
     res.json(result)
-  } catch (err) {
-    console.error('ERRO SUMMARY:', err)
+  } catch {
     res.status(500).json({ error: 'Erro interno do servidor' })
   }
 }
