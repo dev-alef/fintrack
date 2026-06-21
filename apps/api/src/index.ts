@@ -6,6 +6,7 @@ import transactionRoutes from './routes/transaction.routes'
 import goalsRoutes from './routes/goals.routes'
 import insightsRoutes from './routes/insights.routes'
 import financeRoutes from './routes/finance.routes'
+import investmentsRoutes from './routes/investments.routes'
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -22,6 +23,7 @@ app.use('/transactions', transactionRoutes)
 app.use('/goals', goalsRoutes)
 app.use('/insights', insightsRoutes)
 app.use('/finance', financeRoutes)
+app.use('/investments', investmentsRoutes)
 
 if (process.env.NODE_ENV !== 'test') {
   app.listen(PORT, () => {
