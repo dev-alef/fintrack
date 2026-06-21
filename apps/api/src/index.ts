@@ -23,8 +23,10 @@ app.use('/goals', goalsRoutes)
 app.use('/insights', insightsRoutes)
 app.use('/finance', financeRoutes)
 
-app.listen(PORT, () => {
-  console.log(`API rodando em http://localhost:${PORT}`)
-})
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, () => {
+    console.log(`API rodando em http://localhost:${PORT}`)
+  })
+}
 
 export default app

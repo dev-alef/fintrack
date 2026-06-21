@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: fintrack
+          POSTGRES_PASSWORD: fintrack123
+          POSTGRES_DB: fintrack_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run migrations
+        working-directory: apps/api
+        env:
+          DATABASE_URL: postgresql://fintrack:fintrack123@localhost:5432/fintrack_db
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: test_secret_key_ci
+          JWT_REFRESH_SECRET: test_refresh_secret_ci
+          JWT_EXPIRES_IN: 15m
+          JWT_REFRESH_EXPIRES_IN: 7d
+          NODE_ENV: test
+        run: npm run migrate
+
+      - name: Run tests
+        working-directory: apps/api
+        env:
+          DATABASE_URL: postgresql://fintrack:fintrack123@localhost:5432/fintrack_db
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: test_secret_key_ci
+          JWT_REFRESH_SECRET: test_refresh_secret_ci
+          JWT_EXPIRES_IN: 15m
+          JWT_REFRESH_EXPIRES_IN: 7d
+          NODE_ENV: test
+        run: npm test
+
+      - name: Build TypeScript
+        working-directory: apps/api
+        env:
+          DATABASE_URL: postgresql://fintrack:fintrack123@localhost:5432/fintrack_db
+        run: npm run build

@@ -31,11 +31,11 @@ export async function loginUser(email: string, password: string) {
   const payload: JWTPayload = { userId: user.id, email: user.email }
 
   const accessToken = jwt.sign(payload, process.env.JWT_SECRET!, {
-    expiresIn: process.env.JWT_EXPIRES_IN || '15m',
+    expiresIn: '15m',
   })
 
   const refreshToken = jwt.sign(payload, process.env.JWT_REFRESH_SECRET!, {
-    expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
+    expiresIn: '7d',
   })
 
   return {
@@ -52,7 +52,7 @@ export function refreshAccessToken(refreshToken: string) {
     const newAccessToken = jwt.sign(
       { userId: payload.userId, email: payload.email },
       process.env.JWT_SECRET!,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '15m' }
+      { expiresIn: '15m' }
     )
 
     return newAccessToken
