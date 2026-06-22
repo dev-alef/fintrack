@@ -5,9 +5,9 @@ import api from '../services/api'
 import { useSummary } from '../hooks/useTransactions'
 
 const fmt = (v: string | number) => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-const MONTHS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
-const CARD_COLORS = ['#6366f1','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899']
-const CHART_COLORS = ['#6366f1','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4']
+const MONTHS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+const CARD_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899']
+const CHART_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4']
 
 interface Card { id: string; name: string; due_day: number; color: string }
 interface Bill { id: string; name: string; amount: string; due_day: number; paid?: boolean }
@@ -106,7 +106,9 @@ export default function Dashboard() {
           { label: 'Mês anterior', value: Number(prevConfig?.estimated_income || 0), color: '#6366f1' },
           { label: 'Contas fixas', value: totalBills, color: '#f59e0b' },
           { label: 'Faturas cartões', value: totalCards, color: '#ef4444' },
+          { label: 'Total a pagar', value: totalBills + totalCards, color: '#ef4444' },
           { label: 'Sobrou no mês', value: leftover, color: leftover >= 0 ? '#10b981' : '#ef4444' },
+
         ].map(item => (
           <div key={item.label} style={{ background: '#1a1a2e', borderRadius: 10, padding: '14px 16px', border: '1px solid #2a2a3e' }}>
             <p style={{ color: '#888', fontSize: 11, margin: '0 0 4px' }}>{item.label}</p>
@@ -265,14 +267,14 @@ export default function Dashboard() {
           {byMonth.length === 0
             ? <p style={{ color: '#555', fontSize: 13 }}>Nenhuma transação nos últimos 6 meses</p>
             : <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={byMonth}>
-                  <XAxis dataKey="month" tick={{ fill: '#888', fontSize: 11 }} />
-                  <YAxis tick={{ fill: '#888', fontSize: 11 }} />
-                  <Tooltip contentStyle={{ background: '#1a1a2e', border: '1px solid #333', borderRadius: 8 }} formatter={(v: number) => fmt(v)} />
-                  <Bar dataKey="income" name="Receita" fill="#10b981" radius={[4,4,0,0]} />
-                  <Bar dataKey="expense" name="Despesa" fill="#ef4444" radius={[4,4,0,0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              <BarChart data={byMonth}>
+                <XAxis dataKey="month" tick={{ fill: '#888', fontSize: 11 }} />
+                <YAxis tick={{ fill: '#888', fontSize: 11 }} />
+                <Tooltip contentStyle={{ background: '#1a1a2e', border: '1px solid #333', borderRadius: 8 }} formatter={(v: number) => fmt(v)} />
+                <Bar dataKey="income" name="Receita" fill="#10b981" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="expense" name="Despesa" fill="#ef4444" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           }
         </>, { flex: 2, minWidth: 300 })}
 
@@ -281,14 +283,14 @@ export default function Dashboard() {
           {pieData.length === 0
             ? <p style={{ color: '#555', fontSize: 13 }}>Sem dados</p>
             : <ResponsiveContainer width="100%" height={200}>
-                <PieChart>
-                  <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70}>
-                    {pieData.map((_: unknown, i: number) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
-                  </Pie>
-                  <Legend wrapperStyle={{ fontSize: 12, color: '#aaa' }} />
-                  <Tooltip formatter={(v: number) => fmt(v)} />
-                </PieChart>
-              </ResponsiveContainer>
+              <PieChart>
+                <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70}>
+                  {pieData.map((_: unknown, i: number) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+                </Pie>
+                <Legend wrapperStyle={{ fontSize: 12, color: '#aaa' }} />
+                <Tooltip formatter={(v: number) => fmt(v)} />
+              </PieChart>
+            </ResponsiveContainer>
           }
         </>, { flex: 1, minWidth: 260 })}
       </div>
@@ -301,7 +303,7 @@ export default function Dashboard() {
             <thead>
               <tr>
                 {['Mês', 'Receita', 'Gastos', 'Sobrou', ...annual.map((c: AnnualCard) => c.name)].map((h, i) => (
-                  <th key={i} style={{ textAlign: i === 0 ? 'left' : 'right', color: i >= 4 ? (annual[i-4] as AnnualCard)?.color : '#888', padding: '6px 8px', borderBottom: '1px solid #2a2a3e' }}>{h}</th>
+                  <th key={i} style={{ textAlign: i === 0 ? 'left' : 'right', color: i >= 4 ? (annual[i - 4] as AnnualCard)?.color : '#888', padding: '6px 8px', borderBottom: '1px solid #2a2a3e' }}>{h}</th>
                 ))}
               </tr>
             </thead>

@@ -5,9 +5,9 @@ import api from '../services/api'
 
 const fmt = (v: string | number) => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 const fmtPct = (v: string | number) => `${Number(v).toFixed(2)}%`
-const COLORS = ['#6366f1','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899','#84cc16']
-const ICONS = ['📈','💰','🏦','₿','🏠','💎','📊','🌍']
-const TYPE_COLORS = ['#6366f1','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899']
+const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16']
+const ICONS = ['📈', '💰', '🏦', '₿', '🏠', '💎', '📊', '🌍']
+const TYPE_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899']
 
 interface InvestmentType { id: string; name: string; description?: string; color: string; icon: string; total_invested: string; total_current: string }
 interface Investment { id: string; type_id: string; type_name: string; type_color: string; type_icon: string; name: string; invested_amount: string; current_value: string; monthly_rate: string; target_percent: string; profit: string; return_pct: string; notes?: string }
@@ -17,16 +17,16 @@ const btnS = (bg: string) => ({ padding: '8px 14px', borderRadius: 6, border: 'n
 
 // Calculadora de juros compostos
 function CompoundCalculator() {
-  const [form, setForm] = useState({ initial: '', monthly: '', rate: '', period: '12', rateType: 'monthly' })
+  const [form, setForm] = useState({ initial: '', monthly: '', rate: '', period: '12', rateType: 'monthly', periodType: 'months' })
   const [result, setResult] = useState<{ months: number; data: { month: number; total: number; invested: number; interest: number }[] } | null>(null)
 
   function calculate() {
     const initial = Number(form.initial) || 0
     const monthly = Number(form.monthly) || 0
-    const period = Number(form.period) || 12
+    const period = (Number(form.period) || 12) * (form.periodType === 'years' ? 12 : 1)
     let rate = Number(form.rate) / 100
 
-    if (form.rateType === 'yearly') rate = Math.pow(1 + rate, 1/12) - 1
+    if (form.rateType === 'yearly') rate = Math.pow(1 + rate, 1 / 12) - 1
 
     const data = []
     let total = initial
@@ -51,7 +51,7 @@ function CompoundCalculator() {
           { label: 'Valor inicial (R$)', key: 'initial', type: 'number', placeholder: '1000' },
           { label: 'Aporte mensal (R$)', key: 'monthly', type: 'number', placeholder: '200' },
           { label: 'Taxa de juros (%)', key: 'rate', type: 'number', placeholder: '1' },
-          { label: 'Período (meses)', key: 'period', type: 'number', placeholder: '12' },
+          { label: 'Período', key: 'period', type: 'number', placeholder: '12' },
         ].map(f => (
           <div key={f.key}>
             <label style={{ color: '#aaa', fontSize: 12, display: 'block', marginBottom: 4 }}>{f.label}</label>
@@ -59,6 +59,13 @@ function CompoundCalculator() {
               value={form[f.key as keyof typeof form]} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))} />
           </div>
         ))}
+        <div>
+          <label style={{ color: '#aaa', fontSize: 12, display: 'block', marginBottom: 4 }}>Tipo de período</label>
+          <select style={{ ...inp, width: '100%', boxSizing: 'border-box' as const }} value={form.periodType} onChange={e => setForm(p => ({ ...p, periodType: e.target.value }))}>
+            <option value="months">Meses</option>
+            <option value="years">Anos</option>
+          </select>
+        </div>
         <div>
           <label style={{ color: '#aaa', fontSize: 12, display: 'block', marginBottom: 4 }}>Tipo de taxa</label>
           <select style={{ ...inp, width: '100%', boxSizing: 'border-box' as const }} value={form.rateType} onChange={e => setForm(p => ({ ...p, rateType: e.target.value }))}>
@@ -90,7 +97,7 @@ function CompoundCalculator() {
           <ResponsiveContainer width="100%" height={220}>
             <AreaChart data={result.data} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
               <XAxis dataKey="month" tick={{ fill: '#888', fontSize: 11 }} label={{ value: 'Meses', position: 'insideBottom', offset: -2, fill: '#888', fontSize: 11 }} />
-              <YAxis tick={{ fill: '#888', fontSize: 11 }} tickFormatter={v => `R$${(v/1000).toFixed(0)}k`} />
+              <YAxis tick={{ fill: '#888', fontSize: 11 }} tickFormatter={v => `R$${(v / 1000).toFixed(0)}k`} />
               <Tooltip formatter={(v: number) => fmt(v)} contentStyle={{ background: '#1a1a2e', border: '1px solid #333', borderRadius: 8 }} />
               <Area type="monotone" dataKey="total" name="Montante" stroke="#f59e0b" fill="#f59e0b22" strokeWidth={2} />
               <Area type="monotone" dataKey="invested" name="Investido" stroke="#6366f1" fill="#6366f122" strokeWidth={2} />
