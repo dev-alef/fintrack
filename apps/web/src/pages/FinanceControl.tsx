@@ -41,10 +41,10 @@ export default function FinanceControl() {
   const { data: prevConfig } = useQuery<Config>({ queryKey: ['config', prevMonth, prevYear], queryFn: () => api.get(`/finance/config?month=${prevMonth}&year=${prevYear}`).then(r => r.data) })
 
   const createCard = useMutation({ mutationFn: (d: unknown) => api.post('/finance/cards', d), onSuccess: () => { inv(['cards']); setShowNewCard(false); setNewCard({ name: '', due_day: '', color: '#6366f1' }) } })
-  const updateCard = useMutation({ mutationFn: ({ id, ...d }: { id: string } & Partial<Card>) => api.put(`/finance/cards/${id}`, d), onSuccess: () => { inv(['cards']); setEditingCard(null) } })
+  const updateCard = useMutation({ mutationFn: ({ id, ...d }: { id: string; name?: string; due_day?: number; color?: string }) => api.put(`/finance/cards/${id}`, d), onSuccess: () => { inv(['cards']); setEditingCard(null) } })
   const deleteCard = useMutation({ mutationFn: (id: string) => api.delete(`/finance/cards/${id}`), onSuccess: () => inv(['cards', 'expenses', 'annual']) })
   const createBill = useMutation({ mutationFn: (d: unknown) => api.post('/finance/bills', d), onSuccess: () => { inv(['payments']); setShowNewBill(false); setNewBill({ name: '', amount: '', due_day: '' }) } })
-  const updateBill = useMutation({ mutationFn: ({ id, ...d }: { id: string } & Partial<Bill>) => api.put(`/finance/bills/${id}`, d), onSuccess: () => { inv(['payments']); setEditingBill(null) } })
+  const updateBill = useMutation({ mutationFn: ({ id, ...d }: { id: string; name?: string; amount?: number; due_day?: number }) => api.put(`/finance/bills/${id}`, d), onSuccess: () => { inv(['payments']); setEditingBill(null) } })
   const deleteBill = useMutation({ mutationFn: (id: string) => api.delete(`/finance/bills/${id}`), onSuccess: () => inv(['payments']) })
   const togglePayment = useMutation({ mutationFn: (d: unknown) => api.post('/finance/payments/toggle', d), onSuccess: () => inv(['payments']) })
   const setExpense = useMutation({ mutationFn: (d: unknown) => api.post('/finance/cards/expenses', d), onSuccess: () => inv(['expenses', 'annual', 'annualSummary']) })
