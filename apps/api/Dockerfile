@@ -8,4 +8,4 @@ COPY apps/api/tsconfig.json ./apps/api/
 WORKDIR /app/apps/api
 RUN npm run build
 EXPOSE 3001
-CMD ["node", "dist/index.js"]
+CMD ["sh", "-c", "node dist/db/migrate.js && node dist/db/migrate-v2.js && node dist/db/migrate-v3.js && node dist/index.js"]
