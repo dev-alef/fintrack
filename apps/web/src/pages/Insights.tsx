@@ -23,7 +23,7 @@ export default function Insights() {
   return (
     <div>
       <h2 style={{ margin: '0 0 8px', fontSize: 22 }}>Insights com IA</h2>
-      <p style={{ color: '#888', marginBottom: 24, fontSize: 14 }}>Análise inteligente dos seus gastos usando Claude AI</p>
+      <p style={{ color: '#888', marginBottom: 24, fontSize: 14 }}>Análise inteligente dos seus gastos usando Gemini AI</p>
 
       <button onClick={handleGenerate} disabled={loading} style={{
         padding: '12px 28px', borderRadius: 8, border: 'none',
@@ -65,7 +65,7 @@ export default function Insights() {
           <div style={{ background: '#1a1a2e', borderRadius: 12, padding: 28, border: '1px solid #2a2a3e' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
               <span style={{ fontSize: 20 }}>🤖</span>
-              <h3 style={{ margin: 0, fontSize: 15, color: '#6366f1' }}>Análise do Claude AI</h3>
+              <h3 style={{ margin: 0, fontSize: 15, color: '#6366f1' }}>Análise do Gemini AI</h3>
             </div>
             <p style={{ color: '#ccc', lineHeight: 1.7, margin: 0, whiteSpace: 'pre-line', fontSize: 14 }}>
               {result.insights}
