@@ -49,9 +49,9 @@ export default function Dashboard() {
   const createCard = useMutation({ mutationFn: (d: unknown) => api.post('/finance/cards', d), onSuccess: () => { inv(['cards']); setShowNewCard(false); setNewCard({ name: '', due_day: '', color: '#6366f1' }) } })
   const updateCard = useMutation({ mutationFn: ({ id, ...d }: { id: string; name?: string; due_day?: number; color?: string }) => api.put(`/finance/cards/${id}`, d), onSuccess: () => { inv(['cards']); setEditingCard(null) } })
   const deleteCard = useMutation({ mutationFn: (id: string) => api.delete(`/finance/cards/${id}`), onSuccess: () => inv(['cards', 'expenses', 'annual']) })
-  const createBill = useMutation({ mutationFn: (d: unknown) => api.post('/finance/bills', d), onSuccess: () => { inv(['payments']); setShowNewBill(false); setNewBill({ name: '', amount: '', due_day: '' }) } })
-  const updateBill = useMutation({ mutationFn: ({ id, ...d }: { id: string; name?: string; amount?: number; due_day?: number }) => api.put(`/finance/bills/${id}`, d), onSuccess: () => { inv(['payments']); setEditingBill(null) } })
-  const deleteBill = useMutation({ mutationFn: (id: string) => api.delete(`/finance/bills/${id}`), onSuccess: () => inv(['payments']) })
+  const createBill = useMutation({ mutationFn: (d: unknown) => api.post('/finance/bills', d), onSuccess: () => { inv(['payments', 'annualSummary']); setShowNewBill(false); setNewBill({ name: '', amount: '', due_day: '' }) } })
+  const updateBill = useMutation({ mutationFn: ({ id, ...d }: { id: string; name?: string; amount?: number; due_day?: number }) => api.put(`/finance/bills/${id}`, d), onSuccess: () => { inv(['payments', 'annualSummary']); setEditingBill(null) } })
+  const deleteBill = useMutation({ mutationFn: (id: string) => api.delete(`/finance/bills/${id}`), onSuccess: () => inv(['payments', 'annualSummary']) })
   const togglePayment = useMutation({ mutationFn: (d: unknown) => api.post('/finance/payments/toggle', d), onSuccess: () => inv(['payments']) })
   const setExpense = useMutation({ mutationFn: (d: unknown) => api.post('/finance/cards/expenses', d), onSuccess: () => inv(['expenses', 'annual', 'annualSummary']) })
   const saveConfig = useMutation({ mutationFn: (d: unknown) => api.post('/finance/config', d), onSuccess: () => inv(['config', 'annualSummary']) })
@@ -147,7 +147,7 @@ export default function Dashboard() {
               { label: 'Saldo atual (R$)', key: 'balance', val: config?.balance || '' },
               { label: 'Investimentos (R$)', key: 'investments', val: config?.investments || '' },
             ].map(f => (
-              <div key={f.key}>
+              <div key={`${f.key}-${month}-${year}`}>
                 <label style={{ color: '#aaa', fontSize: 12, display: 'block', marginBottom: 4 }}>{f.label}</label>
                 <input style={{ ...inp, width: '100%', boxSizing: 'border-box' as const }}
                   type="number" step="0.01" defaultValue={f.val}
@@ -191,7 +191,7 @@ export default function Dashboard() {
                   </div>
                 </div>
               ) : (
-                <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div key={`${c.id}-${month}-${year}`} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <div style={{ width: 10, height: 10, borderRadius: '50%', background: c.color, flexShrink: 0 }} />
                   <div style={{ flex: 1 }}>
                     <p style={{ margin: 0, fontSize: 13, fontWeight: 500 }}>{c.name} <span style={{ color: '#888', fontSize: 11 }}>dia {c.due_day}</span></p>
