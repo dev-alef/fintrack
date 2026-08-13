@@ -21,6 +21,11 @@ export async function createTransaction(
     notes?: string
   }
 ) {
+  if (data.category_id) {
+    const category = await query('SELECT id FROM categories WHERE id = $1 AND user_id = $2', [data.category_id, userId])
+    if (category.rows.length === 0) throw new Error('Categoria não encontrada')
+  }
+
   const result = await query(
     `INSERT INTO transactions (user_id, title, amount, type, date, category_id, notes)
      VALUES ($1, $2, $3, $4, $5, $6, $7)
