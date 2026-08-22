@@ -2,6 +2,7 @@ import { Request, Response } from 'express'
 import * as S from '../services/finance.service'
 
 const uid = (req: Request) => req.user!.userId
+const isNotFound = (err: unknown) => err instanceof Error && /não encontrad[oa]$/.test(err.message)
 
 // CARTÕES
 export async function getCards(req: Request, res: Response) {
@@ -32,7 +33,11 @@ export async function setExpense(req: Request, res: Response) {
   try {
     const { cardId, month, year, amount } = req.body
     res.json(await S.upsertCardExpense(uid(req), cardId, Number(month), Number(year), Number(amount)))
-  } catch { res.status(500).json({ error: 'Erro interno' }) }
+  } catch (err) {
+    if (isNotFound(err)) { res.status(404).json({ error: (err as Error).message }); return }
+    console.error(err)
+    res.status(500).json({ error: 'Erro interno' })
+  }
 }
 export async function getCardAnnual(req: Request, res: Response) {
   try {
@@ -70,7 +75,11 @@ export async function togglePayment(req: Request, res: Response) {
   try {
     const { billId, month, year, paid } = req.body
     res.json(await S.toggleBillPayment(uid(req), billId, Number(month), Number(year), Boolean(paid)))
-  } catch { res.status(500).json({ error: 'Erro interno' }) }
+  } catch (err) {
+    if (isNotFound(err)) { res.status(404).json({ error: (err as Error).message }); return }
+    console.error(err)
+    res.status(500).json({ error: 'Erro interno' })
+  }
 }
 
 // CONFIG MENSAL

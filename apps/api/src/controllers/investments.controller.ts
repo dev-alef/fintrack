@@ -27,7 +27,11 @@ export async function getInvestments(req: Request, res: Response) {
 }
 export async function addInvestment(req: Request, res: Response) {
   try { res.status(201).json(await S.createInvestment(uid(req), req.body)) }
-  catch { res.status(500).json({ error: 'Erro interno' }) }
+  catch (err) {
+    if (err instanceof Error && /não encontrad[oa]$/.test(err.message)) { res.status(404).json({ error: err.message }); return }
+    console.error(err)
+    res.status(500).json({ error: 'Erro interno' })
+  }
 }
 export async function editInvestment(req: Request, res: Response) {
   try { res.json(await S.updateInvestment(req.params.id, uid(req), req.body)) }

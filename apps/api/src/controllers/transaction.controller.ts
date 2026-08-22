@@ -31,6 +31,11 @@ export async function create(req: Request, res: Response): Promise<void> {
       res.status(400).json({ error: err.errors[0].message })
       return
     }
+    if (err instanceof Error && /não encontrad[oa]$/.test(err.message)) {
+      res.status(404).json({ error: err.message })
+      return
+    }
+    console.error(err)
     res.status(500).json({ error: 'Erro interno do servidor' })
   }
 }
