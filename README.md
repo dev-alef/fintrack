@@ -31,9 +31,9 @@
 **Backend**
 - Node.js + TypeScript + Express
 - PostgreSQL (queries SQL nativas com agregações)
-- Redis (cache e sessões)
+- Redis (provisionado para cache — middleware pronto, ainda não plugado nas rotas)
 - JWT (autenticação com refresh token)
-- Zod (validação de dados)
+- Zod (validação de dados em auth, transações e criação de metas)
 - Google Gemini AI (análise financeira)
 
 **Frontend**
@@ -59,7 +59,7 @@ fintrack/
 │   │       ├── controllers/  # Camada de requisição/resposta
 │   │       ├── services/     # Lógica de negócio
 │   │       ├── routes/       # Definição de endpoints
-│   │       ├── middlewares/  # Auth JWT, cache Redis
+│   │       ├── middlewares/  # Auth JWT, cache (middleware pronto, ainda não plugado)
 │   │       ├── db/           # Cliente PostgreSQL + migrations
 │   │       └── __tests__/    # Testes com Jest + Supertest
 │   └── web/                  # Frontend React
@@ -116,7 +116,7 @@ cd apps/api
 npm test
 ```
 
-10 testes cobrindo autenticação (registro, login, tokens, senhas inválidas) e transações (CRUD, filtros, autorização, validação).
+10 testes cobrindo autenticação (registro, login, tokens, senhas inválidas) e transações (CRUD, filtros, autorização, validação) — finanças, investimentos, metas e insights ainda sem cobertura automatizada.
 
 ## 📡 Principais endpoints
 
