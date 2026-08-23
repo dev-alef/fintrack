@@ -74,6 +74,11 @@ export async function createInvestment(userId: string, data: {
   current_value?: number; monthly_rate?: number; target_percent?: number
   month?: number; year?: number; notes?: string
 }) {
+  if (data.type_id) {
+    const type = await query('SELECT id FROM investment_types WHERE id = $1 AND user_id = $2', [data.type_id, userId])
+    if (type.rows.length === 0) throw new Error('Tipo de investimento não encontrado')
+  }
+
   const result = await query(
     `INSERT INTO investments (user_id, type_id, name, invested_amount, current_value, monthly_rate, target_percent, month, year, notes)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,

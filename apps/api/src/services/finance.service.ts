@@ -48,6 +48,9 @@ export async function getCardExpenses(userId: string, month: number, year: numbe
 }
 
 export async function upsertCardExpense(userId: string, cardId: string, month: number, year: number, amount: number) {
+  const card = await query('SELECT id FROM credit_cards WHERE id = $1 AND user_id = $2', [cardId, userId])
+  if (card.rows.length === 0) throw new Error('Cartão não encontrado')
+
   const result = await query(
     `INSERT INTO card_expenses (user_id, card_id, month, year, amount)
      VALUES ($1, $2, $3, $4, $5)
@@ -122,6 +125,9 @@ export async function getBillPayments(userId: string, month: number, year: numbe
 }
 
 export async function toggleBillPayment(userId: string, billId: string, month: number, year: number, paid: boolean) {
+  const bill = await query('SELECT id FROM fixed_bills WHERE id = $1 AND user_id = $2', [billId, userId])
+  if (bill.rows.length === 0) throw new Error('Conta não encontrada')
+
   const result = await query(
     `INSERT INTO bill_payments (user_id, bill_id, month, year, paid, paid_at)
      VALUES ($1, $2, $3, $4, $5, $6)

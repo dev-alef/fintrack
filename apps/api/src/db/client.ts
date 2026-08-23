@@ -4,9 +4,11 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 })
 
+// Erro em cliente ocioso nao pode derrubar o processo: o Neon suspende o
+// compute apos inatividade e as conexoes ociosas do pool sao encerradas. O
+// pool descarta o cliente com problema e abre outro na proxima query.
 pool.on('error', (err) => {
-  console.error('Erro inesperado no cliente PostgreSQL', err)
-  process.exit(-1)
+  console.error('Erro inesperado no cliente PostgreSQL ocioso', err)
 })
 
 export const query = async (text: string, params?: unknown[]) => {

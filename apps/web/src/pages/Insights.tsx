@@ -37,9 +37,9 @@ export default function Insights() {
       {error && (
         <div style={{ background: '#2a1a1a', border: '1px solid #ef4444', borderRadius: 12, padding: 20, marginBottom: 24 }}>
           <p style={{ color: '#ef4444', margin: 0 }}>{error}</p>
-          {error.includes('ANTHROPIC_API_KEY') && (
+          {error.includes('GEMINI_API_KEY') && (
             <p style={{ color: '#888', margin: '8px 0 0', fontSize: 13 }}>
-              Adicione sua chave no arquivo <code style={{ color: '#6366f1' }}>apps/api/.env</code>: ANTHROPIC_API_KEY=sua_chave
+              Adicione sua chave no arquivo <code style={{ color: '#6366f1' }}>apps/api/.env</code>: GEMINI_API_KEY=sua_chave
             </p>
           )}
         </div>
