@@ -2,7 +2,7 @@
 
 > Sistema completo de gestão financeira pessoal com análise por Inteligência Artificial
 
-**🔗 [Acesse o app ao vivo](https://fintrack-web-ivory.vercel.app/login)** · **[API em produção](https://fintrackapi-production-3f21.up.railway.app/health)**
+**🔗 [Acesse o app ao vivo](https://fintrack-web-ivory.vercel.app/login)** · **[API em produção](https://fintrack-api-oyjx.onrender.com/health)**
 
 ![CI](https://github.com/dev-alef/fintrack/actions/workflows/ci.yml/badge.svg)
 
@@ -46,7 +46,8 @@
 **DevOps**
 - Docker + Docker Compose (ambiente local)
 - GitHub Actions (CI com testes automatizados)
-- Railway (deploy backend + PostgreSQL)
+- Render (deploy backend)
+- Neon (PostgreSQL serverless)
 - Vercel (deploy frontend)
 
 ## 🏗️ Arquitetura
