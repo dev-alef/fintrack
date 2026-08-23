@@ -40,7 +40,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Run migrations
         working-directory: apps/api
@@ -52,7 +52,7 @@ jobs:
           JWT_EXPIRES_IN: 15m
           JWT_REFRESH_EXPIRES_IN: 7d
           NODE_ENV: test
-        run: npm run migrate
+        run: npm run migrate && npm run migrate:v2 && npm run migrate:v3
 
       - name: Run tests
         working-directory: apps/api
@@ -70,4 +70,8 @@ jobs:
         working-directory: apps/api
         env:
           DATABASE_URL: postgresql://fintrack:fintrack123@localhost:5432/fintrack_db
+        run: npm run build
+
+      - name: Build web
+        working-directory: apps/web
         run: npm run build
