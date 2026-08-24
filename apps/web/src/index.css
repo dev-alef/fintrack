@@ -1,49 +1,140 @@
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f0f1a; color: #fff; }
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: #1a1a2e; }
-::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
-input, select, button { font-family: inherit; }
+@import "tailwindcss";
 
-/* ===== RESPONSIVO MOBILE ===== */
+[data-theme="dark"] {
+  --bg:#0B0D14; --surface:#141822; --surface-2:#1C2130; --border:#262C3B;
+  --text:#F2F4F8; --text-2:#9BA3B4; --text-3:#666E80;
+  --primary:#7C6BFF; --primary-hover:#9284FF; --primary-fg:#FFFFFF;
+  --success:#34D399; --danger:#F87171; --warning:#FBBF24;
+  --ring:rgba(124,107,255,.45); --shadow:0 4px 24px rgba(0,0,0,.4);
+  --brand-grad:linear-gradient(150deg,#231F52 0%,#0E1020 72%);
+}
+[data-theme="light"] {
+  --bg:#F7F8FB; --surface:#FFFFFF; --surface-2:#F0F2F7; --border:#E2E6EF;
+  --text:#131722; --text-2:#5A6377; --text-3:#8A93A6;
+  --primary:#5B4BE8; --primary-hover:#4A3AD4; --primary-fg:#FFFFFF;
+  --success:#0F9D6E; --danger:#DC2F3E; --warning:#B7791F;
+  --ring:rgba(91,75,232,.35); --shadow:0 4px 20px rgba(19,23,34,.08);
+  --brand-grad:linear-gradient(150deg,#5B4BE8 0%,#3A2FB0 72%);
+}
+[data-theme="pink"] {
+  --bg:#FDF8FA; --surface:#FFFFFF; --surface-2:#F9F0F4; --border:#EEDCE4;
+  --text:#33202B; --text-2:#7A6270; --text-3:#A8919C;
+  --primary:#B25580; --primary-hover:#9A4670; --primary-fg:#FFFFFF;
+  --success:#12946B; --danger:#CC4A4A; --warning:#B0771F;
+  --ring:rgba(178,85,128,.30); --shadow:0 4px 20px rgba(120,70,95,.09);
+  --brand-grad:linear-gradient(150deg,#9C5378 0%,#5E3049 72%);
+}
+
+@theme {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-subtle: var(--border);
+  --color-text: var(--text);
+  --color-text-2: var(--text-2);
+  --color-text-3: var(--text-3);
+  --color-muted: var(--text-2);
+  --color-muted-foreground: var(--text-3);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-fg: var(--primary-fg);
+  --color-primary-foreground: var(--primary-fg);
+  --color-success: var(--success);
+  --color-danger: var(--danger);
+  --color-warning: var(--warning);
+  --color-ring: var(--ring);
+  --color-background: var(--bg);
+  --color-foreground: var(--text);
+  --color-card: var(--surface);
+  --color-card-foreground: var(--text);
+  --color-input: var(--border);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--bg);
+  color: var(--text);
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--surface);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+input,
+select,
+button {
+  font-family: inherit;
+}
+
+*:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* ===== RESPONSIVO MOBILE — preserva comportamento de páginas ainda com estilo inline ===== */
 @media (max-width: 768px) {
-  /* Grids de 2 colunas viram 1 coluna no mobile */
   div[style*="grid-template-columns: 1fr 1fr"] {
     grid-template-columns: 1fr !important;
   }
+
   div[style*="grid-template-columns: repeat(3, 1fr)"] {
     grid-template-columns: 1fr !important;
   }
+
   div[style*="gridTemplateColumns: '1fr 1fr'"] {
     grid-template-columns: 1fr !important;
   }
 
-  /* Cards de resumo menores no mobile */
   div[style*="minmax(155px"] {
     grid-template-columns: repeat(2, 1fr) !important;
   }
+
   div[style*="minmax(160px"] {
     grid-template-columns: repeat(2, 1fr) !important;
   }
+
   div[style*="minmax(150px"] {
     grid-template-columns: repeat(2, 1fr) !important;
   }
 
-  /* Formulários flexíveis quebram melhor */
   form[style*="flex-wrap: wrap"] > div,
   form[style*="flexWrap"] > div {
     min-width: 100% !important;
   }
 
-  /* Tabelas com scroll horizontal */
-  table { font-size: 11px !important; }
+  table {
+    font-size: 11px !important;
+  }
 
-  /* Reduzir padding de cards */
-  h2 { font-size: 18px !important; }
+  h2 {
+    font-size: 18px !important;
+  }
 }
 
 @media (max-width: 480px) {
-  /* Em telas muito pequenas, cards de resumo ficam em 1 coluna */
   div[style*="minmax(155px"],
   div[style*="minmax(160px"],
   div[style*="minmax(150px"] {
