@@ -1,5 +1,8 @@
 import { useState } from 'react'
+import { Sparkles, Loader2, Bot, AlertCircle } from 'lucide-react'
 import api from '../services/api'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
 
 export default function Insights() {
   const [loading, setLoading] = useState(false)
@@ -21,56 +24,63 @@ export default function Insights() {
   }
 
   return (
-    <div>
-      <h2 style={{ margin: '0 0 8px', fontSize: 22 }}>Insights com IA</h2>
-      <p style={{ color: '#888', marginBottom: 24, fontSize: 14 }}>Análise inteligente dos seus gastos usando Gemini AI</p>
+    <div className="space-y-6">
+      <div>
+        <h2 className="m-0 mb-2 text-2xl font-semibold tracking-tight text-text">Insights com IA</h2>
+        <p className="mb-6 text-sm text-muted">Análise inteligente dos seus gastos usando Gemini AI</p>
+      </div>
 
-      <button onClick={handleGenerate} disabled={loading} style={{
-        padding: '12px 28px', borderRadius: 8, border: 'none',
-        background: loading ? '#4f46e5aa' : '#6366f1',
-        color: '#fff', fontSize: 15, fontWeight: 600,
-        cursor: loading ? 'not-allowed' : 'pointer', marginBottom: 24,
-      }}>
-        {loading ? '🤔 Analisando seus dados...' : '✨ Gerar análise com IA'}
-      </button>
+      <Button onClick={handleGenerate} disabled={loading} className="gap-2">
+        {loading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Sparkles className="h-4 w-4" aria-hidden="true" />}
+        {loading ? 'Analisando seus dados...' : 'Gerar análise com IA'}
+      </Button>
 
       {error && (
-        <div style={{ background: '#2a1a1a', border: '1px solid #ef4444', borderRadius: 12, padding: 20, marginBottom: 24 }}>
-          <p style={{ color: '#ef4444', margin: 0 }}>{error}</p>
-          {error.includes('GEMINI_API_KEY') && (
-            <p style={{ color: '#888', margin: '8px 0 0', fontSize: 13 }}>
-              Adicione sua chave no arquivo <code style={{ color: '#6366f1' }}>apps/api/.env</code>: GEMINI_API_KEY=sua_chave
+        <Card className="border-danger/20 bg-danger/10">
+          <CardContent className="p-5">
+            <p className="m-0 flex items-center gap-2 text-sm text-danger">
+              <AlertCircle className="h-4 w-4" aria-hidden="true" />
+              {error}
             </p>
-          )}
-        </div>
+            {error.includes('GEMINI_API_KEY') && (
+              <p className="mt-2 text-xs text-muted">
+                Adicione sua chave no arquivo <code className="text-primary">apps/api/.env</code>: GEMINI_API_KEY=sua_chave
+              </p>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       {result && (
-        <div>
-          <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
+        <div className="space-y-5">
+          <div className="flex flex-wrap gap-3">
             {[
-              { label: 'Receitas', value: result.summary.total_income, color: '#10b981' },
-              { label: 'Despesas', value: result.summary.total_expense, color: '#ef4444' },
-              { label: 'Saldo', value: result.summary.balance, color: '#6366f1' },
+              { label: 'Receitas', value: result.summary.total_income, color: 'text-success' },
+              { label: 'Despesas', value: result.summary.total_expense, color: 'text-danger' },
+              { label: 'Saldo', value: result.summary.balance, color: 'text-primary' },
             ].map(item => (
-              <div key={item.label} style={{ background: '#1a1a2e', borderRadius: 10, padding: '14px 20px', border: '1px solid #2a2a3e', flex: 1, minWidth: 140 }}>
-                <p style={{ color: '#888', fontSize: 12, margin: '0 0 4px' }}>{item.label}</p>
-                <p style={{ color: item.color, fontSize: 18, fontWeight: 700, margin: 0 }}>
-                  {Number(item.value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                </p>
-              </div>
+              <Card key={item.label} className="min-w-[140px] flex-1">
+                <CardContent className="p-4">
+                  <p className="mb-1 text-xs text-muted">{item.label}</p>
+                  <p className={`text-lg font-bold ${item.color}`}>
+                    {Number(item.value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </p>
+                </CardContent>
+              </Card>
             ))}
           </div>
 
-          <div style={{ background: '#1a1a2e', borderRadius: 12, padding: 28, border: '1px solid #2a2a3e' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-              <span style={{ fontSize: 20 }}>🤖</span>
-              <h3 style={{ margin: 0, fontSize: 15, color: '#6366f1' }}>Análise do Gemini AI</h3>
-            </div>
-            <p style={{ color: '#ccc', lineHeight: 1.7, margin: 0, whiteSpace: 'pre-line', fontSize: 14 }}>
-              {result.insights}
-            </p>
-          </div>
+          <Card>
+            <CardContent className="p-7">
+              <div className="mb-4 flex items-center gap-2">
+                <Bot className="h-5 w-5 text-primary" aria-hidden="true" />
+                <h3 className="m-0 text-base font-medium text-primary">Análise do Gemini AI</h3>
+              </div>
+              <p className="m-0 whitespace-pre-line text-sm leading-relaxed text-text">
+                {result.insights}
+              </p>
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>

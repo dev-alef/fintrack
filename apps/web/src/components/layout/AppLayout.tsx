@@ -48,16 +48,7 @@ export default function AppLayout() {
           </div>
         )}
 
-        {/* TEMPORARIO: as paginas internas ainda usam cores fixas escuras
-            (#1a1a2e nos cards, texto claro). Forcar o tema escuro so no
-            conteudo mantem tudo legivel enquanto o tema vale para a navegacao.
-            O data-theme sozinho apenas redefine as variaveis para a subarvore -
-            e preciso aplicar bg-bg e text-text aqui para que o fundo e a cor
-            herdada sejam de fato os do tema escuro, senao o texto herda a cor
-            do tema claro e some dentro dos cards escuros.
-            Remover este wrapper quando as 6 telas migrarem. */}
         <div
-          data-theme="dark"
           className={cn(
             "flex-1 bg-bg text-text",
             isMobile ? "p-4 pt-[70px]" : "p-8"
