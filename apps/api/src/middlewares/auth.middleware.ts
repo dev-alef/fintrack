@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express'
 import jwt from 'jsonwebtoken'
+import * as Sentry from '@sentry/node'
 import { JWTPayload } from '../types'
 
 export function authMiddleware(req: Request, res: Response, next: NextFunction): void {
@@ -15,6 +16,7 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET!) as JWTPayload
     req.user = payload
+    Sentry.setUser({ id: payload.userId })
     next()
   } catch {
     res.status(401).json({ error: 'Token inválido ou expirado' })

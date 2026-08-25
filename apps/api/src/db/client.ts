@@ -1,4 +1,5 @@
 import { Pool } from 'pg'
+import * as Sentry from '@sentry/node'
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -9,6 +10,7 @@ const pool = new Pool({
 // pool descarta o cliente com problema e abre outro na proxima query.
 pool.on('error', (err) => {
   console.error('Erro inesperado no cliente PostgreSQL ocioso', err)
+  Sentry.captureException(err)
 })
 
 export const query = async (text: string, params?: unknown[]) => {

@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import * as Sentry from '@sentry/react'
 
 interface User { id: string; name: string; email: string }
 
@@ -15,10 +16,12 @@ export const useAuthStore = create<AuthState>((set) => ({
   login: (user, accessToken, refreshToken) => {
     localStorage.setItem('accessToken', accessToken)
     localStorage.setItem('refreshToken', refreshToken)
+    Sentry.setUser({ id: user.id })
     set({ user, isAuthenticated: true })
   },
   logout: () => {
     localStorage.clear()
+    Sentry.setUser(null)
     set({ user: null, isAuthenticated: false })
   },
 }))
