@@ -12,6 +12,9 @@ import { cn } from "@/lib/utils"
 
 const fmt = (v: string | number) => Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
 const fmtPct = (v: string | number) => `${Number(v).toFixed(2)}%`
+// Cores dos graficos e da paleta de tipos de investimento. Hex por dois
+// motivos: Recharts recebe cor por prop SVG, nao por CSS; e TYPE_COLORS vira
+// investment_types.color, que e VARCHAR(7) no banco e nao comporta um token.
 const COLORS = ["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899", "#84cc16"]
 const ICONS = ["📈", "💰", "🏦", "₿", "🏠", "💎", "📊", "🌍"]
 const TYPE_COLORS = ["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899"]
@@ -324,7 +327,7 @@ export default function Investments() {
 
           <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
             {types.map((t) => (
-              <div key={t.id} className="rounded-lg border bg-bg p-3.5" style={{ borderColor: `${t.color}33` }}>
+              <div key={t.id} className="rounded-lg border bg-bg p-3.5" style={{ borderColor: t.color }}>
                 <div className="mb-1.5 flex justify-between">
                   <span className="text-lg" aria-hidden="true">{t.icon}</span>
                   <div className="flex gap-1">
@@ -479,7 +482,7 @@ export default function Investments() {
                   </CardContent>
                 </Card>
               ) : (
-                <div key={inv.id} className="flex flex-wrap items-center gap-3 rounded-lg border bg-bg p-4" style={{ borderColor: `${inv.type_color}33` }}>
+                <div key={inv.id} className="flex flex-wrap items-center gap-3 rounded-lg border bg-bg p-4" style={{ borderColor: inv.type_color }}>
                   <span className="text-xl" aria-hidden="true">{inv.type_icon}</span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-text">{inv.name}</p>

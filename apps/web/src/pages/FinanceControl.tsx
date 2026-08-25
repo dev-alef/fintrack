@@ -12,7 +12,11 @@ import { cn } from "@/lib/utils"
 
 const fmt = (v: string | number) => Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
 const MONTHS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"]
-const CARD_COLORS = ["var(--primary)", "var(--success)", "var(--warning)", "var(--danger)", "var(--primary-hover)", "var(--text-2)", "var(--border)"]
+// Paleta que o usuario escolhe para identificar cada cartao. Sao dados, nao
+// decoracao de tema: o valor vai para credit_cards.color, que e VARCHAR(7).
+// Precisa ser hex e nao pode virar token - "var(--primary)" nao cabe na coluna
+// e faria o cartao mudar de cor junto com o tema, perdendo a distincao visual.
+const CARD_COLORS = ["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899"]
 
 interface Card { id: string; name: string; due_day: number; color: string }
 interface Bill { id: string; name: string; amount: string; due_day: number; paid?: boolean; payment_id?: string }
@@ -25,7 +29,7 @@ export default function FinanceControl() {
   const [month, setMonth] = useState(now.getMonth() + 1)
   const [year, setYear] = useState(now.getFullYear())
   const [editingCard, setEditingCard] = useState<Card | null>(null)
-  const [newCard, setNewCard] = useState({ name: "", due_day: "", color: "var(--primary)" })
+  const [newCard, setNewCard] = useState({ name: "", due_day: "", color: "#6366f1" })
   const [newBill, setNewBill] = useState({ name: "", amount: "", due_day: "" })
   const [editingBill, setEditingBill] = useState<Bill | null>(null)
   const [showNewCard, setShowNewCard] = useState(false)
