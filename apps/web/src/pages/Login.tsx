@@ -44,7 +44,7 @@ export default function Login() {
         <div>
           <div className="flex items-center gap-3 mb-10">
             <Logo size={36} className="bg-primary-fg text-primary" />
-            <span className="text-lg font-semibold tracking-tight">FinTrack</span>
+            <span className="text-lg font-semibold tracking-tight">Provisão</span>
           </div>
 
           <h1 className="text-3xl lg:text-[32px] font-bold leading-tight text-primary-fg">
@@ -83,7 +83,7 @@ export default function Login() {
         </div>
 
         <p className="hidden min-[780px]:block text-xs text-primary-fg/60">
-          © {new Date().getFullYear()} FinTrack — suas finanças sob controle.
+          © {new Date().getFullYear()} Provisão — suas finanças sob controle.
         </p>
       </div>
 

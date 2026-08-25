@@ -1,12 +1,16 @@
-import { NavLink, useNavigate } from 'react-router-dom'
-import { useAuthStore } from '../../store/auth.store'
+import { NavLink, useNavigate } from "react-router-dom"
+import { LayoutDashboard, ArrowLeftRight, TrendingUp, Target, Sparkles, LogOut, X } from "lucide-react"
+import { useAuthStore } from "../../store/auth.store"
+import { Logo } from "../logo"
+import { ThemeToggle } from "../theme-toggle"
+import { cn } from "@/lib/utils"
 
 const links = [
-  { to: '/dashboard', label: '📊 Dashboard' },
-  { to: '/transactions', label: '💸 Transações' },
-  { to: '/investments', label: '💎 Investimentos' },
-  { to: '/goals', label: '🎯 Metas' },
-  { to: '/insights', label: '🤖 Insights IA' },
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/transactions", label: "Transações", icon: ArrowLeftRight },
+  { to: "/investments", label: "Investimentos", icon: TrendingUp },
+  { to: "/goals", label: "Metas", icon: Target },
+  { to: "/insights", label: "Insights", icon: Sparkles },
 ]
 
 interface SidebarProps {
@@ -19,48 +23,74 @@ export default function Sidebar({ isMobile = false, isOpen = false, onClose }: S
   const { logout, user } = useAuthStore()
   const navigate = useNavigate()
 
-  // No mobile, esconde a sidebar quando fechada
-  const translateX = isMobile && !isOpen ? '-100%' : '0'
-
   return (
-    <aside style={{
-      width: 220, background: '#1a1a2e', height: '100vh',
-      display: 'flex', flexDirection: 'column', padding: '24px 16px',
-      position: 'fixed', left: 0, top: 0, overflowY: 'auto',
-      transform: `translateX(${translateX})`,
-      transition: 'transform 0.3s ease',
-      zIndex: 100,
-      boxSizing: 'border-box',
-    }}>
-      <div style={{ marginBottom: 32, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div>
-          <h1 style={{ color: '#6366f1', fontSize: 22, margin: 0 }}>💰 FinTrack</h1>
-          <p style={{ color: '#888', fontSize: 12, margin: '4px 0 0' }}>{user?.name || 'Usuário'}</p>
+    <aside
+      className={cn(
+        "fixed left-0 top-0 z-[100] flex h-screen w-[220px] flex-col overflow-y-auto border-r border-border bg-surface p-6 transition-transform duration-300 ease-in-out",
+        isMobile && !isOpen ? "-translate-x-full" : "translate-x-0"
+      )}
+    >
+      <div className="mb-8 flex items-start justify-between">
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2.5">
+            <Logo size={28} />
+            <h1 className="text-[22px] font-semibold tracking-tight text-primary">Provisão</h1>
+          </div>
+          <p className="text-xs text-muted">{user?.name || "Usuário"}</p>
         </div>
         {isMobile && (
-          <button onClick={onClose} style={{
-            background: 'transparent', border: 'none', color: '#888',
-            fontSize: 22, cursor: 'pointer', padding: 0, lineHeight: 1,
-          }}>✕</button>
+          <button
+            type="button"
+            aria-label="Fechar menu"
+            onClick={onClose}
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          >
+            <X className="h-5 w-5" aria-hidden="true" />
+          </button>
         )}
       </div>
-      <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
-        {links.map(link => (
-          <NavLink key={link.to} to={link.to} onClick={isMobile ? onClose : undefined} style={({ isActive }) => ({
-            padding: '12px 14px', borderRadius: 8, textDecoration: 'none',
-            color: isActive ? '#fff' : '#aaa',
-            background: isActive ? '#6366f1' : 'transparent',
-            fontSize: 14, fontWeight: isActive ? 600 : 400,
-          })}>{link.label}</NavLink>
-        ))}
+
+      <nav className="flex flex-1 flex-col gap-1">
+        {links.map((link) => {
+          const Icon = link.icon
+          return (
+            <NavLink
+              key={link.to}
+              to={link.to}
+              onClick={isMobile ? onClose : undefined}
+              className={({ isActive }) =>
+                cn(
+                  "flex items-center gap-3 rounded-lg px-3.5 py-3 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                  isActive
+                    ? "bg-primary font-semibold text-primary-fg"
+                    : "font-normal text-muted hover:bg-surface-2 hover:text-text"
+                )
+              }
+            >
+              <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+              {link.label}
+            </NavLink>
+          )
+        })}
       </nav>
-      <button onClick={() => { logout(); navigate('/login') }} style={{
-        padding: '12px 14px', borderRadius: 8, border: 'none',
-        background: 'transparent', color: '#888', cursor: 'pointer',
-        textAlign: 'left', fontSize: 14,
-      }}>
-        🚪 Sair
-      </button>
+
+      <div className="mt-auto flex flex-col gap-4 pt-6">
+        <div className="flex justify-start">
+          <ThemeToggle />
+        </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            logout()
+            navigate("/login")
+          }}
+          className="flex items-center gap-3 rounded-lg px-3.5 py-3 text-left text-sm text-muted hover:bg-surface-2 hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        >
+          <LogOut className="h-4 w-4 shrink-0" aria-hidden="true" />
+          Sair
+        </button>
+      </div>
     </aside>
   )
 }

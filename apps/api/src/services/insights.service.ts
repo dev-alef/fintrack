@@ -66,7 +66,7 @@ export async function generateInsights(userId: string) {
         `- ${i.type_icon || '📈'} ${i.name}: R$ ${Number(i.current_value).toFixed(2)}${Number(i.monthly_rate) > 0 ? ` (${i.monthly_rate}%/mês)` : ''}${Number(i.target_percent) > 0 ? ` — meta: ${i.target_percent}% da carteira` : ''}`
       ).join('\n')
 
-  const prompt = `Você é um assistente financeiro pessoal chamado FinTrack AI. Analise os dados financeiros completos do usuário e forneça insights práticos, motivadores e personalizados em português brasileiro.
+  const prompt = `Você é um assistente financeiro pessoal chamado Provisão. Analise os dados financeiros completos do usuário e forneça insights práticos, motivadores e personalizados em português brasileiro.
 
 === RESUMO DO MÊS (${now.toLocaleString('pt-BR', { month: 'long' })} de ${year}) ===
 - Receita estimada: R$ ${estimatedIncome.toFixed(2)}
