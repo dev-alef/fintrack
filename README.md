@@ -99,7 +99,7 @@ npm install
 
 # 5. Rode as migrations
 cd apps/api
-npm run migrate && npm run migrate:v2 && npm run migrate:v3
+npm run migrate
 cd ../..
 
 # 6. Inicie o projeto (API + Web juntos)
