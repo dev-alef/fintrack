@@ -1,63 +1,261 @@
-import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
-import api from '../services/api'
+import { useState, useMemo } from "react"
+import { useNavigate, Link } from "react-router-dom"
+import { User, Mail, Lock, Eye, EyeOff, Gift, Download, KeyRound } from "lucide-react"
+import api from "../services/api"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Logo } from "@/components/logo"
+import { ThemeToggle } from "@/components/theme-toggle"
+
+function getPasswordStrength(pw: string): { score: number; label: string } {
+  if (!pw) return { score: 0, label: "" }
+  const hasUpper = /[A-Z]/.test(pw)
+  const hasNumber = /[0-9]/.test(pw)
+  const hasSpecial = /[^A-Za-z0-9]/.test(pw)
+  if (pw.length < 6) return { score: 1, label: "Fraca" }
+  if (pw.length < 8) return { score: 2, label: "Média" }
+  if (hasUpper && hasNumber && hasSpecial) return { score: 4, label: "Forte" }
+  if (hasUpper && hasNumber) return { score: 3, label: "Boa" }
+  return { score: 2, label: "Média" }
+}
 
 export default function Register() {
-  const [form, setForm] = useState({ name: '', email: '', password: '' })
-  const [error, setError] = useState('')
+  const [form, setForm] = useState({ name: "", email: "", password: "" })
+  const [showPassword, setShowPassword] = useState(false)
+  const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
+
+  const strength = useMemo(() => getPasswordStrength(form.password), [form.password])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
+    setError("")
     try {
-      await api.post('/auth/register', form)
-      navigate('/login')
+      await api.post("/auth/register", form)
+      navigate("/login")
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
-      setError(msg || 'Erro ao criar conta')
+      setError(msg || "Erro ao criar conta")
     } finally {
       setLoading(false)
     }
   }
 
-  const inp = {
-    width: '100%', padding: '12px 16px', borderRadius: 8,
-    border: '1px solid #333', background: '#0f0f1a',
-    color: '#fff', fontSize: 14, boxSizing: 'border-box' as const,
-  }
+  const strengthColor =
+    strength.score === 1
+      ? "bg-danger"
+      : strength.score === 2
+        ? "bg-warning"
+        : strength.score >= 3
+          ? "bg-success"
+          : "bg-border"
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0f0f1a' }}>
-      <div style={{ width: '100%', maxWidth: 400, padding: 40, background: '#1a1a2e', borderRadius: 16, border: '1px solid #2a2a3e' }}>
-        <h1 style={{ color: '#6366f1', textAlign: 'center', marginBottom: 8 }}>💰 FinTrack</h1>
-        <p style={{ color: '#888', textAlign: 'center', marginBottom: 32 }}>Crie sua conta gratuita</p>
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {(['name', 'email', 'password'] as const).map(field => (
-            <div key={field}>
-              <label style={{ color: '#aaa', fontSize: 13, display: 'block', marginBottom: 6 }}>
-                {field === 'name' ? 'Nome' : field === 'email' ? 'Email' : 'Senha'}
-              </label>
-              <input style={inp}
-                type={field === 'password' ? 'password' : field === 'email' ? 'email' : 'text'}
-                value={form[field]}
-                onChange={e => setForm(f => ({ ...f, [field]: e.target.value }))}
-                required />
-            </div>
-          ))}
-          {error && <p style={{ color: '#f87171', fontSize: 13, margin: 0 }}>{error}</p>}
-          <button type="submit" disabled={loading} style={{
-            padding: 13, borderRadius: 8, border: 'none',
-            background: loading ? '#4f46e5aa' : '#6366f1',
-            color: '#fff', fontSize: 15, fontWeight: 600, cursor: 'pointer', marginTop: 8,
-          }}>
-            {loading ? 'Criando...' : 'Criar conta'}
-          </button>
-        </form>
-        <p style={{ color: '#888', textAlign: 'center', marginTop: 24, fontSize: 13 }}>
-          Já tem conta? <Link to="/login" style={{ color: '#6366f1' }}>Entrar</Link>
+    <div className="min-h-screen grid grid-cols-1 min-[780px]:grid-cols-2">
+      {/* Brand panel */}
+      <div
+        style={{ background: "var(--brand-grad)" }}
+        className="relative flex flex-col justify-between p-8 lg:p-12 text-primary-fg overflow-hidden min-h-[320px] min-[780px]:min-h-screen"
+      >
+        <div>
+          <div className="flex items-center gap-3 mb-10">
+            <Logo size={36} className="bg-primary-fg text-primary" />
+            <span className="text-lg font-semibold tracking-tight">Provisão</span>
+          </div>
+
+          <h1 className="text-3xl lg:text-[32px] font-bold leading-tight text-primary-fg">
+            Comece grátis. Sem cartão de crédito.
+          </h1>
+          <p className="mt-3 text-sm leading-relaxed text-primary-fg/80">
+            Leva menos de um minuto. Você já sai com o dashboard do mês pronto.
+          </p>
+
+          <ul className="mt-10 space-y-4">
+            <li className="flex items-start gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-fg/10 border border-primary-fg/15">
+                <Gift className="h-4 w-4" aria-hidden="true" />
+              </span>
+              <div className="pt-1">
+                <p className="text-sm font-medium leading-none">Plano gratuito para sempre</p>
+              </div>
+            </li>
+            <li className="flex items-start gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-fg/10 border border-primary-fg/15">
+                <Download className="h-4 w-4" aria-hidden="true" />
+              </span>
+              <div className="pt-1">
+                <p className="text-sm font-medium leading-none">Exporte ou apague seus dados quando quiser</p>
+              </div>
+            </li>
+            <li className="flex items-start gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-fg/10 border border-primary-fg/15">
+                <KeyRound className="h-4 w-4" aria-hidden="true" />
+              </span>
+              <div className="pt-1">
+                <p className="text-sm font-medium leading-none">Autenticação em dois fatores disponível</p>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <p className="hidden min-[780px]:block text-xs text-primary-fg/60">
+          © {new Date().getFullYear()} Provisão — suas finanças sob controle.
         </p>
+      </div>
+
+      {/* Form panel */}
+      <div className="flex flex-col bg-bg">
+        <div className="flex justify-end p-4">
+          <ThemeToggle />
+        </div>
+
+        <div className="flex flex-1 items-center justify-center p-6 lg:p-8">
+          <div className="w-full max-w-[400px] space-y-6">
+            <div>
+              <h2 className="text-2xl font-semibold tracking-tight text-text">Criar sua conta</h2>
+              <p className="mt-2 text-sm text-muted">Comece a organizar suas finanças hoje.</p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+              <div className="space-y-2">
+                <Label htmlFor="name">Nome</Label>
+                <div className="relative">
+                  <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden="true" />
+                  <Input
+                    id="name"
+                    type="text"
+                    placeholder="Seu nome"
+                    autoComplete="name"
+                    className="pl-10"
+                    value={form.name}
+                    onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="email">E-mail</Label>
+                <div className="relative">
+                  <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden="true" />
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="seu@email.com"
+                    autoComplete="email"
+                    className="pl-10"
+                    value={form.email}
+                    onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="password">Senha</Label>
+                <div className="relative">
+                  <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden="true" />
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    autoComplete="new-password"
+                    className="pl-10 pr-10"
+                    value={form.password}
+                    onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+                    required
+                  />
+                  <button
+                    type="button"
+                    aria-label={showPassword ? "Esconder senha" : "Mostrar senha"}
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="absolute right-2 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
+                  </button>
+                </div>
+
+                {/* Strength indicator */}
+                {form.password.length > 0 && (
+                  <div className="space-y-1.5 pt-1">
+                    <div className="flex gap-1.5">
+                      {[0, 1, 2, 3].map((i) => (
+                        <div
+                          key={i}
+                          className={
+                            i < strength.score
+                              ? `h-1.5 flex-1 rounded-full ${strengthColor}`
+                              : "h-1.5 flex-1 rounded-full bg-border"
+                          }
+                        />
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted">
+                      Força da senha: <span className="font-medium text-text">{strength.label}</span>
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {error && (
+                <div role="alert" className="rounded-md border border-danger/20 bg-danger/10 px-3 py-2 text-sm text-danger">
+                  {error}
+                </div>
+              )}
+
+              <Button type="submit" disabled={loading} className="w-full">
+                {loading ? "Criando..." : "Criar conta"}
+              </Button>
+
+              <div className="relative flex items-center gap-3 py-1">
+                <div className="h-px flex-1 bg-border" />
+                <span className="text-xs text-muted">ou</span>
+                <div className="h-px flex-1 bg-border" />
+              </div>
+
+              <Button
+                type="button"
+                variant="outline"
+                disabled
+                title="Cadastro com Google chega em breve — backend ainda não tem OAuth"
+                className="w-full gap-2"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    fill="currentColor"
+                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                  />
+                  <path
+                    fill="currentColor"
+                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                  />
+                  <path
+                    fill="currentColor"
+                    d="M5.84 14.09A6.97 6.97 0 0 1 5.5 12c0-.73.12-1.43.34-2.09V7.07H2.18A11 11 0 0 0 1 12c0 1.78.42 3.45 1.18 4.93l3.66-2.84z"
+                  />
+                  <path
+                    fill="currentColor"
+                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                  />
+                </svg>
+                Continuar com Google
+              </Button>
+            </form>
+
+            <p className="text-center text-sm text-muted">
+              Já tem conta?{" "}
+              <Link
+                to="/login"
+                className="font-medium text-primary hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm"
+              >
+                Entrar
+              </Link>
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   )

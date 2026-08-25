@@ -1,4 +1,4 @@
-# 💰 FinTrack
+# 💰 Provisão
 
 > Sistema completo de gestão financeira pessoal com análise por Inteligência Artificial
 
@@ -11,7 +11,7 @@
 ## 📸 Preview
 
 <!-- Adicione aqui um print do dashboard -->
-![Dashboard do FinTrack](docs/dashboard.png)
+![Dashboard da Provisão](docs/dashboard.png)
 
 ## ✨ Funcionalidades
 
