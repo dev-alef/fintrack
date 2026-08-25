@@ -52,7 +52,7 @@ jobs:
           JWT_EXPIRES_IN: 15m
           JWT_REFRESH_EXPIRES_IN: 7d
           NODE_ENV: test
-        run: npm run migrate && npm run migrate:v2 && npm run migrate:v3
+        run: npx drizzle-kit migrate
 
       - name: Run tests
         working-directory: apps/api
