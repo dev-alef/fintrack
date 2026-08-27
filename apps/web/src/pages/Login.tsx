@@ -1,8 +1,7 @@
 import { useState } from "react"
 import { useNavigate, Link } from "react-router-dom"
 import { Mail, Lock, Eye, EyeOff, Download, Bell, ShieldCheck } from "lucide-react"
-import api from "../services/api"
-import { useAuthStore } from "../store/auth.store"
+import { signIn } from "../lib/auth-client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -15,7 +14,6 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
-  const { login } = useAuthStore()
   const navigate = useNavigate()
 
   async function handleSubmit(e: React.FormEvent) {
@@ -23,8 +21,8 @@ export default function Login() {
     setError("")
     setLoading(true)
     try {
-      const { data } = await api.post("/auth/login", { email, password })
-      login(data.user, data.accessToken, data.refreshToken)
+      const { error: authError } = await signIn.email({ email, password })
+      if (authError) throw new Error(authError.message || "Erro ao fazer login")
       navigate("/dashboard")
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error

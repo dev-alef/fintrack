@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react"
 import { useNavigate, Link } from "react-router-dom"
 import { User, Mail, Lock, Eye, EyeOff, Gift, Download, KeyRound } from "lucide-react"
-import api from "../services/api"
+import { signUp } from "../lib/auth-client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -34,7 +34,12 @@ export default function Register() {
     setLoading(true)
     setError("")
     try {
-      await api.post("/auth/register", form)
+      const { error: authError } = await signUp.email({
+        email: form.email,
+        password: form.password,
+        name: form.name,
+      })
+      if (authError) throw new Error(authError.message || "Erro ao criar conta")
       navigate("/login")
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
