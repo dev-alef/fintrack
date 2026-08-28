@@ -4,7 +4,6 @@ import express from 'express'
 import { toNodeHandler } from 'better-auth/node'
 import { auth } from './auth'
 import cors from 'cors'
-import authRoutes from './routes/auth.routes'
 import transactionRoutes from './routes/transaction.routes'
 import goalsRoutes from './routes/goals.routes'
 import insightsRoutes from './routes/insights.routes'
@@ -80,7 +79,6 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
 })
 
-app.use('/auth', authRoutes)
 app.use('/transactions', transactionRoutes)
 app.use('/goals', goalsRoutes)
 app.use('/insights', insightsRoutes)
