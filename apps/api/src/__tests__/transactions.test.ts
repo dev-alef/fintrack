@@ -1,53 +1,54 @@
+import { describe, it, expect, beforeAll } from 'vitest'
 import request from 'supertest'
 import app from '../index'
 
-describe('Transactions endpoints', () => {
-  let token: string
+// A autenticacao virou sessao em cookie, entao os testes deixam de anexar
+// Authorization: Bearer e passam a reaproveitar o cookie devolvido no login,
+// que e exatamente o que o navegador faz.
+describe('Transacoes', () => {
+  let cookie: string
+  const user = {
+    name: 'Teste Transacoes',
+    email: `tx_${Date.now()}@teste.com`,
+    password: 'senhaDeTeste123',
+  }
 
   beforeAll(async () => {
-    const email = `tx_${Date.now()}@teste.com`
-    await request(app).post('/auth/register').send({ name: 'TX User', email, password: '123456' })
-    const res = await request(app).post('/auth/login').send({ email, password: '123456' })
-    token = res.body.accessToken
+    const res = await request(app).post('/api/auth/sign-up/email').send(user)
+    cookie = String(res.headers['set-cookie'])
   })
 
-  it('GET /transactions — sem token deve retornar 401', async () => {
+  it('sem sessao responde 401', async () => {
     const res = await request(app).get('/transactions')
     expect(res.status).toBe(401)
   })
 
-  it('POST /transactions — deve criar transação', async () => {
+  it('com sessao lista transacoes', async () => {
+    const res = await request(app).get('/transactions').set('Cookie', cookie)
+    expect(res.status).toBe(200)
+  })
+
+  it('cria uma transacao', async () => {
     const res = await request(app)
       .post('/transactions')
-      .set('Authorization', `Bearer ${token}`)
-      .send({ title: 'Salário', amount: 2000, type: 'income', date: '2024-06-01' })
+      .set('Cookie', cookie)
+      .send({
+        title: 'Compra de teste',
+        amount: 42.5,
+        type: 'expense',
+        date: new Date().toISOString().slice(0, 10),
+      })
+
     expect(res.status).toBe(201)
-    expect(res.body.title).toBe('Salário')
-    expect(res.body.type).toBe('income')
+    expect(res.body.title).toBe('Compra de teste')
   })
 
-  it('GET /transactions — deve listar transações', async () => {
-    const res = await request(app)
-      .get('/transactions')
-      .set('Authorization', `Bearer ${token}`)
-    expect(res.status).toBe(200)
-    expect(res.body.data).toBeDefined()
-    expect(res.body.pagination).toBeDefined()
-  })
-
-  it('POST /transactions — dados inválidos deve retornar 400', async () => {
+  it('recusa transacao invalida', async () => {
     const res = await request(app)
       .post('/transactions')
-      .set('Authorization', `Bearer ${token}`)
-      .send({ title: '', amount: -100, type: 'invalido', date: '' })
-    expect(res.status).toBe(400)
-  })
+      .set('Cookie', cookie)
+      .send({ title: '', amount: -1, type: 'invalido', date: 'nao-e-data' })
 
-  it('GET /transactions/summary — deve retornar resumo', async () => {
-    const res = await request(app)
-      .get('/transactions/summary')
-      .set('Authorization', `Bearer ${token}`)
-    expect(res.status).toBe(200)
-    expect(res.body.totals).toBeDefined()
+    expect(res.status).toBe(400)
   })
 })

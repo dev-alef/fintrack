@@ -7,7 +7,13 @@ export const users = pgTable("users", {
 	id: uuid().default(sql`uuid_generate_v4()`).primaryKey().notNull(),
 	name: varchar({ length: 100 }).notNull(),
 	email: varchar({ length: 255 }).notNull(),
-	password: varchar({ length: 255 }).notNull(),
+	// Passa a aceitar nulo: o Better Auth guarda a credencial na tabela account,
+	// nao aqui. Sem isso, todo cadastro novo violaria o NOT NULL. Os hashes
+	// existentes permanecem nesta coluna e sao a rota de volta caso a migracao
+	// precise ser revertida.
+	password: varchar({ length: 255 }),
+	emailVerified: boolean("emailVerified").default(false).notNull(),
+	image: text(),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 }, (table) => [
@@ -228,4 +234,68 @@ export const investments = pgTable("investments", {
 			name: "investments_type_id_fkey"
 		}).onDelete("cascade"),
 	check("investments_month_check", sql`(month >= 1) AND (month <= 12)`),
+]);
+
+// ── BETTER AUTH ──────────────────────────────────────────────
+// Tabelas do Better Auth. A tabela `users` acima e reaproveitada como modelo
+// de usuario dele, entao userId aqui e UUID, e nao text como o CLI do Better
+// Auth gera por padrao: a chave estrangeira precisa ter o mesmo tipo da coluna
+// referenciada, senao o Postgres recusa a criacao.
+
+export const session = pgTable("session", {
+	id: text().primaryKey().notNull(),
+	expiresAt: timestamp("expiresAt", { withTimezone: true, mode: 'string' }).notNull(),
+	token: text().notNull(),
+	createdAt: timestamp("createdAt", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updatedAt", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	ipAddress: text("ipAddress"),
+	userAgent: text("userAgent"),
+	userId: uuid("userId").notNull(),
+}, (table) => [
+	index("session_userId_idx").using("btree", table.userId.asc().nullsLast()),
+	unique("session_token_key").on(table.token),
+	foreignKey({
+		columns: [table.userId],
+		foreignColumns: [users.id],
+		name: "session_userId_fkey"
+	}).onDelete("cascade"),
+]);
+
+export const account = pgTable("account", {
+	id: text().primaryKey().notNull(),
+	// Campo introduzido no Better Auth 1.7: a identidade da conta passou a ser
+	// escopada por emissor. O CLI de geracao de schema esta numa versao anterior
+	// e nao produz esta coluna - sem ela o cadastro falha com "column issuer of
+	// relation account does not exist".
+	issuer: text(),
+	accountId: text("accountId").notNull(),
+	providerId: text("providerId").notNull(),
+	userId: uuid("userId").notNull(),
+	accessToken: text("accessToken"),
+	refreshToken: text("refreshToken"),
+	idToken: text("idToken"),
+	accessTokenExpiresAt: timestamp("accessTokenExpiresAt", { withTimezone: true, mode: 'string' }),
+	refreshTokenExpiresAt: timestamp("refreshTokenExpiresAt", { withTimezone: true, mode: 'string' }),
+	scope: text(),
+	password: text(),
+	createdAt: timestamp("createdAt", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updatedAt", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("account_userId_idx").using("btree", table.userId.asc().nullsLast()),
+	foreignKey({
+		columns: [table.userId],
+		foreignColumns: [users.id],
+		name: "account_userId_fkey"
+	}).onDelete("cascade"),
+]);
+
+export const verification = pgTable("verification", {
+	id: text().primaryKey().notNull(),
+	identifier: text().notNull(),
+	value: text().notNull(),
+	expiresAt: timestamp("expiresAt", { withTimezone: true, mode: 'string' }).notNull(),
+	createdAt: timestamp("createdAt", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updatedAt", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("verification_identifier_idx").using("btree", table.identifier.asc().nullsLast()),
 ]);

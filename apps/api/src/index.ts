@@ -1,8 +1,9 @@
 import 'dotenv/config'
 import * as Sentry from '@sentry/node'
 import express from 'express'
+import { toNodeHandler } from 'better-auth/node'
+import { auth } from './auth'
 import cors from 'cors'
-import authRoutes from './routes/auth.routes'
 import transactionRoutes from './routes/transaction.routes'
 import goalsRoutes from './routes/goals.routes'
 import insightsRoutes from './routes/insights.routes'
@@ -56,14 +57,28 @@ Sentry.init({
 const app = express()
 const PORT = process.env.PORT || 3001
 
-app.use(cors({ origin: true }))
+// A sessao viaja em cookie, e o navegador recusa credenciais com origin
+// curinga. Por isso a lista de origens passa a ser explicita - o antigo
+// origin: true refletia qualquer site, o que ja era um achado de auditoria e
+// agora deixou de ser sequer possivel.
+const corsOrigins = (process.env.CORS_ORIGINS || 'http://localhost:5173')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean)
+
+app.use(cors({ origin: corsOrigins, credentials: true }))
+
+// O handler do Better Auth precisa vir antes do express.json(): ele le o corpo
+// da requisicao direto do stream, e um parser antes dele consumiria o stream e
+// deixaria o handler sem corpo nenhum.
+app.all('/api/auth/*', toNodeHandler(auth))
+
 app.use(express.json())
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
 })
 
-app.use('/auth', authRoutes)
 app.use('/transactions', transactionRoutes)
 app.use('/goals', goalsRoutes)
 app.use('/insights', insightsRoutes)

@@ -6,7 +6,7 @@
     "build": "tsc",
     "prestart": "node dist/db/migrate-runner.js",
     "start": "node dist/index.js",
-    "test": "jest --passWithNoTests",
+    "test": "vitest run --passWithNoTests",
     "migrate": "drizzle-kit migrate",
     "migrate:generate": "drizzle-kit generate",
     "migrate:v2": "drizzle-kit migrate",
@@ -16,6 +16,7 @@
     "@google/generative-ai": "^0.21.0",
     "@sentry/node": "^10.71.0",
     "bcryptjs": "^2.4.3",
+    "better-auth": "^1.7.1",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "drizzle-orm": "^0.45.2",
@@ -29,16 +30,14 @@
     "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
-    "@types/jest": "^29.5.10",
     "@types/jsonwebtoken": "^9.0.5",
     "@types/node": "^20.10.0",
     "@types/pg": "^8.10.9",
     "@types/supertest": "^6.0.2",
     "drizzle-kit": "^0.31.10",
-    "jest": "^29.7.0",
     "supertest": "^6.3.3",
-    "ts-jest": "^29.1.1",
     "tsx": "^4.6.2",
-    "typescript": "^5.3.2"
+    "typescript": "^5.3.2",
+    "vitest": "^4.1.11"
   }
 }

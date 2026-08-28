@@ -1,6 +1,7 @@
 import { NavLink, useNavigate } from "react-router-dom"
 import { LayoutDashboard, ArrowLeftRight, TrendingUp, Target, Sparkles, LogOut, X } from "lucide-react"
 import { useAuthStore } from "../../store/auth.store"
+import { signOut } from "../../lib/auth-client"
 import { Logo } from "../logo"
 import { ThemeToggle } from "../theme-toggle"
 import { cn } from "@/lib/utils"
@@ -20,7 +21,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ isMobile = false, isOpen = false, onClose }: SidebarProps) {
-  const { logout, user } = useAuthStore()
+  const { clear, user } = useAuthStore()
   const navigate = useNavigate()
 
   return (
@@ -81,8 +82,12 @@ export default function Sidebar({ isMobile = false, isOpen = false, onClose }: S
 
         <button
           type="button"
-          onClick={() => {
-            logout()
+          onClick={async () => {
+            // signOut apaga a sessao no servidor, e nao apenas no navegador:
+            // depois disto o cookie deixa de valer para qualquer requisicao,
+            // que era o que faltava no logout anterior.
+            await signOut()
+            clear()
             navigate("/login")
           }}
           className="flex items-center gap-3 rounded-lg px-3.5 py-3 text-left text-sm text-muted hover:bg-surface-2 hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
