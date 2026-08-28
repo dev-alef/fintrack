@@ -3,6 +3,16 @@ import bcrypt from 'bcryptjs'
 import { betterAuth } from 'better-auth'
 import pool from './db/client'
 
+const googleClientId = process.env.GOOGLE_CLIENT_ID
+const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET
+
+// O provedor so e registrado quando as duas credenciais existem. Registrar com
+// valor vazio faria o botao aparecer funcional e quebrar no meio do fluxo, ja
+// no dominio do Google - erro que o usuario nao consegue interpretar. Sem as
+// credenciais o servidor responde que o provedor nao existe, e a tela mostra
+// uma mensagem em portugues.
+export const googleEnabled = Boolean(googleClientId && googleClientSecret)
+
 // Better Auth reaproveita a tabela `users` que ja existe, em vez de criar a
 // tabela `user` dele. Isso e deliberado: dez tabelas apontam para users.id com
 // ON DELETE CASCADE, entao trocar essa tabela apagaria dado financeiro em
@@ -31,6 +41,34 @@ export const auth = betterAuth({
     password: {
       hash: (password) => bcrypt.hash(password, 12),
       verify: ({ hash, password }) => bcrypt.compare(password, hash),
+    },
+  },
+
+  socialProviders: googleEnabled
+    ? {
+        google: {
+          clientId: googleClientId!,
+          clientSecret: googleClientSecret!,
+          mapProfileToUser: (profile) => ({
+            // users.name e varchar(100) e NOT NULL. Um nome de perfil maior que
+            // isso faria o Postgres recusar o INSERT e o cadastro morreria com
+            // 500 depois que a pessoa ja tinha autorizado no Google.
+            name: (profile.name || profile.email).slice(0, 100),
+          }),
+        },
+      }
+    : undefined,
+
+  account: {
+    accountLinking: {
+      // Quem ja tem conta com e-mail e senha e entra com Google usando o mesmo
+      // e-mail cai no MESMO usuario, em vez de ganhar uma conta paralela com os
+      // dados financeiros presos na outra. So e seguro porque o provedor confia
+      // no e-mail: o Google exige verificacao antes de expor o endereco. Um
+      // provedor que nao verificasse permitiria assumir a conta alheia apenas
+      // declarando o e-mail dela.
+      enabled: true,
+      trustedProviders: ['google'],
     },
   },
 
