@@ -75,8 +75,35 @@ app.all('/api/auth/*', toNodeHandler(auth))
 
 app.use(express.json())
 
-app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() })
+app.get('/health', (req, res) => {
+  const base = { status: 'ok', timestamp: new Date().toISOString() }
+
+  // Diagnostico da cadeia de proxies, desligado por padrao.
+  //
+  // O rate limiting precisa saber quais saltos do x-forwarded-for sao proxies
+  // confiaveis, e isso nao da para deduzir: depende de por onde a requisicao
+  // passou (Vercel -> Render) e de quais IPs de saida cada um usa hoje. Ligando
+  // DEBUG_IP=1 por um minuto, esta rota mostra a cadeia real; dai os valores vao
+  // para TRUSTED_PROXIES e a variavel volta a ficar desligada.
+  //
+  // So expoe cabecalhos de roteamento - o IP de quem chamou e os proxies pelo
+  // caminho. Nada de sessao, cookie ou corpo. Ainda assim fica atras de uma
+  // variavel para nao publicar a topologia da infraestrutura sem necessidade.
+  if (process.env.DEBUG_IP === '1') {
+    return res.json({
+      ...base,
+      diagnosticoIp: {
+        'x-forwarded-for': req.headers['x-forwarded-for'] ?? null,
+        'x-real-ip': req.headers['x-real-ip'] ?? null,
+        'x-vercel-forwarded-for': req.headers['x-vercel-forwarded-for'] ?? null,
+        'cf-connecting-ip': req.headers['cf-connecting-ip'] ?? null,
+        'true-client-ip': req.headers['true-client-ip'] ?? null,
+        socket: req.socket.remoteAddress ?? null,
+      },
+    })
+  }
+
+  res.json(base)
 })
 
 app.use('/transactions', transactionRoutes)
