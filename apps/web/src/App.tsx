@@ -1,6 +1,8 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Login from './pages/Login'
 import Register from './pages/Register'
+import ConfirmeSeuEmail from './pages/ConfirmeSeuEmail'
+import EmailConfirmado from './pages/EmailConfirmado'
 import Dashboard from './pages/Dashboard'
 import Transactions from './pages/Transactions'
 import Goals from './pages/Goals'
@@ -14,6 +16,10 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      {/* Publicas de proposito: quem acabou de se cadastrar ainda nao tem sessao,
+          e o link do e-mail costuma ser aberto em outro navegador. */}
+      <Route path="/confirme-seu-email" element={<ConfirmeSeuEmail />} />
+      <Route path="/email-confirmado" element={<EmailConfirmado />} />
       <Route path="/" element={<PrivateRoute><AppLayout /></PrivateRoute>}>
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />

@@ -2,6 +2,8 @@ import { randomUUID } from 'crypto'
 import bcrypt from 'bcryptjs'
 import { betterAuth } from 'better-auth'
 import pool from './db/client'
+import { enviarEmail } from './email'
+import { emailDeVerificacao } from './emails/templates'
 
 const googleClientId = process.env.GOOGLE_CLIENT_ID
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET
@@ -80,6 +82,19 @@ export const auth = betterAuth({
       // declarando o e-mail dela.
       enabled: true,
       trustedProviders: ['google'],
+    },
+  },
+
+  emailVerification: {
+    sendOnSignUp: true,
+    // Confirmar o e-mail ja deixa a pessoa logada. Sem isso ela clicaria no
+    // link, veria "verificado" e teria de digitar a senha de novo, sem motivo -
+    // acabou de provar que controla o endereco.
+    autoSignInAfterVerification: true,
+    expiresIn: 60 * 60,
+    sendVerificationEmail: async ({ user, url }) => {
+      const { assunto, html, texto } = emailDeVerificacao(user.name || 'tudo bem', url)
+      await enviarEmail({ para: user.email, assunto, html, texto })
     },
   },
 

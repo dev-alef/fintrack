@@ -41,7 +41,10 @@ export default function Register() {
         name: form.name,
       })
       if (authError) throw new Error(authError.message || "Erro ao criar conta")
-      navigate("/login")
+      // Mandar direto para o login esconderia que ha um e-mail esperando: a
+      // pessoa tentaria entrar, conseguiria, e nunca saberia que precisa
+      // confirmar - ate tentar o Google e ser recusada sem entender por que.
+      navigate(`/confirme-seu-email?email=${encodeURIComponent(form.email)}`)
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
       setError(msg || "Erro ao criar conta")
