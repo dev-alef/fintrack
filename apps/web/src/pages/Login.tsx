@@ -17,8 +17,21 @@ const ERROS_OAUTH: Record<string, string> = {
   oauth_provider_not_found: "Login com Google indisponível no momento. Entre com e-mail e senha.",
   email_not_verified: "O Google não confirmou este e-mail. Entre com e-mail e senha.",
   email_not_found: "O Google não informou um e-mail para esta conta.",
-  invalid_code: "A autorização do Google expirou. Tente novamente.",
-  state_not_found: "A autorização do Google expirou. Tente novamente.",
+  // A troca do codigo por token falhou. O Better Auth colapsa em invalid_code
+  // tanto codigo expirado quanto credencial recusada pelo Google
+  // (invalid_client), que sao coisas bem diferentes: uma o usuario resolve
+  // tentando de novo, a outra nao. Como daqui nao da para distinguir, a
+  // mensagem nao promete que repetir resolve, e o motivo exato fica no log do
+  // servidor.
+  invalid_code: "A autorização do Google não foi aceita. Tente novamente ou entre com e-mail e senha.",
+  // O state vale 10 minutos e so pode ser usado uma vez. Vence quando a tela do
+  // Google fica aberta demais, e "nao encontrado" quando a pessoa volta com o
+  // botao do navegador para um retorno ja processado. Nos dois casos a saida e
+  // a mesma: comecar de novo. Dizer isso poupa a tentativa de recarregar a
+  // pagina de retorno, que nunca funciona.
+  state_mismatch: "A autorização do Google expirou ou já foi usada. Clique em Continuar com Google novamente.",
+  state_invalid: "A autorização do Google expirou ou já foi usada. Clique em Continuar com Google novamente.",
+  state_not_found: "A autorização do Google expirou ou já foi usada. Clique em Continuar com Google novamente.",
 }
 
 export default function Login() {
