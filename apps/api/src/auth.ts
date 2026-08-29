@@ -119,6 +119,18 @@ export const auth = betterAuth({
     // real. Os valores ficam em variavel de ambiente porque os IPs de saida da
     // Vercel e do Render mudam sem aviso, e trocar CIDR nao deveria exigir
     // deploy. Vazio mantem o comportamento atual, sem regressao.
+    //
+    // So que pelo proxy isso nao basta: a Vercel sai por IPs variados e nao
+    // publicados, entao a cadeia para no salto dela - que muda a cada
+    // requisicao. A resolucao "tem sucesso" devolvendo um IP diferente toda
+    // vez, cada uma vira um balde novo, e o limite nunca acumula. Medido em
+    // producao: 6 logins seguidos pelo proxy passaram sem 429; direto no
+    // Render, a quarta foi barrada.
+    //
+    // Por isso a lista de cabecalhos comeca por x-vercel-forwarded-for, que a
+    // Vercel preenche com o IP real do cliente num valor unico. Quem bate
+    // direto no Render nao tem esse cabecalho e cai no x-forwarded-for, onde
+    // trustedProxies resolve a cadeia.
     ipAddress: {
       ipAddressHeaders: lista(process.env.IP_ADDRESS_HEADERS) ?? ['x-forwarded-for'],
       trustedProxies: lista(process.env.TRUSTED_PROXIES) ?? [],
