@@ -1,0 +1,27 @@
+-- Marca como verificados os e-mails que ja existiam quando o login com Google
+-- entrou no ar.
+--
+-- Por que isso e necessario: o Better Auth so vincula uma conta do Google a um
+-- usuario existente quando o e-mail local ja esta verificado
+-- (requireLocalEmailVerified, ligado por padrao). O Provisao nunca teve fluxo
+-- de verificacao, entao todo mundo tem emailVerified = false. Sem este UPDATE,
+-- 100% dos usuarios atuais receberiam "account not linked" ao entrar com o
+-- Google e ficariam com uma conta paralela vazia, com os dados financeiros
+-- presos na conta antiga.
+--
+-- Por que a protecao existe e por que nao a desligamos: sem ela, alguem pode
+-- cadastrar o e-mail de outra pessoa com uma senha qualquer ANTES dela usar o
+-- app; quando a vitima entrasse pelo Google, cairia na conta do atacante, que
+-- continuaria entrando com a propria senha e leria as financas dela. A
+-- exigencia continua ligada para quem se cadastrar daqui em diante.
+--
+-- Por que e seguro aqui: esta migration roda uma unica vez e alcanca apenas as
+-- contas que ja existiam neste momento - um conjunto pequeno e conhecido,
+-- criado antes de o Google ser uma opcao, portanto sem como ter sido plantado
+-- para capturar um login social que nao existia. Quem se cadastrar depois nasce
+-- com false e nao e afetado.
+--
+-- Enquanto nao houver verificacao de e-mail de verdade, quem criar conta com
+-- senha a partir de agora e depois tentar entrar com o Google vai esbarrar no
+-- mesmo bloqueio - por decisao, nao por esquecimento.
+UPDATE "users" SET "emailVerified" = true WHERE "emailVerified" = false;

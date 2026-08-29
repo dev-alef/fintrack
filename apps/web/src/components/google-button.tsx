@@ -50,14 +50,22 @@ export function GoogleButton({ label, disabled, onError }: Props) {
       const { error } = await signIn.social({
         provider: "google",
         callbackURL: `${window.location.origin}/dashboard`,
-        errorCallbackURL: `${window.location.origin}/login?erro=google`,
+        // O Better Auth acrescenta ?error=<codigo> a esta URL quando o fluxo
+        // falha do lado dele. A tela de login traduz o codigo.
+        errorCallbackURL: `${window.location.origin}/login`,
       })
       if (error) {
         onError("Login com Google indisponível no momento. Entre com e-mail e senha.")
         setLoading(false)
       }
     } catch {
-      onError("Não foi possível falar com o servidor. Tente novamente.")
+      // Erro de rede: a requisicao nem chegou a uma resposta. Em
+      // desenvolvimento a causa quase sempre e o front apontando para outra API
+      // (VITE_API_URL) ou a origem fora de CORS_ORIGINS, entao vale dizer isso
+      // em vez de um "tente novamente" que manda repetir o que nao funciona.
+      onError(
+        "Não foi possível falar com o servidor. Verifique se a API está no ar e se esta origem está em CORS_ORIGINS.",
+      )
       setLoading(false)
     }
   }

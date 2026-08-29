@@ -9,6 +9,18 @@ import { Logo } from "@/components/logo"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { GoogleButton } from "@/components/google-button"
 
+// Codigos que o Better Auth devolve em ?error= no callback do OAuth. Sem esta
+// traducao a pessoa veria o codigo cru em ingles, ou nada.
+const ERROS_OAUTH: Record<string, string> = {
+  account_not_linked:
+    "Já existe uma conta com este e-mail. Entre com e-mail e senha — por segurança, a conta do Google só é vinculada depois disso.",
+  oauth_provider_not_found: "Login com Google indisponível no momento. Entre com e-mail e senha.",
+  email_not_verified: "O Google não confirmou este e-mail. Entre com e-mail e senha.",
+  email_not_found: "O Google não informou um e-mail para esta conta.",
+  invalid_code: "A autorização do Google expirou. Tente novamente.",
+  state_not_found: "A autorização do Google expirou. Tente novamente.",
+}
+
 export default function Login() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -18,13 +30,14 @@ export default function Login() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
 
-  // O Better Auth manda o navegador de volta para ca quando o fluxo do Google
-  // falha do lado do servidor. Sem esta leitura a pessoa voltaria para a tela de
-  // login sem explicacao nenhuma, achando que o clique nao funcionou.
+  // O Better Auth manda o navegador de volta para ca com ?error=<codigo> quando
+  // o fluxo do Google falha do lado do servidor. Sem esta leitura a pessoa
+  // voltaria para a tela de login sem explicacao nenhuma, achando que o clique
+  // nao funcionou.
   useEffect(() => {
-    if (searchParams.get("erro") === "google") {
-      setError("Não foi possível entrar com o Google. Tente novamente ou use e-mail e senha.")
-    }
+    const codigo = searchParams.get("error")
+    if (!codigo) return
+    setError(ERROS_OAUTH[codigo] ?? `Não foi possível entrar com o Google (${codigo}).`)
   }, [searchParams])
 
   async function handleSubmit(e: React.FormEvent) {

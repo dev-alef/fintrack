@@ -20,8 +20,13 @@ async function carregaApp(): Promise<Express> {
 const ambienteOriginal = { ...process.env }
 
 beforeEach(() => {
-  delete process.env.GOOGLE_CLIENT_ID
-  delete process.env.GOOGLE_CLIENT_SECRET
+  // Vazio em vez de `delete`: o index.ts importa 'dotenv/config', que roda de
+  // novo a cada resetModules e repovoa a partir do .env qualquer chave AUSENTE.
+  // Apagando, o teste passaria ou falharia conforme o .env da maquina - passava
+  // aqui e quebrou assim que as credenciais reais entraram no arquivo. O dotenv
+  // nao sobrescreve chave que ja existe, e string vazia conta como existente.
+  process.env.GOOGLE_CLIENT_ID = ''
+  process.env.GOOGLE_CLIENT_SECRET = ''
 })
 
 afterAll(() => {

@@ -15,6 +15,13 @@
       "when": 1787703411595,
       "tag": "0001_flashy_lockheed",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1787976000000,
+      "tag": "0002_google_account_linking",
+      "breakpoints": true
     }
   ]
 }
