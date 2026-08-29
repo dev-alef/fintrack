@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { Outlet } from "react-router-dom"
+import { AvisoEmailNaoConfirmado } from "@/components/aviso-email-nao-confirmado"
 import { Menu } from "lucide-react"
 import Sidebar from "./Sidebar"
 import { Logo } from "../logo"
@@ -54,6 +55,7 @@ export default function AppLayout() {
             isMobile ? "p-4 pt-[70px]" : "p-8"
           )}
         >
+          <AvisoEmailNaoConfirmado />
           <Outlet />
         </div>
       </main>
