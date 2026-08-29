@@ -13,6 +13,17 @@ const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET
 // uma mensagem em portugues.
 export const googleEnabled = Boolean(googleClientId && googleClientSecret)
 
+// Le uma variavel de ambiente com valores separados por virgula. Devolve
+// undefined quando nao ha nada util, para o chamador decidir o padrao - uma
+// lista vazia significaria "configurado como vazio", que e outra coisa.
+function lista(valor: string | undefined): string[] | undefined {
+  const itens = (valor ?? '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean)
+  return itens.length > 0 ? itens : undefined
+}
+
 // Better Auth reaproveita a tabela `users` que ja existe, em vez de criar a
 // tabela `user` dele. Isso e deliberado: dez tabelas apontam para users.id com
 // ON DELETE CASCADE, entao trocar essa tabela apagaria dado financeiro em
@@ -91,6 +102,26 @@ export const auth = betterAuth({
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    },
+
+    // Sem isto o rate limiting nao funciona em producao. O Better Auth so aceita
+    // o x-forwarded-for quando consegue confiar na cadeia:
+    //
+    //   if (forwardedIps.length !== 1) return null   // multi-hop irresolvivel
+    //
+    // Como o navegador fala com a Vercel, que encaminha para o Render, o
+    // cabecalho chega com dois saltos e a resolucao falha. O limite entao cai
+    // num balde unico compartilhado - e uma pessoa tentando senhas em massa
+    // consome a cota de todo mundo, trancando os demais para fora.
+    //
+    // Com trustedProxies a cadeia e percorrida da direita para a esquerda,
+    // pulando os saltos confiaveis, ate o primeiro nao confiavel: o cliente
+    // real. Os valores ficam em variavel de ambiente porque os IPs de saida da
+    // Vercel e do Render mudam sem aviso, e trocar CIDR nao deveria exigir
+    // deploy. Vazio mantem o comportamento atual, sem regressao.
+    ipAddress: {
+      ipAddressHeaders: lista(process.env.IP_ADDRESS_HEADERS) ?? ['x-forwarded-for'],
+      trustedProxies: lista(process.env.TRUSTED_PROXIES) ?? [],
     },
   },
 
