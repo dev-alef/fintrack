@@ -1,6 +1,14 @@
 {
     "rewrites": [
         {
+            "source": "/api/auth/:path*",
+            "destination": "https://fintrack-api-oyjx.onrender.com/api/auth/:path*"
+        },
+        {
+            "source": "/api/:path*",
+            "destination": "https://fintrack-api-oyjx.onrender.com/:path*"
+        },
+        {
             "source": "/(.*)",
             "destination": "/index.html"
         }
