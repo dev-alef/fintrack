@@ -71,3 +71,30 @@ O link vale por 1 hora.
 Se você não criou esta conta, pode ignorar este e-mail.`,
   }
 }
+
+export function emailDeRecuperacao(nome: string, url: string) {
+  return {
+    assunto: 'Redefinir sua senha do Provisão',
+    html: layout(`
+      <p style="margin:0 0 12px;font-size:16px;line-height:24px;color:${COR_TEXTO};">Olá, ${nome}.</p>
+      <p style="margin:0;font-size:16px;line-height:24px;color:${COR_TEXTO};">
+        Recebemos um pedido para redefinir a senha da sua conta. Se foi você,
+        use o botão abaixo. Sua senha atual continua valendo até você escolher
+        uma nova.
+      </p>
+      ${botao(url, 'Escolher nova senha')}
+      <p style="margin:16px 0 0;font-size:13px;color:${COR_APAGADA};">O link vale por 1 hora e só pode ser usado uma vez.</p>
+    `),
+    texto: `Olá, ${nome}.
+
+Recebemos um pedido para redefinir a senha da sua conta no Provisão. Se foi
+você, abra o endereço abaixo. Sua senha atual continua valendo até você
+escolher uma nova.
+
+${url}
+
+O link vale por 1 hora e só pode ser usado uma vez.
+
+Se você não pediu isso, ignore este e-mail: sem abrir o link, nada muda.`,
+  }
+}
