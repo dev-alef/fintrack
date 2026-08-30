@@ -34,6 +34,27 @@ const ERROS_OAUTH: Record<string, string> = {
   state_not_found: "A autorização do Google expirou ou já foi usada. Clique em Continuar com Google novamente.",
 }
 
+/**
+ * Traduz a falha de login em algo que a pessoa consiga agir.
+ *
+ * O 401 nao diz se o errado foi o e-mail ou a senha - de proposito. Uma
+ * mensagem como "esta conta nao existe" transformaria a tela de login num
+ * detector de quem tem conta aqui, para qualquer um com uma lista de
+ * enderecos. Num app de financas isso ja e informacao demais.
+ */
+function mensagemDeErro(status: number | undefined): string {
+  if (status === 401 || status === 400) {
+    return "E-mail ou senha incorretos. Confira e tente de novo."
+  }
+  if (status === 429) {
+    return "Muitas tentativas seguidas. Espere um minuto antes de tentar de novo."
+  }
+  if (status === 403) {
+    return "Não foi possível entrar com esta conta. Se você usa o Google, entre por ele."
+  }
+  return "Não foi possível entrar agora. Tente novamente em instantes."
+}
+
 export default function Login() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -60,11 +81,15 @@ export default function Login() {
     setLoading(true)
     try {
       const { error: authError } = await signIn.email({ email, password })
-      if (authError) throw new Error(authError.message || "Erro ao fazer login")
+      if (authError) {
+        setError(mensagemDeErro(authError.status))
+        return
+      }
       navigate("/dashboard")
-    } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
-      setError(msg || "Erro ao fazer login")
+    } catch {
+      // Aqui so cai falha de rede: o cliente do Better Auth devolve o erro em
+      // `error`, nao lancando excecao.
+      setError("Não foi possível falar com o servidor. Verifique sua conexão.")
     } finally {
       setLoading(false)
     }
