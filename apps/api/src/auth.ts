@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto'
 import bcrypt from 'bcryptjs'
 import { betterAuth } from 'better-auth'
+import { twoFactor } from 'better-auth/plugins'
 import pool from './db/client'
 import { enviarEmail } from './email'
 import { emailDeVerificacao, emailDeRecuperacao } from './emails/templates'
@@ -164,6 +165,22 @@ export const auth = betterAuth({
       trustedProxies: lista(process.env.TRUSTED_PROXIES) ?? [],
     },
   },
+
+  plugins: [
+    twoFactor({
+      // Aparece como "Provisão: email" no aplicativo autenticador. Sem isto,
+      // quem tem varias contas ve entradas indistinguiveis na lista.
+      issuer: 'Provisão',
+      totpOptions: {
+        // Uma janela para tras e uma para frente: relogio de celular
+        // adiantado ou atrasado em ate 30s continua entrando. Sem folga, a
+        // pessoa digita o codigo certo e e recusada, sem ter como descobrir
+        // que o problema e o relogio.
+        period: 30,
+        digits: 6,
+      },
+    }),
+  ],
 
   trustedOrigins: (process.env.CORS_ORIGINS || 'http://localhost:5173')
     .split(',')

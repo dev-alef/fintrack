@@ -22,6 +22,13 @@
       "when": 1787976000000,
       "tag": "0002_google_account_linking",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1788100000000,
+      "tag": "0003_two_factor",
+      "breakpoints": true
     }
   ]
 }
