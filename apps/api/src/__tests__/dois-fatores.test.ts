@@ -1,24 +1,55 @@
 import { describe, it, expect } from 'vitest'
 import request from 'supertest'
-import { createOTP } from '@better-auth/utils/otp'
-import { base32 } from '@better-auth/utils/base32'
+import { createHmac } from 'crypto'
 import app from '../index'
 
 const ORIGEM = 'http://localhost:5173'
 
-// O codigo de 6 digitos e gerado aqui com o mesmo utilitario que o Better Auth
-// usa para conferir. Sem isso o teste so conseguiria provar que codigo errado e
-// recusado - e a parte que quebra o acesso de verdade e a oposta: codigo CERTO
-// sendo aceito.
+// TOTP implementado aqui, em vez de reaproveitar o utilitario do Better Auth.
 //
-// O `secret` da URI e a forma base32 de um segredo de 32 caracteres, que e o
-// que o HMAC realmente usa. Passar a URI direto gera codigo com a chave errada
-// e a verificacao responde "Invalid code" - parecendo bug do 2FA quando e do
-// teste. E o aplicativo autenticador faz esta mesma decodificacao ao ler o QR.
-function codigoDe(totpURI: string): Promise<string> {
-  const base32Secret = new URL(totpURI).searchParams.get('secret')!
-  const segredo = new TextDecoder().decode(base32.decode(base32Secret))
-  return createOTP(segredo, { digits: 6, period: 30 }).totp()
+// Nao e teimosia: chamar a mesma funcao que o servidor usa para conferir
+// provaria apenas que ela concorda consigo mesma. Uma implementacao
+// independente da RFC 6238 verifica o que realmente importa - que um
+// aplicativo autenticador comum, seguindo o padrao, produz codigos que esta
+// API aceita.
+//
+// A chave do HMAC sao os BYTES decodificados do parametro `secret` da URI
+// otpauth, que e exatamente o que o aplicativo faz ao ler o QR Code. Usar a
+// string base32 direto gera codigo com a chave errada e a resposta e
+// "Invalid code" - parece bug do 2FA e e do teste.
+const ALFABETO_BASE32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
+
+function base32ParaBytes(texto: string): Buffer {
+  let bits = 0
+  let acumulado = 0
+  const bytes: number[] = []
+
+  for (const caractere of texto.replace(/=+$/, '').toUpperCase()) {
+    const indice = ALFABETO_BASE32.indexOf(caractere)
+    if (indice === -1) continue
+    acumulado = (acumulado << 5) | indice
+    bits += 5
+    if (bits >= 8) {
+      bytes.push((acumulado >>> (bits - 8)) & 0xff)
+      bits -= 8
+    }
+  }
+
+  return Buffer.from(bytes)
+}
+
+function codigoDe(totpURI: string, periodo = 30, digitos = 6): string {
+  const chave = base32ParaBytes(new URL(totpURI).searchParams.get('secret')!)
+
+  const contador = Buffer.alloc(8)
+  contador.writeBigUInt64BE(BigInt(Math.floor(Date.now() / 1000 / periodo)))
+
+  const hmac = createHmac('sha1', chave).update(contador).digest()
+  // Truncamento dinamico da RFC 4226: os 4 bits finais escolhem de onde ler.
+  const deslocamento = hmac[hmac.length - 1] & 0x0f
+  const numero = hmac.readUInt32BE(deslocamento) & 0x7fffffff
+
+  return String(numero % 10 ** digitos).padStart(digitos, '0')
 }
 
 async function contaComDoisFatores() {
@@ -30,7 +61,7 @@ async function contaComDoisFatores() {
 
   const cadastro = await request(app).post('/api/auth/sign-up/email').send(usuario)
   expect(cadastro.status).toBe(200)
-  const cookie = cadastro.headers['set-cookie']
+  const cookie = cadastro.headers['set-cookie'] as unknown as string[]
 
   const ativacao = await request(app)
     .post('/api/auth/two-factor/enable')
@@ -51,13 +82,13 @@ async function confirma(cookie: string[], totpURI: string): Promise<string[]> {
     .post('/api/auth/two-factor/verify-totp')
     .set('Cookie', cookie)
     .set('Origin', ORIGEM)
-    .send({ code: await codigoDe(totpURI) })
+    .send({ code: codigoDe(totpURI) })
   expect(res.status).toBe(200)
 
   // Confirmar rotaciona a sessao: o Better Auth cria uma nova e apaga a
   // anterior. Continuar usando o cookie do cadastro daria 401 em tudo depois
   // disso - inclusive na tela de configuracoes que acabou de ativar o 2FA.
-  return res.headers['set-cookie'] ?? cookie
+  return (res.headers['set-cookie'] as unknown as string[]) ?? cookie
 }
 
 describe('Dois fatores (TOTP)', () => {
@@ -80,7 +111,7 @@ describe('Dois fatores (TOTP)', () => {
       password: 'senhaDeTeste123',
     }
     const cadastro = await request(app).post('/api/auth/sign-up/email').send(usuario)
-    const cookie = cadastro.headers['set-cookie']
+    const cookie = cadastro.headers['set-cookie'] as unknown as string[]
 
     // Sem esta exigencia, quem pegasse o notebook destravado trancaria o dono
     // para fora da propria conta, com um segredo que so o invasor teria.
@@ -132,7 +163,7 @@ describe('Dois fatores (TOTP)', () => {
       .post('/api/auth/sign-in/email')
       .set('Origin', ORIGEM)
       .send({ email: usuario.email, password: usuario.password })
-    const cookieDesafio = login.headers['set-cookie']
+    const cookieDesafio = login.headers['set-cookie'] as unknown as string[]
 
     const errado = await request(app)
       .post('/api/auth/two-factor/verify-totp')
@@ -145,7 +176,7 @@ describe('Dois fatores (TOTP)', () => {
       .post('/api/auth/two-factor/verify-totp')
       .set('Cookie', cookieDesafio)
       .set('Origin', ORIGEM)
-      .send({ code: await codigoDe(totpURI) })
+      .send({ code: codigoDe(totpURI) })
 
     expect(certo.status).toBe(200)
     expect(String(certo.headers['set-cookie'])).toContain('HttpOnly')
