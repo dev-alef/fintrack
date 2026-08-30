@@ -3,6 +3,8 @@ import Login from './pages/Login'
 import Register from './pages/Register'
 import ConfirmeSeuEmail from './pages/ConfirmeSeuEmail'
 import EmailConfirmado from './pages/EmailConfirmado'
+import EsqueciSenha from './pages/EsqueciSenha'
+import NovaSenha from './pages/NovaSenha'
 import Dashboard from './pages/Dashboard'
 import Transactions from './pages/Transactions'
 import Goals from './pages/Goals'
@@ -20,6 +22,8 @@ export default function App() {
           e o link do e-mail costuma ser aberto em outro navegador. */}
       <Route path="/confirme-seu-email" element={<ConfirmeSeuEmail />} />
       <Route path="/email-confirmado" element={<EmailConfirmado />} />
+      <Route path="/esqueci-senha" element={<EsqueciSenha />} />
+      <Route path="/nova-senha" element={<NovaSenha />} />
       <Route path="/" element={<PrivateRoute><AppLayout /></PrivateRoute>}>
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />

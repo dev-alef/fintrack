@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs'
 import { betterAuth } from 'better-auth'
 import pool from './db/client'
 import { enviarEmail } from './email'
-import { emailDeVerificacao } from './emails/templates'
+import { emailDeVerificacao, emailDeRecuperacao } from './emails/templates'
 
 const googleClientId = process.env.GOOGLE_CLIENT_ID
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET
@@ -55,6 +55,19 @@ export const auth = betterAuth({
       hash: (password) => bcrypt.hash(password, 12),
       verify: ({ hash, password }) => bcrypt.compare(password, hash),
     },
+
+    // Ate aqui, esquecer a senha significava perder a conta: nao havia
+    // caminho de volta nenhum. Para quem entrou pelo Google isso e invisivel,
+    // mas quem se cadastrou por senha ficava sem saida.
+    resetPasswordTokenExpiresIn: 60 * 60,
+    sendResetPassword: async ({ user, url }) => {
+      const { assunto, html, texto } = emailDeRecuperacao(user.name || 'tudo bem', url)
+      await enviarEmail({ para: user.email, assunto, html, texto })
+    },
+    // Derrubar as outras sessoes e o ponto da recuperacao quando a conta foi
+    // invadida: trocar a senha sem isso deixaria o invasor logado, com a
+    // sessao dele valendo mais 7 dias.
+    revokeSessionsOnPasswordReset: true,
   },
 
   socialProviders: googleEnabled

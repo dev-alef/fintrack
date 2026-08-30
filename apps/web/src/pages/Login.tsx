@@ -42,6 +42,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
+  const senhaRedefinida = searchParams.get("senha") === "redefinida"
 
   // O Better Auth manda o navegador de volta para ca com ?error=<codigo> quando
   // o fluxo do Google falha do lado do servidor. Sem esta leitura a pessoa
@@ -135,6 +136,12 @@ export default function Login() {
               <p className="mt-2 text-sm text-muted">Entre para continuar de onde parou.</p>
             </div>
 
+            {senhaRedefinida && (
+              <div role="status" className="rounded-md border border-success/20 bg-success/10 px-3 py-2 text-sm text-success">
+                Senha alterada. Entre com a nova senha.
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-4" noValidate>
               <div className="space-y-2">
                 <Label htmlFor="email">E-mail</Label>
@@ -186,6 +193,15 @@ export default function Login() {
                   {error}
                 </div>
               )}
+
+              <div className="flex justify-end">
+                <Link
+                  to="/esqueci-senha"
+                  className="text-sm font-medium text-primary hover:text-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm"
+                >
+                  Esqueceu a senha?
+                </Link>
+              </div>
 
               <Button type="submit" disabled={loading} className="w-full">
                 {loading ? "Entrando..." : "Entrar"}
