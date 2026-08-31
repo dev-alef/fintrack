@@ -40,7 +40,7 @@ export default function Dashboard() {
   const [month, setMonth] = useState(now.getMonth() + 1)
   const [year, setYear] = useState(now.getFullYear())
   const [editingCard, setEditingCard] = useState<Card | null>(null)
-  const [newCard, setNewCard] = useState({ name: "", due_day: "", color: "#6366f1" })
+  const [newCard, setNewCard] = useState({ name: "", due_day: "", color: "#c67139" })
   const [newBill, setNewBill] = useState({ name: "", amount: "", due_day: "" })
   const [editingBill, setEditingBill] = useState<Bill | null>(null)
   const [showNewCard, setShowNewCard] = useState(false)
@@ -62,7 +62,7 @@ export default function Dashboard() {
 
   const { data: chartData, isLoading: chartLoading, isError: chartError } = useSummary(String(month), String(year))
 
-  const createCard = useMutation({ mutationFn: (d: unknown) => api.post("/finance/cards", d), onSuccess: () => { inv(["cards"]); setShowNewCard(false); setNewCard({ name: "", due_day: "", color: "#6366f1" }) } })
+  const createCard = useMutation({ mutationFn: (d: unknown) => api.post("/finance/cards", d), onSuccess: () => { inv(["cards"]); setShowNewCard(false); setNewCard({ name: "", due_day: "", color: "#c67139" }) } })
   const updateCard = useMutation({ mutationFn: ({ id, ...d }: { id: string; name?: string; due_day?: number; color?: string }) => api.put(`/finance/cards/${id}`, d), onSuccess: () => { inv(["cards"]); setEditingCard(null) } })
   const deleteCard = useMutation({ mutationFn: (id: string) => api.delete(`/finance/cards/${id}`), onSuccess: () => inv(["cards", "expenses", "annual"]) })
   const createBill = useMutation({ mutationFn: (d: unknown) => api.post("/finance/bills", d), onSuccess: () => { inv(["payments", "annualSummary"]); setShowNewBill(false); setNewBill({ name: "", amount: "", due_day: "" }) } })

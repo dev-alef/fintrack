@@ -15,9 +15,9 @@ const fmtPct = (v: string | number) => `${Number(v).toFixed(2)}%`
 // Cores dos graficos e da paleta de tipos de investimento. Hex por dois
 // motivos: Recharts recebe cor por prop SVG, nao por CSS; e TYPE_COLORS vira
 // investment_types.color, que e VARCHAR(7) no banco e nao comporta um token.
-const COLORS = ["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899", "#84cc16"]
+const COLORS = ["#c67139", "#7a8a5e", "#d89a67", "#a8b389", "#8f4d24", "#c3ceac", "#b05f2d", "#6f8a72"]
 const ICONS = ["📈", "💰", "🏦", "₿", "🏠", "💎", "📊", "🌍"]
-const TYPE_COLORS = ["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899"]
+const TYPE_COLORS = ["#c67139", "#7a8a5e", "#d89a67", "#a8b389", "#8f4d24", "#c3ceac", "#b05f2d"]
 
 interface InvestmentType { id: string; name: string; description?: string; color: string; icon: string; total_invested: string; total_current: string }
 interface Investment { id: string; type_id: string; type_name: string; type_color: string; type_icon: string; name: string; invested_amount: string; current_value: string; monthly_rate: string; target_percent: string; profit: string; return_pct: string; notes?: string }
@@ -124,11 +124,11 @@ function CompoundCalculator() {
 
             <ResponsiveContainer width="100%" height={220}>
               <AreaChart data={result.data} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
-                <XAxis dataKey="month" tick={{ fill: "#888", fontSize: 11 }} label={{ value: "Meses", position: "insideBottom", offset: -2, fill: "#888", fontSize: 11 } as unknown as string} />
-                <YAxis tick={{ fill: "#888", fontSize: 11 }} tickFormatter={(v: number) => `R$${(v / 1000).toFixed(0)}k`} />
+                <XAxis dataKey="month" tick={{ fill: "var(--text-2)", fontSize: 11 }} label={{ value: "Meses", position: "insideBottom", offset: -2, fill: "var(--text-2)", fontSize: 11 } as unknown as string} />
+                <YAxis tick={{ fill: "var(--text-2)", fontSize: 11 }} tickFormatter={(v: number) => `R$${(v / 1000).toFixed(0)}k`} />
                 <Tooltip formatter={(v: number) => fmt(v)} contentStyle={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8 } as React.CSSProperties} />
-                <Area type="monotone" dataKey="total" name="Montante" stroke="#f59e0b" fill="#f59e0b22" strokeWidth={2} />
-                <Area type="monotone" dataKey="invested" name="Investido" stroke="#6366f1" fill="#6366f122" strokeWidth={2} />
+                <Area type="monotone" dataKey="total" name="Montante" stroke="var(--success)" fill="var(--success)" fillOpacity={0.14} strokeWidth={2} />
+                <Area type="monotone" dataKey="invested" name="Investido" stroke="var(--primary)" fill="var(--primary)" fillOpacity={0.14} strokeWidth={2} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -146,7 +146,7 @@ export default function Investments() {
   const [showInvForm, setShowInvForm] = useState(false)
   const [editingType, setEditingType] = useState<InvestmentType | null>(null)
   const [editingInv, setEditingInv] = useState<Investment | null>(null)
-  const [newType, setNewType] = useState({ name: "", description: "", color: "#6366f1", icon: "📈" })
+  const [newType, setNewType] = useState({ name: "", description: "", color: "#c67139", icon: "📈" })
   const [newInv, setNewInv] = useState({ type_id: "", name: "", invested_amount: "", current_value: "", monthly_rate: "", target_percent: "", notes: "" })
 
   const { data: types = [], isLoading: typesLoading, isError: typesError } = useQuery<InvestmentType[]>({ queryKey: ["invTypes"], queryFn: () => api.get("/investments/types").then((r) => r.data) })
@@ -158,7 +158,7 @@ export default function Investments() {
   const totalProfit = totalCurrent - totalInvested
   const returnPct = totalInvested > 0 ? (totalProfit / totalInvested) * 100 : 0
 
-  const createType = useMutation({ mutationFn: (d: unknown) => api.post("/investments/types", d), onSuccess: () => { inv(["invTypes", "portfolio"]); setShowTypeForm(false); setNewType({ name: "", description: "", color: "#6366f1", icon: "📈" }) } })
+  const createType = useMutation({ mutationFn: (d: unknown) => api.post("/investments/types", d), onSuccess: () => { inv(["invTypes", "portfolio"]); setShowTypeForm(false); setNewType({ name: "", description: "", color: "#c67139", icon: "📈" }) } })
   const updateType = useMutation({ mutationFn: ({ id, ...d }: { id: string; name?: string; description?: string; color?: string; icon?: string }) => api.put(`/investments/types/${id}`, d), onSuccess: () => { inv(["invTypes", "portfolio"]); setEditingType(null) } })
   const deleteType = useMutation({ mutationFn: (id: string) => api.delete(`/investments/types/${id}`), onSuccess: () => inv(["invTypes", "investments", "portfolio"]) })
   const createInv = useMutation({ mutationFn: (d: unknown) => api.post("/investments", d), onSuccess: () => { inv(["investments", "portfolio", "invTypes"]); setShowInvForm(false); setNewInv({ type_id: "", name: "", invested_amount: "", current_value: "", monthly_rate: "", target_percent: "", notes: "" }) } })
