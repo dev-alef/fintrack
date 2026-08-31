@@ -1,7 +1,8 @@
 import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts"
-import { LayoutDashboard, Settings, CreditCard, Receipt, BarChart3, PieChart as PieIcon, Calendar, Wallet, TrendingUp, AlertCircle, Pencil, Trash2 } from "lucide-react"
+import { CartaoIA } from "@/components/cartao-ia"
+import { Settings, CreditCard, Receipt, BarChart3, PieChart as PieIcon, Calendar, Wallet, TrendingUp, AlertCircle, Pencil, Trash2 } from "lucide-react"
 import api from "../services/api"
 import { useSummary } from "../hooks/useTransactions"
 import { Button } from "@/components/ui/button"
@@ -18,8 +19,15 @@ const MONTHS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "
 // decoracao de tema: o valor vai para credit_cards.color, que e VARCHAR(7).
 // Precisa ser hex e nao pode virar token - "var(--primary)" nao cabe na coluna
 // e faria o cartao mudar de cor junto com o tema, perdendo a distincao visual.
-const CARD_COLORS = ["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899"]
-const CHART_COLORS = ["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4"]
+// Cores de categoria da paleta Organic. Como sao var(), acompanham os tres
+// temas - com hex fixo os graficos ficariam indigo num app creme.
+function saudacao() {
+  const h = new Date().getHours()
+  return h < 6 ? "Boa madrugada" : h < 12 ? "Bom dia" : h < 19 ? "Boa tarde" : "Boa noite"
+}
+
+const CARD_COLORS = ["var(--cat-1)", "var(--cat-2)", "var(--cat-3)", "var(--cat-4)", "var(--cat-5)", "var(--cat-6)", "var(--primary)"]
+const CHART_COLORS = ["var(--cat-1)", "var(--cat-2)", "var(--cat-3)", "var(--cat-4)", "var(--cat-5)", "var(--cat-6)"]
 
 interface Card { id: string; name: string; due_day: number; color: string }
 interface Bill { id: string; name: string; amount: string; due_day: number; paid?: boolean }
@@ -87,11 +95,13 @@ export default function Dashboard() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-fg">
-            <LayoutDashboard className="h-5 w-5" aria-hidden="true" />
-          </div>
-          <h2 className="text-2xl font-semibold tracking-tight text-text">Dashboard</h2>
+        <div>
+          <p className="text-xs uppercase tracking-[0.12em] text-muted">{saudacao()}</p>
+          {/* O titulo acompanha o seletor de mes: dizer "Dashboard" enquanto a
+              tela mostra outro mes esconde justamente o que mudou. */}
+          <h2 className="mt-1 text-2xl text-text" style={{ fontFamily: "var(--font-heading)" }}>
+            {MONTHS[month - 1]} em uma olhada
+          </h2>
         </div>
         <div className="flex items-center gap-2">
           <Select value={String(month)} onValueChange={(v) => setMonth(Number(v))}>
@@ -175,6 +185,17 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Logo abaixo dos numeros: a leitura da IA comenta justamente o que
+              a pessoa acabou de ler, e nao teria sentido antes deles. */}
+          <CartaoIA
+            sobrou={leftover}
+            contasFixas={totalBills}
+            faturas={totalCards}
+            contasPagas={bills.filter((b) => b.paid).length}
+            totalContas={bills.length}
+            formata={fmt}
+          />
         </>
       )}
 
@@ -385,14 +406,14 @@ export default function Dashboard() {
             ) : (
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={byMonth}>
-                  <XAxis dataKey="month" tick={{ fill: "#888", fontSize: 11 }} />
-                  <YAxis tick={{ fill: "#888", fontSize: 11 }} />
+                  <XAxis dataKey="month" tick={{ fill: "var(--text-2)", fontSize: 11 }} />
+                  <YAxis tick={{ fill: "var(--text-2)", fontSize: 11 }} />
                   <Tooltip
                     contentStyle={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8 } as React.CSSProperties}
                     formatter={(v: number) => fmt(v)}
                   />
-                  <Bar dataKey="income" name="Receita" fill="#10b981" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="expense" name="Despesa" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="income" name="Receita" fill="var(--success)" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="expense" name="Despesa" fill="var(--primary)" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )}

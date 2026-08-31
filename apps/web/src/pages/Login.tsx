@@ -357,6 +357,39 @@ export default function Login() {
         </div>
       </div>
 
+      {/* Amostra do saldo previsto - um recurso que o app realmente tem.
+          Fica no canto vazio, equilibrando o seletor de tema do outro lado, e
+          some abaixo de lg junto com os chips: no celular competiria com o
+          cartao. Acompanha o ambiente ao sair, para nao sobrar sozinho na tela
+          depois que o login e aceito. */}
+      <div
+        className="hidden lg:block"
+        style={{
+          position: "absolute",
+          top: 52,
+          left: 60,
+          opacity: saindo ? 0 : 1,
+          transition: "opacity 600ms ease",
+        }}
+      >
+        <div style={{ fontSize: 11, letterSpacing: ".12em", textTransform: "uppercase", color: "var(--text-3)" }}>
+          Saldo previsto para dezembro
+        </div>
+        <div
+          style={{
+            fontFamily: "var(--font-heading)",
+            fontSize: 34,
+            color: "var(--link)",
+            lineHeight: 1.15,
+            marginTop: 4,
+            fontVariantNumeric: "tabular-nums",
+          }}
+        >
+          R$ 16.748,00
+        </div>
+        <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>exemplo</div>
+      </div>
+
       <div style={{ position: "absolute", top: 24, right: 24, zIndex: 2 }}>
         <ThemeToggle />
       </div>
