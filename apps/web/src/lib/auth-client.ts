@@ -1,4 +1,5 @@
 import { createAuthClient } from 'better-auth/react'
+import { twoFactorClient } from 'better-auth/client/plugins'
 
 // O cliente fala com o handler do Better Auth montado em /api/auth na API.
 // A sessao viaja em cookie httpOnly, entao nao ha token para guardar nem para
@@ -37,6 +38,16 @@ export const authClient = createAuthClient({
   fetchOptions: {
     credentials: 'include',
   },
+  plugins: [
+    twoFactorClient({
+      // Quando a senha esta certa mas falta o segundo fator, o servidor responde
+      // com twoFactorRedirect em vez de criar a sessao. Sem tratar isso, o
+      // login "daria certo" e a pessoa cairia num painel sem sessao.
+      onTwoFactorRedirect() {
+        window.location.href = '/dois-fatores'
+      },
+    }),
+  ],
 })
 
-export const { signIn, signUp, signOut, useSession } = authClient
+export const { signIn, signUp, signOut, useSession, twoFactor } = authClient

@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from "react-router-dom"
-import { LayoutDashboard, ArrowLeftRight, TrendingUp, Target, Sparkles, LogOut, X } from "lucide-react"
+import { LayoutDashboard, ArrowLeftRight, TrendingUp, Target, Sparkles, LogOut, X, Settings } from "lucide-react"
 import { useAuthStore } from "../../store/auth.store"
 import { signOut } from "../../lib/auth-client"
 import { Logo } from "../logo"
@@ -12,6 +12,7 @@ const links = [
   { to: "/investments", label: "Investimentos", icon: TrendingUp },
   { to: "/goals", label: "Metas", icon: Target },
   { to: "/insights", label: "Insights", icon: Sparkles },
+  { to: "/configuracoes", label: "Configurações", icon: Settings },
 ]
 
 interface SidebarProps {

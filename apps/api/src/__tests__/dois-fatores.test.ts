@@ -182,6 +182,40 @@ describe('Dois fatores (TOTP)', () => {
     expect(String(certo.headers['set-cookie'])).toContain('HttpOnly')
   })
 
+  it('codigo de recuperacao entra e nao serve duas vezes', async () => {
+    const { usuario, cookie, totpURI, backupCodes } = await contaComDoisFatores()
+    await confirma(cookie, totpURI)
+
+    const login = await request(app)
+      .post('/api/auth/sign-in/email')
+      .set('Origin', ORIGEM)
+      .send({ email: usuario.email, password: usuario.password })
+    const desafio = login.headers['set-cookie'] as unknown as string[]
+
+    // Este e o caminho de quem perdeu o celular. Sem ele, perder o aparelho
+    // significa perder a conta e os dados financeiros para sempre.
+    const primeiro = await request(app)
+      .post('/api/auth/two-factor/verify-backup-code')
+      .set('Cookie', desafio)
+      .set('Origin', ORIGEM)
+      .send({ code: backupCodes[0] })
+    expect(primeiro.status).toBe(200)
+
+    const outroLogin = await request(app)
+      .post('/api/auth/sign-in/email')
+      .set('Origin', ORIGEM)
+      .send({ email: usuario.email, password: usuario.password })
+
+    // Reutilizavel, um codigo anotado num papel viraria chave permanente para
+    // quem o encontrasse.
+    const repetido = await request(app)
+      .post('/api/auth/two-factor/verify-backup-code')
+      .set('Cookie', outroLogin.headers['set-cookie'] as unknown as string[])
+      .set('Origin', ORIGEM)
+      .send({ code: backupCodes[0] })
+    expect(repetido.status).toBeGreaterThanOrEqual(400)
+  })
+
   it('desativar devolve o login por senha, e exige a senha', async () => {
     const { usuario, cookie, totpURI } = await contaComDoisFatores()
     const sessao = await confirma(cookie, totpURI)

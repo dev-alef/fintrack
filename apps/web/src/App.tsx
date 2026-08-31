@@ -5,6 +5,8 @@ import ConfirmeSeuEmail from './pages/ConfirmeSeuEmail'
 import EmailConfirmado from './pages/EmailConfirmado'
 import EsqueciSenha from './pages/EsqueciSenha'
 import NovaSenha from './pages/NovaSenha'
+import DoisFatores from './pages/DoisFatores'
+import Settings from './pages/Settings'
 import Dashboard from './pages/Dashboard'
 import Transactions from './pages/Transactions'
 import Goals from './pages/Goals'
@@ -24,6 +26,9 @@ export default function App() {
       <Route path="/email-confirmado" element={<EmailConfirmado />} />
       <Route path="/esqueci-senha" element={<EsqueciSenha />} />
       <Route path="/nova-senha" element={<NovaSenha />} />
+      {/* Publica: quem chega aqui passou pela senha mas ainda NAO tem sessao -
+          ela so nasce depois do segundo fator. */}
+      <Route path="/dois-fatores" element={<DoisFatores />} />
       <Route path="/" element={<PrivateRoute><AppLayout /></PrivateRoute>}>
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />
@@ -31,6 +36,7 @@ export default function App() {
         <Route path="goals" element={<Goals />} />
         <Route path="investments" element={<Investments />} />
         <Route path="insights" element={<Insights />} />
+        <Route path="configuracoes" element={<Settings />} />
       </Route>
     </Routes>
   )
