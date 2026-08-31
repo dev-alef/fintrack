@@ -19,7 +19,7 @@ export async function create(req: Request, res: Response): Promise<void> {
     res.status(201).json(goal)
   } catch (err) {
     if (err instanceof z.ZodError) {
-      res.status(400).json({ error: err.errors[0].message })
+      res.status(400).json({ error: err.issues[0].message })
       return
     }
     res.status(500).json({ error: 'Erro interno do servidor' })

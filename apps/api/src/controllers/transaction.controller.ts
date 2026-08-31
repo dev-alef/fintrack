@@ -28,7 +28,7 @@ export async function create(req: Request, res: Response): Promise<void> {
     res.status(201).json(transaction)
   } catch (err) {
     if (err instanceof z.ZodError) {
-      res.status(400).json({ error: err.errors[0].message })
+      res.status(400).json({ error: err.issues[0].message })
       return
     }
     if (err instanceof Error && /não encontrad[oa]$/.test(err.message)) {
@@ -87,7 +87,7 @@ export async function update(req: Request, res: Response): Promise<void> {
     res.json(transaction)
   } catch (err) {
     if (err instanceof z.ZodError) {
-      res.status(400).json({ error: err.errors[0].message })
+      res.status(400).json({ error: err.issues[0].message })
       return
     }
     if (err instanceof Error) {
