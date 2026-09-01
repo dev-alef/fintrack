@@ -2,9 +2,16 @@ import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { Sparkles } from "lucide-react"
 
+const INTERVALO_MS = 7000
+
 const KEYFRAMES = `
 @keyframes ia-breathe {0%,100%{transform:scale(1);opacity:.6}50%{transform:scale(1.08);opacity:.8}}
 @keyframes ia-ring {0%{transform:scale(.86);opacity:.4}100%{transform:scale(1.6);opacity:0}}
+@keyframes ia-say {
+  0%{opacity:0;transform:translateY(8px)}
+  9%,88%{opacity:1;transform:none}
+  100%{opacity:0;transform:translateY(-6px)}
+}
 `
 
 type Meta = { titulo: string; atual: number; alvo: number }
@@ -19,6 +26,8 @@ type Props = {
   patrimonio: number
   /** Valor ja pago das contas fixas - a contagem sozinha nao diz quanto falta em dinheiro. */
   contasFixasPagas: number
+  /** Distingue "nao criou meta nenhuma" de "criou e ainda nao aportou" - o convite muda. */
+  temMetas: boolean
   meta?: Meta
   formata: (valor: number) => string
 }
@@ -76,6 +85,7 @@ export function CartaoIA({
   investimentos,
   patrimonio,
   contasFixasPagas,
+  temMetas,
   meta,
   formata,
 }: Props) {
@@ -108,7 +118,7 @@ export function CartaoIA({
   useEffect(() => {
     // Quem pediu menos movimento fica com a primeira frase, sem rotação.
     if (reduzido) return
-    const t = window.setInterval(() => setIndice((i) => (i + 1) % frases.length), 7000)
+    const t = window.setInterval(() => setIndice((i) => (i + 1) % frases.length), INTERVALO_MS)
     return () => window.clearInterval(t)
   }, [reduzido, frases.length])
 
@@ -142,13 +152,25 @@ export function CartaoIA({
 
           {/* aria-live para quem usa leitor de tela ouvir a frase trocar sem
               precisar procurar; a rotação é visual e passaria despercebida. */}
-          <p
-            aria-live="polite"
-            className="mt-2 text-lg leading-snug"
-            style={{ color: "var(--link)", fontFamily: "var(--font-heading)" }}
-          >
-            {frases[indice]}
-          </p>
+          {/* min-h reserva o espaco de duas linhas: sem isso o cartao inteiro
+              pula de altura a cada troca, porque as frases tem tamanhos
+              diferentes - e o movimento de layout chama mais atencao que o
+              esmaecimento. */}
+          <div aria-live="polite" className="mt-2 min-h-[3.5rem]">
+            {/* key força a remontagem a cada troca, que e o que reinicia a
+                animacao. Sem ela o texto mudaria de uma vez, ja opaco. */}
+            <p
+              key={indice}
+              className="text-lg leading-snug"
+              style={{
+                color: "var(--link)",
+                fontFamily: "var(--font-heading)",
+                animation: reduzido ? undefined : `ia-say ${INTERVALO_MS}ms ease-in-out both`,
+              }}
+            >
+              {frases[indice]}
+            </p>
+          </div>
 
           {/* Tudo em barra, nenhum cartao. As tres medem coisas diferentes, e a
               barra deixa isso explicito: quanto do caminho ja foi andado.
@@ -158,7 +180,7 @@ export function CartaoIA({
               honesta para esse numero. Inventar uma meta de investimento seria
               atribuir a pessoa um objetivo que ela nunca definiu. */}
           <div className="mt-5 flex flex-col gap-4">
-            {meta && (
+            {meta ? (
               <Barra
                 rotulo={meta.titulo}
                 valor={`${progressoMeta}%`}
@@ -166,6 +188,17 @@ export function CartaoIA({
                 cor="var(--income)"
                 detalhe={`${formata(meta.atual)} de ${formata(meta.alvo)}`}
               />
+            ) : (
+              <p className="text-sm text-muted">
+                {temMetas ? "Suas metas ainda não receberam nenhum aporte." : "Você ainda não definiu uma meta."}{" "}
+                <Link
+                  to="/goals"
+                  className="font-medium underline underline-offset-2"
+                  style={{ color: "var(--link)" }}
+                >
+                  {temMetas ? "Registrar um valor" : "Criar a primeira"}
+                </Link>
+              </p>
             )}
 
             <Barra
