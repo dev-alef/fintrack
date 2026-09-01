@@ -5,6 +5,7 @@ import { GraficoAno } from "@/components/grafico-ano"
 import { DonutCategorias } from "@/components/donut-categorias"
 import { Settings, CreditCard, Receipt, Calendar, Wallet, TrendingUp, AlertCircle, Pencil, Trash2 } from "lucide-react"
 import api from "../services/api"
+import { useSession } from "../lib/auth-client"
 import { useSummary } from "../hooks/useTransactions"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -37,6 +38,7 @@ interface Goal { id: string; title: string; target_amount: string; current_amoun
 interface AnnualCard { id: string; name: string; color: string; annual_total: string; monthly_breakdown?: { month: number; amount: string }[] }
 
 export default function Dashboard() {
+  const { data: session } = useSession()
   const now = new Date()
   const [month, setMonth] = useState(now.getMonth() + 1)
   const [year, setYear] = useState(now.getFullYear())
@@ -100,6 +102,10 @@ export default function Dashboard() {
     }
   })
 
+  // So o primeiro nome: "Boa noite, Alerson Ferreira da Silva" ocupa a linha
+  // inteira e soa como cobranca de banco, nao como saudacao.
+  const primeiroNome = session?.user?.name?.trim().split(/\s+/)[0] ?? ""
+
   // A meta em destaque e a mais adiantada que AINDA nao fechou: e a proxima a
   // ser alcancada, e portanto a que vale comentar. Mostrar a de menor progresso
   // seria desanimador, e a primeira da lista seria arbitraria.
@@ -121,7 +127,13 @@ export default function Dashboard() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-xs uppercase tracking-[0.12em] text-muted">{saudacao()}</p>
+          {/* O nome vem da sessao do servidor, nao da store: depois de um
+              recarregamento a store ainda esta vazia por um instante, e o
+              cabecalho piscaria "Boa noite," sem ninguem. */}
+          <p className="text-lg text-text" style={{ fontFamily: "var(--font-heading)" }}>
+            {saudacao()}
+            {primeiroNome ? `, ${primeiroNome}` : ""}
+          </p>
           {/* O titulo acompanha o seletor de mes: dizer "Dashboard" enquanto a
               tela mostra outro mes esconde justamente o que mudou. */}
           <h2 className="mt-1 text-2xl text-text" style={{ fontFamily: "var(--font-heading)" }}>
