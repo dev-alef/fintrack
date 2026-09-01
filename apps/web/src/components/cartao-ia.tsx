@@ -109,45 +109,50 @@ export function CartaoIA({
             {frases[indice]}
           </p>
 
-          {/* Os três números que a frase comenta, sempre visíveis. Sem eles a
-              rotação esconderia dois terços da informação a cada instante. */}
-          <div className="mt-5 grid gap-4 sm:grid-cols-3">
-            {meta && (
-              <div>
-                <p className="truncate text-xs text-muted" title={meta.titulo}>
+          {/* Uma barra grande e as demais informações abaixo, do mesmo
+              tamanho entre si. A meta fica em destaque porque é a única que
+              mede um caminho até algum lugar — as outras duas são fotografias
+              do mês, e nivelá-las com a meta achataria a diferença. */}
+          {meta && (
+            <div className="mt-5">
+              <div className="flex items-baseline justify-between gap-3">
+                <p className="truncate text-sm text-text" title={meta.titulo}>
                   {meta.titulo}
                 </p>
-                <p className="mt-0.5 text-sm font-semibold tabular-nums text-text">{progressoMeta}%</p>
-                <div className="mt-1.5 h-1.5 overflow-hidden rounded-full" style={{ background: "var(--track)" }}>
-                  <div
-                    className="h-full rounded-full transition-[width] duration-500"
-                    style={{ width: `${progressoMeta}%`, background: "var(--income)" }}
-                  />
-                </div>
+                <p className="shrink-0 text-sm font-semibold tabular-nums" style={{ color: "var(--income)" }}>
+                  {progressoMeta}%
+                </p>
               </div>
-            )}
+              <div className="mt-2 h-3 overflow-hidden rounded-full" style={{ background: "var(--track)" }}>
+                <div
+                  className="h-full rounded-full transition-[width] duration-700"
+                  style={{ width: `${progressoMeta}%`, background: "var(--income)" }}
+                />
+              </div>
+              <p className="mt-1.5 text-xs text-muted">
+                {formata(meta.atual)} de {formata(meta.alvo)}
+              </p>
+            </div>
+          )}
 
-            <div>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-xl border border-border/60 px-4 py-3" style={{ background: "var(--surface)" }}>
               <p className="text-xs text-muted">Investimentos</p>
-              <p className="mt-0.5 text-sm font-semibold tabular-nums" style={{ color: "var(--income)" }}>
+              <p className="mt-1 text-base font-semibold tabular-nums" style={{ color: "var(--income)" }}>
                 {formata(investimentos)}
               </p>
             </div>
 
-            {totalContas > 0 && (
-              <div>
-                <p className="text-xs text-muted">Contas fixas</p>
-                <p className="mt-0.5 text-sm font-semibold tabular-nums text-text">
-                  {faltamPagar > 0 ? `faltam ${faltamPagar}` : "todas pagas"}
-                </p>
-                <div className="mt-1.5 h-1.5 overflow-hidden rounded-full" style={{ background: "var(--track)" }}>
-                  <div
-                    className="h-full rounded-full transition-[width] duration-500"
-                    style={{ width: `${(contasPagas / totalContas) * 100}%`, background: "var(--success)" }}
-                  />
-                </div>
-              </div>
-            )}
+            <div className="rounded-xl border border-border/60 px-4 py-3" style={{ background: "var(--surface)" }}>
+              <p className="text-xs text-muted">Contas fixas</p>
+              <p className="mt-1 text-base font-semibold text-text">
+                {totalContas === 0
+                  ? "nenhuma cadastrada"
+                  : faltamPagar > 0
+                    ? `faltam ${faltamPagar} de ${totalContas}`
+                    : "todas pagas"}
+              </p>
+            </div>
           </div>
 
           <Link
