@@ -1,8 +1,9 @@
 import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts"
 import { CartaoIA } from "@/components/cartao-ia"
-import { Settings, CreditCard, Receipt, BarChart3, PieChart as PieIcon, Calendar, Wallet, TrendingUp, AlertCircle, Pencil, Trash2 } from "lucide-react"
+import { GraficoAno } from "@/components/grafico-ano"
+import { DonutCategorias } from "@/components/donut-categorias"
+import { Settings, CreditCard, Receipt, Calendar, Wallet, TrendingUp, AlertCircle, Pencil, Trash2 } from "lucide-react"
 import api from "../services/api"
 import { useSummary } from "../hooks/useTransactions"
 import { Button } from "@/components/ui/button"
@@ -27,7 +28,6 @@ function saudacao() {
 }
 
 const CARD_COLORS = ["var(--cat-1)", "var(--cat-2)", "var(--cat-3)", "var(--cat-4)", "var(--cat-5)", "var(--cat-6)", "var(--primary)"]
-const CHART_COLORS = ["var(--cat-1)", "var(--cat-2)", "var(--cat-3)", "var(--cat-4)", "var(--cat-5)", "var(--cat-6)"]
 
 interface Card { id: string; name: string; due_day: number; color: string }
 interface Bill { id: string; name: string; amount: string; due_day: number; paid?: boolean }
@@ -84,9 +84,24 @@ export default function Dashboard() {
   const annualTotal = annualSummary.reduce((s, r) => s + Number(r.estimated_income || 0), 0)
   const annualExpenses = annualSummary.reduce((s, r) => s + Number(r.total_fixed_bills || 0) + Number(r.total_card_expenses || 0), 0)
 
-  const byMonth = chartData?.byMonth || []
+  // O grafico passou de "ultimos 6 meses" para o ano inteiro. A serie vem do
+  // annualSummary, que a tela ja buscava para a tabela do fim da pagina - nao
+  // ha requisicao nova. Meses sem lancamento entram zerados para as 12 colunas
+  // existirem sempre: um ano com buracos deixaria o eixo mentiroso.
+  const dadosDoAno = Array.from({ length: 12 }, (_, i) => {
+    const linha = annualSummary.find((r) => Number(r.month) === i + 1)
+    return {
+      mes: i + 1,
+      entrou: Number(linha?.estimated_income || 0),
+      saiu: Number(linha?.total_fixed_bills || 0) + Number(linha?.total_card_expenses || 0),
+    }
+  })
+
   const byCategory = chartData?.byCategory || []
-  const pieData = byCategory.map((c: { category: string; total: string }) => ({ name: c.category, value: Number(c.total) }))
+  const fatiasPorCategoria = byCategory.map((c: { category: string; total: string }) => ({
+    nome: c.category,
+    valor: Number(c.total),
+  }))
 
   const isInitialLoading = cardsLoading || billsLoading || expensesLoading || configLoading || annualLoading || chartLoading
   const hasCriticalError = cardsError || billsError || configError || chartError
@@ -359,19 +374,29 @@ export default function Dashboard() {
                   <Button size="sm" variant="outline" onClick={() => setEditingBill(null)}>✕</Button>
                 </div>
               ) : (
-                <div key={b.id} className={cn("flex items-center gap-2.5 rounded-lg border bg-bg p-3", b.paid ? "border-success/30" : "border-border")}>
-                  <input
-                    type="checkbox"
-                    checked={!!b.paid}
-                    onChange={() => togglePayment.mutate({ billId: b.id, month, year, paid: !b.paid })}
-                    className="h-4 w-4 shrink-0 cursor-pointer accent-success"
+                <div className={cn("flex items-center gap-2.5 rounded-lg border bg-bg p-3", b.paid ? "border-success/30" : "border-border")} key={b.id}>
+                  {/* A linha inteira alterna o pagamento, como no desenho. O
+                      checkbox nativo virou um ponto redondo, mas continua sendo
+                      um controle de verdade: button com aria-pressed, que
+                      leitores de tela anunciam como alternavel. */}
+                  <button
+                    type="button"
+                    onClick={() => togglePayment.mutate({ billId: b.id, month, year, paid: !b.paid })}
+                    aria-pressed={!!b.paid}
                     aria-label={`Marcar ${b.name} como ${b.paid ? "pendente" : "paga"}`}
-                  />
+                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-[1.5px] border-border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    style={{ background: b.paid ? "var(--success)" : "transparent" }}
+                  >
+                    <span
+                      className="h-2 w-2 rounded-full"
+                      style={{ background: b.paid ? "var(--surface)" : "transparent" }}
+                    />
+                  </button>
                   <div className="flex-1 min-w-0">
-                    <p className={cn("truncate text-sm font-medium", b.paid ? "text-muted line-through" : "text-text")}>{b.name}</p>
+                    <p className={cn("truncate text-sm font-medium", b.paid ? "text-muted" : "text-text")}>{b.name}</p>
                     {b.due_day ? <p className="text-xs text-muted">vence dia {b.due_day}</p> : null}
                   </div>
-                  <span className={cn("shrink-0 text-sm font-semibold", b.paid ? "text-muted" : "text-warning")}>{fmt(b.amount)}</span>
+                  <span className={cn("shrink-0 text-sm font-semibold tabular-nums", b.paid ? "text-muted" : "text-text")}>{fmt(b.amount)}</span>
                   <Button variant="ghost" size="icon" aria-label={`Editar conta ${b.name}`} onClick={() => setEditingBill(b)}>
                     <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
                   </Button>
@@ -393,57 +418,9 @@ export default function Dashboard() {
       </Card>
 
       {/* Gráficos */}
-      <div className="grid gap-5 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <BarChart3 className="h-4 w-4 text-muted" aria-hidden="true" /> Últimos 6 meses
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {byMonth.length === 0 ? (
-              <p className="text-sm text-muted">Nenhuma transação nos últimos 6 meses</p>
-            ) : (
-              <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={byMonth}>
-                  <XAxis dataKey="month" tick={{ fill: "var(--text-2)", fontSize: 11 }} />
-                  <YAxis tick={{ fill: "var(--text-2)", fontSize: 11 }} />
-                  <Tooltip
-                    contentStyle={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8 } as React.CSSProperties}
-                    formatter={(v: number) => fmt(v)}
-                  />
-                  <Bar dataKey="income" name="Receita" fill="var(--income)" radius={[6, 6, 0, 0]} />
-                  <Bar dataKey="expense" name="Despesa" fill="var(--expense)" radius={[6, 6, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <PieIcon className="h-4 w-4 text-muted" aria-hidden="true" /> Por categoria
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {pieData.length === 0 ? (
-              <p className="text-sm text-muted">Sem dados</p>
-            ) : (
-              <ResponsiveContainer width="100%" height={200}>
-                <PieChart>
-                  <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70}>
-                    {pieData.map((_: unknown, i: number) => (
-                      <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Legend wrapperStyle={{ fontSize: 12 } as React.CSSProperties} />
-                  <Tooltip formatter={(v: number) => fmt(v)} />
-                </PieChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
+      <div className="grid gap-5 lg:grid-cols-2">
+        <GraficoAno dados={dadosDoAno} mesAtual={month} formata={fmt} />
+        <DonutCategorias fatias={fatiasPorCategoria} formata={fmt} />
       </div>
 
       {/* Tabela anual */}
