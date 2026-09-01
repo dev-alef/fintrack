@@ -106,12 +106,14 @@ export default function Dashboard() {
   // inteira e soa como cobranca de banco, nao como saudacao.
   const primeiroNome = session?.user?.name?.trim().split(/\s+/)[0] ?? ""
 
-  // A meta em destaque e a mais adiantada que AINDA nao fechou: e a proxima a
-  // ser alcancada, e portanto a que vale comentar. Mostrar a de menor progresso
-  // seria desanimador, e a primeira da lista seria arbitraria.
-  const metaEmFoco =
-    [...goals].filter((g) => Number(g.progress_pct) < 100).sort((a, b) => Number(b.progress_pct) - Number(a.progress_pct))[0] ??
-    goals[0]
+  // A meta em destaque e a mais adiantada que ainda nao fechou E ja teve algum
+  // aporte. O progresso zero fica de fora de proposito: uma barra vazia parece
+  // defeito de renderizacao, e "0%" nao e leitura nenhuma - e a ausencia de
+  // uma. Sem nenhuma meta comecada, o cartao convida a comecar em vez de
+  // exibir um trilho vazio com um nome em cima.
+  const metaEmFoco = [...goals]
+    .filter((g) => Number(g.progress_pct) > 0 && Number(g.progress_pct) < 100)
+    .sort((a, b) => Number(b.progress_pct) - Number(a.progress_pct))[0]
 
   const byCategory = chartData?.byCategory || []
   const fatiasPorCategoria = byCategory.map((c: { category: string; total: string }) => ({
@@ -233,6 +235,7 @@ export default function Dashboard() {
             totalContas={bills.length}
             investimentos={investments}
             patrimonio={patrimonio}
+            temMetas={goals.length > 0}
             contasFixasPagas={totalPaid}
             meta={
               metaEmFoco

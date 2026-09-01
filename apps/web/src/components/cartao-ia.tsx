@@ -19,6 +19,8 @@ type Props = {
   patrimonio: number
   /** Valor ja pago das contas fixas - a contagem sozinha nao diz quanto falta em dinheiro. */
   contasFixasPagas: number
+  /** Distingue "nao criou meta nenhuma" de "criou e ainda nao aportou" - o convite muda. */
+  temMetas: boolean
   meta?: Meta
   formata: (valor: number) => string
 }
@@ -76,6 +78,7 @@ export function CartaoIA({
   investimentos,
   patrimonio,
   contasFixasPagas,
+  temMetas,
   meta,
   formata,
 }: Props) {
@@ -158,7 +161,7 @@ export function CartaoIA({
               honesta para esse numero. Inventar uma meta de investimento seria
               atribuir a pessoa um objetivo que ela nunca definiu. */}
           <div className="mt-5 flex flex-col gap-4">
-            {meta && (
+            {meta ? (
               <Barra
                 rotulo={meta.titulo}
                 valor={`${progressoMeta}%`}
@@ -166,6 +169,17 @@ export function CartaoIA({
                 cor="var(--income)"
                 detalhe={`${formata(meta.atual)} de ${formata(meta.alvo)}`}
               />
+            ) : (
+              <p className="text-sm text-muted">
+                {temMetas ? "Suas metas ainda não receberam nenhum aporte." : "Você ainda não definiu uma meta."}{" "}
+                <Link
+                  to="/goals"
+                  className="font-medium underline underline-offset-2"
+                  style={{ color: "var(--link)" }}
+                >
+                  {temMetas ? "Registrar um valor" : "Criar a primeira"}
+                </Link>
+              </p>
             )}
 
             <Barra
