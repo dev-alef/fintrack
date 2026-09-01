@@ -116,13 +116,13 @@ export default function FinanceControl() {
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {[
-            { label: "Receita estimada", value: estimatedIncome, tone: "text-success" as const },
+            { label: "Receita estimada", value: estimatedIncome, tone: "text-income" as const },
             { label: "Mês anterior", value: Number(prevConfig?.estimated_income || 0), tone: "text-primary" as const },
             { label: "Total contas fixas", value: totalBills, tone: "text-warning" as const },
-            { label: "Total faturas", value: totalCards, tone: "text-danger" as const },
-            { label: "Sobrou no mês", value: leftover, tone: leftover >= 0 ? "text-success" as const : "text-danger" as const },
+            { label: "Total faturas", value: totalCards, tone: "text-expense" as const },
+            { label: "Sobrou no mês", value: leftover, tone: leftover >= 0 ? "text-income" as const : "text-expense" as const },
             { label: "Saldo atual", value: balance, tone: "text-primary" as const },
-            { label: "Investimentos", value: investments, tone: "text-success" as const },
+            { label: "Investimentos", value: investments, tone: "text-income" as const },
           ].map((item) => (
             <Card key={item.label}>
               <CardContent className="p-4">
@@ -245,7 +245,7 @@ export default function FinanceControl() {
               {totalCards > 0 && (
                 <div className="mt-1 flex justify-between border-t border-border pt-2.5">
                   <span className="text-sm text-muted">Total faturas</span>
-                  <span className="text-sm font-bold text-danger">{fmt(totalCards)}</span>
+                  <span className="text-sm font-bold text-expense">{fmt(totalCards)}</span>
                 </div>
               )}
             </div>
@@ -345,9 +345,9 @@ export default function FinanceControl() {
                 return (
                   <TableRow key={m} className={isCurrentMonth ? "bg-primary/10" : ""}>
                     <TableCell className={cn(isCurrentMonth ? "font-bold text-primary" : "text-text")}>{m}</TableCell>
-                    <TableCell className="text-right text-success">{income > 0 ? fmt(income) : "-"}</TableCell>
-                    <TableCell className="text-right text-danger">{gastos > 0 ? fmt(gastos) : "-"}</TableCell>
-                    <TableCell className={cn("text-right", sob >= 0 ? "text-success" : "text-danger")}>{income > 0 ? fmt(sob) : "-"}</TableCell>
+                    <TableCell className="text-right text-income">{income > 0 ? fmt(income) : "-"}</TableCell>
+                    <TableCell className="text-right text-expense">{gastos > 0 ? fmt(gastos) : "-"}</TableCell>
+                    <TableCell className={cn("text-right", sob >= 0 ? "text-income" : "text-expense")}>{income > 0 ? fmt(sob) : "-"}</TableCell>
                     {annual.map((c: AnnualCard) => {
                       const cardRow = (c as unknown as { monthly_breakdown?: { month: number; amount: string }[] }).monthly_breakdown?.find((b) => b.month === i + 1)
                       return <TableCell key={c.id} className="text-right text-muted">{cardRow ? fmt(cardRow.amount) : "-"}</TableCell>
@@ -357,9 +357,9 @@ export default function FinanceControl() {
               })}
               <TableRow className="border-t-2 border-border font-bold">
                 <TableCell className="text-text">Total</TableCell>
-                <TableCell className="text-right text-success">{fmt(annualTotal)}</TableCell>
-                <TableCell className="text-right text-danger">{fmt(annualBills)}</TableCell>
-                <TableCell className={cn("text-right", annualTotal - annualBills >= 0 ? "text-success" : "text-danger")}>{fmt(annualTotal - annualBills)}</TableCell>
+                <TableCell className="text-right text-income">{fmt(annualTotal)}</TableCell>
+                <TableCell className="text-right text-expense">{fmt(annualBills)}</TableCell>
+                <TableCell className={cn("text-right", annualTotal - annualBills >= 0 ? "text-income" : "text-expense")}>{fmt(annualTotal - annualBills)}</TableCell>
                 {annual.map((c: AnnualCard) => (
                   <TableCell key={c.id} className="text-right" style={{ color: c.color }}>
                     {fmt(c.annual_total)}

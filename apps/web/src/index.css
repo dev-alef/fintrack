@@ -2,6 +2,17 @@
 
 /* Paleta Organic: creme, terracota e salvia.
  *
+ * EXCECAO deliberada: dinheiro. --income e --expense continuam verde e vermelho
+ * (dessaturados para conviver com o creme) porque a leitura precisa ser
+ * instantanea - num painel financeiro a pessoa bate o olho para saber se o mes
+ * fechou bem, e salvia contra marrom obriga a ler o sinal. A regra ja estava
+ * escrita no design system anterior: "semantica de dinheiro nao muda com
+ * decoracao".
+ *
+ * --success e --danger ficam para ESTADO de interface (confirmacao, erro), e
+ * --income/--expense para VALOR. Antes eram a mesma coisa, e por isso a troca
+ * de paleta levou o vermelho da despesa junto.
+ *
  * Substitui o indigo anterior sem renomear token nenhum - toda tela que usa
  * bg-surface, text-muted ou border-border acompanha sozinha. Foi o que tornou
  * a troca de identidade barata: as cores literais nunca chegaram ao JSX.
@@ -13,7 +24,8 @@
   --bg:#f7eedd; --bg-2:#efe0c6; --surface:#fbf5ea; --surface-2:#f7e7d8; --border:#ded1b8;
   --text:#201e1d; --text-2:#6b6357; --text-3:#8d8474;
   --primary:#c67139; --primary-hover:#b05f2d; --primary-active:#8f4d24; --primary-fg:#f5ead8;
-  --success:#7a8a5e; --danger:#6d3b1c; --warning:#b0771f;
+  --success:#7a8a5e; --danger:#8a2626; --warning:#b0771f;
+  --income:#2f7d5a; --expense:#8a2626;
   --ring:#c67139; --shadow:0 4px 20px rgba(32,30,29,.08);
   --brand-grad:linear-gradient(150deg,#c67139 0%,#8f4d24 72%);
   /* Papeis que so o design novo usa */
@@ -27,7 +39,8 @@
   --bg:#1c1a18; --bg-2:#171614; --surface:#2b2825; --surface-2:#39332c; --border:#413b34;
   --text:#f5ead8; --text-2:#b7ab98; --text-3:#8d8474;
   --primary:#d89a67; --primary-hover:#e6b992; --primary-active:#f0d3ba; --primary-fg:#1c1a17;
-  --success:#c3ceac; --danger:#e6b992; --warning:#e0b45f;
+  --success:#c3ceac; --danger:#e08a86; --warning:#e0b45f;
+  --income:#8fbf9f; --expense:#e08a86;
   --ring:#d89a67; --shadow:0 4px 24px rgba(0,0,0,.4);
   --brand-grad:linear-gradient(150deg,#3a2f26 0%,#1c1a18 72%);
   /* No escuro, erro e link precisam de tons CLAROS da rampa. Usar 700/800 aqui
@@ -42,7 +55,8 @@
   --bg:#fbf0ef; --bg-2:#f2dcdd; --surface:#fdf8f7; --surface-2:#f8e7ea; --border:#e8cdd0;
   --text:#33232a; --text-2:#836b72; --text-3:#a8919c;
   --primary:#b3697c; --primary-hover:#9d5769; --primary-active:#834657; --primary-fg:#fff8f8;
-  --success:#6f8a72; --danger:#8f4f60; --warning:#a87a4a;
+  --success:#6f8a72; --danger:#9c2f30; --warning:#a87a4a;
+  --income:#3d6e52; --expense:#9c2f30;
   --ring:#b3697c; --shadow:0 4px 20px rgba(120,70,95,.09);
   --brand-grad:linear-gradient(150deg,#b3697c 0%,#834657 72%);
   --rail:#f6e2e5; --field:#ffffff; --link:#9d5769; --track:#f0dcdf;
@@ -83,6 +97,8 @@
   --color-track: var(--track);
   --color-ai-card: var(--ai-card);
   --color-primary-active: var(--primary-active);
+  --color-income: var(--income);
+  --color-expense: var(--expense);
   --font-heading: Caprasimo, Georgia, serif;
   --font-body: Figtree, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }

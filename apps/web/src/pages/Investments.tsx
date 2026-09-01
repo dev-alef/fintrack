@@ -111,7 +111,7 @@ function CompoundCalculator() {
               <Card className="bg-bg">
                 <CardContent className="p-4 text-center">
                   <p className="mb-1 text-xs text-muted">Juros gerados</p>
-                  <p className="text-lg font-bold text-success">{fmt(last.interest)}</p>
+                  <p className="text-lg font-bold text-income">{fmt(last.interest)}</p>
                 </CardContent>
               </Card>
               <Card className="border-primary/20 bg-bg">
@@ -197,9 +197,9 @@ export default function Investments() {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {[
             { label: "Total investido", value: fmt(totalInvested), tone: "text-primary" as const },
-            { label: "Valor atual", value: fmt(totalCurrent), tone: "text-success" as const },
-            { label: "Lucro/Prejuízo", value: fmt(totalProfit), tone: totalProfit >= 0 ? "text-success" as const : "text-danger" as const },
-            { label: "Rentabilidade", value: fmtPct(returnPct), tone: returnPct >= 0 ? "text-success" as const : "text-danger" as const },
+            { label: "Valor atual", value: fmt(totalCurrent), tone: "text-income" as const },
+            { label: "Lucro/Prejuízo", value: fmt(totalProfit), tone: totalProfit >= 0 ? "text-income" as const : "text-expense" as const },
+            { label: "Rentabilidade", value: fmtPct(returnPct), tone: returnPct >= 0 ? "text-income" as const : "text-expense" as const },
           ].map((item) => (
             <Card key={item.label}>
               <CardContent className="p-4">
@@ -250,7 +250,7 @@ export default function Investments() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-xs text-muted">{pct.toFixed(1)}% da carteira</span>
-                      <span className={cn("text-xs", profit >= 0 ? "text-success" : "text-danger")}>
+                      <span className={cn("text-xs", profit >= 0 ? "text-income" : "text-expense")}>
                         {profit >= 0 ? "+" : ""}{fmt(profit)}
                       </span>
                     </div>
@@ -492,14 +492,14 @@ export default function Investments() {
                   <div className="text-right">
                     <p className="text-xs text-muted">Investido: {fmt(inv.invested_amount)}</p>
                     <p className="text-sm font-bold text-text">Atual: {fmt(inv.current_value)}</p>
-                    <p className={cn("text-xs", profit >= 0 ? "text-success" : "text-danger")}>
+                    <p className={cn("text-xs", profit >= 0 ? "text-income" : "text-expense")}>
                       {profit >= 0 ? "+" : ""}{fmt(profit)} ({pct >= 0 ? "+" : ""}{fmtPct(pct)})
                     </p>
                   </div>
                   {Number(inv.monthly_rate) > 0 && (
                     <div className="rounded-md bg-surface p-2 text-center">
                       <p className="text-xs text-muted">Taxa</p>
-                      <p className="text-sm font-semibold text-success">{fmtPct(inv.monthly_rate)}/m</p>
+                      <p className="text-sm font-semibold text-income">{fmtPct(inv.monthly_rate)}/m</p>
                     </div>
                   )}
                   {Number(inv.target_percent) > 0 && (

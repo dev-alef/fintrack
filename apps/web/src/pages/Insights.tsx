@@ -55,8 +55,8 @@ export default function Insights() {
         <div className="space-y-5">
           <div className="flex flex-wrap gap-3">
             {[
-              { label: 'Receitas', value: result.summary.total_income, color: 'text-success' },
-              { label: 'Despesas', value: result.summary.total_expense, color: 'text-danger' },
+              { label: 'Receitas', value: result.summary.total_income, color: 'text-income' },
+              { label: 'Despesas', value: result.summary.total_expense, color: 'text-expense' },
               { label: 'Saldo', value: result.summary.balance, color: 'text-primary' },
             ].map(item => (
               <Card key={item.label} className="min-w-[140px] flex-1">

@@ -139,12 +139,12 @@ export default function Dashboard() {
           {/* Cards de resumo */}
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
             {[
-              { label: "Receita estimada", value: estimatedIncome, tone: "text-success" as const },
+              { label: "Receita estimada", value: estimatedIncome, tone: "text-income" as const },
               { label: "Mês anterior", value: Number(prevConfig?.estimated_income || 0), tone: "text-primary" as const },
               { label: "Contas fixas", value: totalBills, tone: "text-warning" as const },
-              { label: "Faturas cartões", value: totalCards, tone: "text-danger" as const },
-              { label: "Total a pagar", value: totalBills + totalCards, tone: "text-danger" as const },
-              { label: "Sobrou no mês", value: leftover, tone: leftover >= 0 ? "text-success" as const : "text-danger" as const },
+              { label: "Faturas cartões", value: totalCards, tone: "text-expense" as const },
+              { label: "Total a pagar", value: totalBills + totalCards, tone: "text-expense" as const },
+              { label: "Sobrou no mês", value: leftover, tone: leftover >= 0 ? "text-income" as const : "text-expense" as const },
             ].map((item) => (
               <Card key={item.label}>
                 <CardContent className="p-4">
@@ -162,7 +162,7 @@ export default function Dashboard() {
                 <div className="mb-1 flex items-center gap-2 text-xs text-muted">
                   <TrendingUp className="h-3.5 w-3.5" aria-hidden="true" /> Saldo atual
                 </div>
-                <p className={cn("text-xl font-bold", balance >= 0 ? "text-primary" : "text-danger")}>{fmt(balance)}</p>
+                <p className={cn("text-xl font-bold", balance >= 0 ? "text-primary" : "text-expense")}>{fmt(balance)}</p>
                 <p className="mt-1 text-xs text-muted">Saldo base + sobrou no mês</p>
               </CardContent>
             </Card>
@@ -171,7 +171,7 @@ export default function Dashboard() {
                 <div className="mb-1 flex items-center gap-2 text-xs text-muted">
                   <Wallet className="h-3.5 w-3.5" aria-hidden="true" /> Investimentos
                 </div>
-                <p className="text-xl font-bold text-success">{fmt(investments)}</p>
+                <p className="text-xl font-bold text-income">{fmt(investments)}</p>
                 <p className="mt-1 text-xs text-muted">Valor aplicado</p>
               </CardContent>
             </Card>
@@ -313,7 +313,7 @@ export default function Dashboard() {
               {totalCards > 0 && (
                 <div className="mt-1 flex justify-between border-t border-border pt-2.5">
                   <span className="text-sm text-muted">Total faturas</span>
-                  <span className="text-sm font-bold text-danger">{fmt(totalCards)}</span>
+                  <span className="text-sm font-bold text-expense">{fmt(totalCards)}</span>
                 </div>
               )}
             </div>
@@ -412,8 +412,8 @@ export default function Dashboard() {
                     contentStyle={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8 } as React.CSSProperties}
                     formatter={(v: number) => fmt(v)}
                   />
-                  <Bar dataKey="income" name="Receita" fill="var(--success)" radius={[6, 6, 0, 0]} />
-                  <Bar dataKey="expense" name="Despesa" fill="var(--primary)" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="income" name="Receita" fill="var(--income)" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="expense" name="Despesa" fill="var(--expense)" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -478,9 +478,9 @@ export default function Dashboard() {
                 return (
                   <TableRow key={m} className={isCurrent ? "bg-primary/10" : ""}>
                     <TableCell className={cn("font-medium", isCurrent ? "text-primary font-bold" : "text-text")}>{m}</TableCell>
-                    <TableCell className="text-right text-success">{income > 0 ? fmt(income) : "-"}</TableCell>
-                    <TableCell className="text-right text-danger">{gastos > 0 ? fmt(gastos) : "-"}</TableCell>
-                    <TableCell className={cn("text-right", sob >= 0 ? "text-success" : "text-danger")}>{income > 0 ? fmt(sob) : "-"}</TableCell>
+                    <TableCell className="text-right text-income">{income > 0 ? fmt(income) : "-"}</TableCell>
+                    <TableCell className="text-right text-expense">{gastos > 0 ? fmt(gastos) : "-"}</TableCell>
+                    <TableCell className={cn("text-right", sob >= 0 ? "text-income" : "text-expense")}>{income > 0 ? fmt(sob) : "-"}</TableCell>
                     {annual.map((c: AnnualCard) => {
                       const cardRow = c.monthly_breakdown?.find((b) => b.month === i + 1)
                       return (
@@ -494,9 +494,9 @@ export default function Dashboard() {
               })}
               <TableRow className="border-t-2 border-border font-bold">
                 <TableCell className="text-text">Total</TableCell>
-                <TableCell className="text-right text-success">{fmt(annualTotal)}</TableCell>
-                <TableCell className="text-right text-danger">{fmt(annualExpenses)}</TableCell>
-                <TableCell className={cn("text-right", annualTotal - annualExpenses >= 0 ? "text-success" : "text-danger")}>
+                <TableCell className="text-right text-income">{fmt(annualTotal)}</TableCell>
+                <TableCell className="text-right text-expense">{fmt(annualExpenses)}</TableCell>
+                <TableCell className={cn("text-right", annualTotal - annualExpenses >= 0 ? "text-income" : "text-expense")}>
                   {fmt(annualTotal - annualExpenses)}
                 </TableCell>
                 {annual.map((c: AnnualCard) => (
