@@ -147,3 +147,90 @@ function escapaHtml(texto: string): string {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;')
 }
+
+type AcessoNovo = {
+  nome: string
+  quando: Date
+  dispositivo: string
+  ip?: string | null
+  urlSeguranca: string
+}
+
+/**
+ * Aviso de acesso a partir de um dispositivo desconhecido.
+ *
+ * O tom evita alarme: na maioria das vezes e a propria pessoa num aparelho
+ * novo, e um e-mail assustador para um evento comum treina a ignorar o alerta
+ * - justamente o que nao pode acontecer com este.
+ *
+ * O que importa e ser acionavel: se nao foi ela, precisa saber o que fazer sem
+ * ter de descobrir sozinha.
+ */
+export function emailDeAcessoNovo({ nome, quando, dispositivo, ip, urlSeguranca }: AcessoNovo) {
+  const data = quando.toLocaleString('pt-BR', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+    timeZone: 'America/Sao_Paulo',
+  })
+
+  const detalhes = [`Quando: ${data}`, `Dispositivo: ${dispositivo}`, ip ? `IP: ${ip}` : null].filter(
+    Boolean,
+  ) as string[]
+
+  return {
+    assunto: 'Novo acesso à sua conta do Provisão',
+    html: layout(`
+      <p style="margin:0 0 12px;font-size:16px;line-height:24px;color:${COR_TEXTO};">Olá, ${nome}.</p>
+      <p style="margin:0;font-size:16px;line-height:24px;color:${COR_TEXTO};">
+        Sua conta foi acessada de um dispositivo que ainda não tínhamos visto.
+        Se foi você, não precisa fazer nada.
+      </p>
+      <div style="margin:20px 0;padding:14px 16px;background:#f7e7d8;border-radius:8px;font-size:13px;line-height:22px;color:${COR_TEXTO};">
+        ${detalhes.join('<br>')}
+      </div>
+      <p style="margin:0;font-size:16px;line-height:24px;color:${COR_TEXTO};">
+        <strong>Se não foi você</strong>, troque sua senha agora. Isso encerra
+        todas as outras sessões, inclusive a de quem entrou.
+      </p>
+      ${botao(urlSeguranca, 'Trocar minha senha')}
+    `),
+    texto: `Olá, ${nome}.
+
+Sua conta do Provisão foi acessada de um dispositivo que ainda não tínhamos
+visto. Se foi você, não precisa fazer nada.
+
+${detalhes.join('\n')}
+
+Se não foi você, troque sua senha agora. Isso encerra todas as outras sessões,
+inclusive a de quem entrou:
+
+${urlSeguranca}`,
+  }
+}
+
+/**
+ * Resume o user-agent em algo legivel. Nao e deteccao precisa de navegador, e
+ * nao precisa ser: a pessoa so precisa reconhecer "fui eu no meu celular" ou
+ * estranhar "isso nao e meu".
+ */
+export function descreveDispositivo(userAgent?: string | null): string {
+  if (!userAgent) return 'dispositivo desconhecido'
+
+  const navegador =
+    /Edg\//.test(userAgent) ? 'Edge'
+    : /OPR\//.test(userAgent) ? 'Opera'
+    : /Chrome\//.test(userAgent) ? 'Chrome'
+    : /Firefox\//.test(userAgent) ? 'Firefox'
+    : /Safari\//.test(userAgent) ? 'Safari'
+    : 'navegador desconhecido'
+
+  const sistema =
+    /Android/.test(userAgent) ? 'Android'
+    : /iPhone|iPad|iOS/.test(userAgent) ? 'iPhone ou iPad'
+    : /Windows/.test(userAgent) ? 'Windows'
+    : /Mac OS X|Macintosh/.test(userAgent) ? 'Mac'
+    : /Linux/.test(userAgent) ? 'Linux'
+    : 'sistema desconhecido'
+
+  return `${navegador} em ${sistema}`
+}
