@@ -98,3 +98,52 @@ O link vale por 1 hora e só pode ser usado uma vez.
 Se você não pediu isso, ignore este e-mail: sem abrir o link, nada muda.`,
   }
 }
+
+type ContextoSuporte = {
+  usuario: { id: string; nome: string; email: string }
+  mensagem: string
+  tela?: string
+  navegador?: string
+}
+
+/**
+ * E-mail de suporte. Vai para a equipe, nao para o usuario - por isso e o unico
+ * template que carrega dado tecnico.
+ *
+ * O contexto vem junto porque sem ele metade dos relatos chega como "deu erro" e
+ * vira uma ida e volta so para descobrir onde a pessoa estava.
+ */
+export function emailDeSuporte({ usuario, mensagem, tela, navegador }: ContextoSuporte) {
+  const linhas = [
+    `De: ${usuario.nome} <${usuario.email}>`,
+    `Usuario: ${usuario.id}`,
+    tela ? `Tela: ${tela}` : null,
+    navegador ? `Navegador: ${navegador}` : null,
+  ].filter(Boolean) as string[]
+
+  return {
+    assunto: `[Suporte] ${usuario.email}`,
+    html: layout(`
+      <p style="margin:0 0 16px;font-size:16px;line-height:24px;color:${COR_TEXTO};white-space:pre-wrap;">${escapaHtml(mensagem)}</p>
+      <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0 12px;">
+      <p style="margin:0;font-size:12px;line-height:20px;color:${COR_APAGADA};">
+        ${linhas.map(escapaHtml).join('<br>')}
+      </p>
+    `),
+    texto: `${mensagem}\n\n---\n${linhas.join('\n')}`,
+  }
+}
+
+/**
+ * A mensagem vem do usuario e entra num HTML. Sem escapar, quem escrevesse
+ * `<img src=x onerror=...>` teria o codigo executado no cliente de e-mail de
+ * quem le o chamado - e quem le e sempre a equipe.
+ */
+function escapaHtml(texto: string): string {
+  return texto
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}

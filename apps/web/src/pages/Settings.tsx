@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { QRCodeSVG } from "qrcode.react"
-import { ShieldCheck, ShieldOff, Copy, Check, AlertTriangle } from "lucide-react"
+import { ShieldCheck, ShieldOff, Copy, Check, AlertTriangle, LifeBuoy } from "lucide-react"
+import { FormularioSuporte } from "@/components/formulario-suporte"
 import { twoFactor, useSession } from "../lib/auth-client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -304,6 +305,26 @@ export default function Settings() {
               </div>
             </form>
           )}
+        </div>
+      </section>
+
+      {/* Ancora propria: o link do menu aponta para ca, e a secao do 2FA fica
+          acima sem obrigar a rolar procurando. */}
+      <section id="suporte" className="scroll-mt-6 rounded-lg border border-border bg-surface p-6">
+        <div className="flex items-start gap-4">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-surface-2">
+            <LifeBuoy className="h-5 w-5 text-muted" aria-hidden="true" />
+          </span>
+          <div className="flex-1">
+            <h2 className="text-base font-semibold text-text">Falar com o suporte</h2>
+            <p className="mt-1 text-sm leading-relaxed text-muted">
+              Encontrou algo errado ou tem uma dúvida? Escreva abaixo — respondemos no e-mail da sua conta.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-6">
+          <FormularioSuporte />
         </div>
       </section>
     </div>
