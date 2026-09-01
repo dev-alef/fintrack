@@ -1,7 +1,8 @@
 import { useState } from "react"
 import { QRCodeSVG } from "qrcode.react"
-import { ShieldCheck, ShieldOff, Copy, Check, AlertTriangle, LifeBuoy } from "lucide-react"
+import { ShieldCheck, ShieldOff, Copy, Check, AlertTriangle, LifeBuoy, MonitorSmartphone } from "lucide-react"
 import { FormularioSuporte } from "@/components/formulario-suporte"
+import { SessoesAtivas } from "@/components/sessoes-ativas"
 import { twoFactor, useSession } from "../lib/auth-client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -305,6 +306,28 @@ export default function Settings() {
               </div>
             </form>
           )}
+        </div>
+      </section>
+
+      {/* Entre o 2FA e o suporte: as duas primeiras secoes sao seguranca da
+          conta, e ler uma depois da outra faz sentido - o 2FA protege a
+          entrada, esta mostra quem ja entrou. */}
+      <section className="rounded-lg border border-border bg-surface p-6">
+        <div className="flex items-start gap-4">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-surface-2">
+            <MonitorSmartphone className="h-5 w-5 text-muted" aria-hidden="true" />
+          </span>
+          <div className="flex-1">
+            <h2 className="text-base font-semibold text-text">Sessões ativas</h2>
+            <p className="mt-1 text-sm leading-relaxed text-muted">
+              Onde sua conta está conectada agora. Se não reconhecer algum acesso, encerre
+              — e troque sua senha em seguida.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-6">
+          <SessoesAtivas />
         </div>
       </section>
 
