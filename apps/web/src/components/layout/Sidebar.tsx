@@ -101,6 +101,11 @@ export default function Sidebar({ isMobile = false, isOpen = false, onClose }: S
             // que era o que faltava no logout anterior.
             await signOut()
             clear()
+            // A analise da IA fica em sessionStorage para sobreviver a
+            // navegacao. Ela e verificada por userId ao ser lida, mas apagar no
+            // logout evita que ela sequer permaneca no navegador depois que a
+            // pessoa saiu - e o que ela descreve sao as financas dela.
+            sessionStorage.removeItem("provisao:insights")
             navigate("/login")
           }}
           className="flex items-center gap-3 rounded-lg px-3.5 py-3 text-left text-sm text-muted hover:bg-surface-2 hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"

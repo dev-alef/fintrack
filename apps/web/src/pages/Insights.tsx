@@ -1,20 +1,72 @@
-import { useState } from 'react'
-import { Sparkles, Loader2, Bot, AlertCircle } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Sparkles, Loader2, Bot, AlertCircle, RotateCw } from 'lucide-react'
 import api from '../services/api'
+import { useSession } from '../lib/auth-client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 
+type Resultado = {
+  insights: string
+  summary: { total_income: string; total_expense: string; balance: string }
+}
+
+type Guardado = { userId: string; resultado: Resultado; geradoEm: string }
+
+const CHAVE = 'provisao:insights'
+
+/**
+ * A analise fica guardada em sessionStorage, e nao em estado local: assim ela
+ * sobrevive a navegar para outra tela e voltar, ou a recarregar a pagina, e
+ * some sozinha quando a aba fecha - que foi o comportamento pedido.
+ *
+ * localStorage nao serviria: a analise ficaria no computador depois de fechar
+ * o navegador, e ela descreve as financas de alguem.
+ *
+ * O userId vai junto porque a mesma aba pode trocar de dono - sair e outra
+ * pessoa entrar. Sem essa checagem, ela leria a analise de quem estava antes.
+ */
+function leGuardado(userId?: string): Guardado | null {
+  if (!userId) return null
+  try {
+    const bruto = sessionStorage.getItem(CHAVE)
+    if (!bruto) return null
+    const dado = JSON.parse(bruto) as Guardado
+    return dado.userId === userId ? dado : null
+  } catch {
+    // JSON corrompido nao pode derrubar a tela: melhor comecar sem analise.
+    return null
+  }
+}
+
 export default function Insights() {
+  const { data: session } = useSession()
+  const userId = session?.user?.id
+
   const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState<{ insights: string; summary: { total_income: string; total_expense: string; balance: string } } | null>(null)
+  const [guardado, setGuardado] = useState<Guardado | null>(null)
   const [error, setError] = useState('')
+
+  const result = guardado?.resultado ?? null
+
+  // A sessao chega assincrona: na primeira renderizacao userId ainda e
+  // undefined, e ler antes disso descartaria a analise por "dono diferente".
+  useEffect(() => {
+    if (userId) setGuardado(leGuardado(userId))
+  }, [userId])
 
   async function handleGenerate() {
     setLoading(true)
     setError('')
     try {
       const { data } = await api.get('/insights')
-      setResult(data)
+      const novo: Guardado = { userId: userId ?? '', resultado: data, geradoEm: new Date().toISOString() }
+      setGuardado(novo)
+      try {
+        sessionStorage.setItem(CHAVE, JSON.stringify(novo))
+      } catch {
+        // Cota estourada ou modo restrito: a analise continua na tela, so nao
+        // sobrevive a navegacao. Falhar aqui seria pior que degradar.
+      }
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
       setError(msg || 'Erro ao gerar insights')
@@ -30,10 +82,28 @@ export default function Insights() {
         <p className="mb-6 text-sm text-muted">Análise inteligente dos seus gastos usando Gemini AI</p>
       </div>
 
-      <Button onClick={handleGenerate} disabled={loading} className="gap-2">
-        {loading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Sparkles className="h-4 w-4" aria-hidden="true" />}
-        {loading ? 'Analisando seus dados...' : 'Gerar análise com IA'}
-      </Button>
+      <div className="flex flex-wrap items-center gap-3">
+        <Button onClick={handleGenerate} disabled={loading} className="gap-2">
+          {loading ? (
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+          ) : result ? (
+            <RotateCw className="h-4 w-4" aria-hidden="true" />
+          ) : (
+            <Sparkles className="h-4 w-4" aria-hidden="true" />
+          )}
+          {loading ? 'Analisando seus dados...' : result ? 'Gerar novamente' : 'Gerar análise com IA'}
+        </Button>
+
+        {/* A analise persiste, entao pode estar velha em relacao aos
+            lancamentos. Sem a hora, nao ha como saber se ela ja considera o
+            que foi cadastrado depois. */}
+        {guardado && (
+          <span className="text-xs text-muted">
+            gerada às{' '}
+            {new Date(guardado.geradoEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+          </span>
+        )}
+      </div>
 
       {error && (
         <Card className="border-danger/20 bg-danger/10">
