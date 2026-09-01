@@ -16,8 +16,46 @@ type Props = {
   contasPagas: number
   totalContas: number
   investimentos: number
+  patrimonio: number
+  /** Valor ja pago das contas fixas - a contagem sozinha nao diz quanto falta em dinheiro. */
+  contasFixasPagas: number
   meta?: Meta
   formata: (valor: number) => string
+}
+
+/** Uma linha de progresso: rotulo, valor a direita e barra abaixo. */
+function Barra({
+  rotulo,
+  valor,
+  percentual,
+  cor,
+  detalhe,
+}: {
+  rotulo: string
+  valor: string
+  percentual: number
+  cor: string
+  detalhe?: string
+}) {
+  return (
+    <div>
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="truncate text-sm text-text" title={rotulo}>
+          {rotulo}
+        </p>
+        <p className="shrink-0 text-sm font-semibold tabular-nums" style={{ color: cor }}>
+          {valor}
+        </p>
+      </div>
+      <div className="mt-2 h-3 overflow-hidden rounded-full" style={{ background: "var(--track)" }}>
+        <div
+          className="h-full rounded-full transition-[width] duration-700"
+          style={{ width: `${Math.min(100, Math.max(0, percentual))}%`, background: cor }}
+        />
+      </div>
+      {detalhe && <p className="mt-1.5 text-xs text-muted">{detalhe}</p>}
+    </div>
+  )
 }
 
 /**
@@ -36,6 +74,8 @@ export function CartaoIA({
   contasPagas,
   totalContas,
   investimentos,
+  patrimonio,
+  contasFixasPagas,
   meta,
   formata,
 }: Props) {
@@ -44,6 +84,7 @@ export function CartaoIA({
 
   const faltamPagar = totalContas - contasPagas
   const progressoMeta = meta && meta.alvo > 0 ? Math.min(100, Math.round((meta.atual / meta.alvo) * 100)) : 0
+  const fatiaInvestida = patrimonio > 0 ? Math.round((investimentos / patrimonio) * 100) : 0
 
   const frases = [
     sobrou >= 0 ? `Sobraram ${formata(sobrou)} no seu mês.` : `Seu mês está ${formata(Math.abs(sobrou))} no vermelho.`,
@@ -109,50 +150,45 @@ export function CartaoIA({
             {frases[indice]}
           </p>
 
-          {/* Uma barra grande e as demais informações abaixo, do mesmo
-              tamanho entre si. A meta fica em destaque porque é a única que
-              mede um caminho até algum lugar — as outras duas são fotografias
-              do mês, e nivelá-las com a meta achataria a diferença. */}
-          {meta && (
-            <div className="mt-5">
-              <div className="flex items-baseline justify-between gap-3">
-                <p className="truncate text-sm text-text" title={meta.titulo}>
-                  {meta.titulo}
-                </p>
-                <p className="shrink-0 text-sm font-semibold tabular-nums" style={{ color: "var(--income)" }}>
-                  {progressoMeta}%
-                </p>
-              </div>
-              <div className="mt-2 h-3 overflow-hidden rounded-full" style={{ background: "var(--track)" }}>
-                <div
-                  className="h-full rounded-full transition-[width] duration-700"
-                  style={{ width: `${progressoMeta}%`, background: "var(--income)" }}
-                />
-              </div>
-              <p className="mt-1.5 text-xs text-muted">
-                {formata(meta.atual)} de {formata(meta.alvo)}
-              </p>
-            </div>
-          )}
+          {/* Tudo em barra, nenhum cartao. As tres medem coisas diferentes, e a
+              barra deixa isso explicito: quanto do caminho ja foi andado.
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-xl border border-border/60 px-4 py-3" style={{ background: "var(--surface)" }}>
-              <p className="text-xs text-muted">Investimentos</p>
-              <p className="mt-1 text-base font-semibold tabular-nums" style={{ color: "var(--income)" }}>
-                {formata(investimentos)}
-              </p>
-            </div>
+              Investimentos nao tem alvo proprio, entao a barra mostra a fatia
+              do patrimonio que esta rendendo - a unica leitura de progresso
+              honesta para esse numero. Inventar uma meta de investimento seria
+              atribuir a pessoa um objetivo que ela nunca definiu. */}
+          <div className="mt-5 flex flex-col gap-4">
+            {meta && (
+              <Barra
+                rotulo={meta.titulo}
+                valor={`${progressoMeta}%`}
+                percentual={progressoMeta}
+                cor="var(--income)"
+                detalhe={`${formata(meta.atual)} de ${formata(meta.alvo)}`}
+              />
+            )}
 
-            <div className="rounded-xl border border-border/60 px-4 py-3" style={{ background: "var(--surface)" }}>
-              <p className="text-xs text-muted">Contas fixas</p>
-              <p className="mt-1 text-base font-semibold text-text">
-                {totalContas === 0
-                  ? "nenhuma cadastrada"
-                  : faltamPagar > 0
-                    ? `faltam ${faltamPagar} de ${totalContas}`
-                    : "todas pagas"}
-              </p>
-            </div>
+            <Barra
+              rotulo="Investido"
+              valor={formata(investimentos)}
+              percentual={fatiaInvestida}
+              cor="var(--primary)"
+              detalhe={
+                patrimonio > 0
+                  ? `${fatiaInvestida}% do seu patrimônio de ${formata(patrimonio)}`
+                  : "sem patrimônio registrado neste mês"
+              }
+            />
+
+            {totalContas > 0 && (
+              <Barra
+                rotulo="Contas fixas pagas"
+                valor={`${contasPagas} de ${totalContas}`}
+                percentual={(contasPagas / totalContas) * 100}
+                cor="var(--success)"
+                detalhe={faltamPagar > 0 ? `faltam ${formata(contasFixas - contasFixasPagas)}` : "tudo em dia neste mês"}
+              />
+            )}
           </div>
 
           <Link

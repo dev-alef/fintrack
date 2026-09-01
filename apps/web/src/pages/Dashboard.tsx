@@ -232,6 +232,8 @@ export default function Dashboard() {
             contasPagas={bills.filter((b) => b.paid).length}
             totalContas={bills.length}
             investimentos={investments}
+            patrimonio={patrimonio}
+            contasFixasPagas={totalPaid}
             meta={
               metaEmFoco
                 ? {
