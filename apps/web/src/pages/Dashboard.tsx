@@ -33,6 +33,7 @@ interface Card { id: string; name: string; due_day: number; color: string }
 interface Bill { id: string; name: string; amount: string; due_day: number; paid?: boolean }
 interface CardExpense { card_id: string; card_name: string; color: string; amount: string }
 interface Config { estimated_income: string; balance: string; investments: string }
+interface Goal { id: string; title: string; target_amount: string; current_amount: string; progress_pct: string }
 interface AnnualCard { id: string; name: string; color: string; annual_total: string; monthly_breakdown?: { month: number; amount: string }[] }
 
 export default function Dashboard() {
@@ -58,6 +59,8 @@ export default function Dashboard() {
 
   const prevMonth = month === 1 ? 12 : month - 1
   const prevYear = month === 1 ? year - 1 : year
+  const { data: goals = [] } = useQuery<Goal[]>({ queryKey: ["goals"], queryFn: () => api.get("/goals").then((r) => r.data) })
+
   const { data: prevConfig } = useQuery<Config>({ queryKey: ["config", prevMonth, prevYear], queryFn: () => api.get(`/finance/config?month=${prevMonth}&year=${prevYear}`).then((r) => r.data) })
 
   const { data: chartData, isLoading: chartLoading, isError: chartError } = useSummary(String(month), String(year))
@@ -96,6 +99,13 @@ export default function Dashboard() {
       saiu: Number(linha?.total_fixed_bills || 0) + Number(linha?.total_card_expenses || 0),
     }
   })
+
+  // A meta em destaque e a mais adiantada que AINDA nao fechou: e a proxima a
+  // ser alcancada, e portanto a que vale comentar. Mostrar a de menor progresso
+  // seria desanimador, e a primeira da lista seria arbitraria.
+  const metaEmFoco =
+    [...goals].filter((g) => Number(g.progress_pct) < 100).sort((a, b) => Number(b.progress_pct) - Number(a.progress_pct))[0] ??
+    goals[0]
 
   const byCategory = chartData?.byCategory || []
   const fatiasPorCategoria = byCategory.map((c: { category: string; total: string }) => ({
@@ -209,6 +219,16 @@ export default function Dashboard() {
             faturas={totalCards}
             contasPagas={bills.filter((b) => b.paid).length}
             totalContas={bills.length}
+            investimentos={investments}
+            meta={
+              metaEmFoco
+                ? {
+                    titulo: metaEmFoco.title,
+                    atual: Number(metaEmFoco.current_amount),
+                    alvo: Number(metaEmFoco.target_amount),
+                  }
+                : undefined
+            }
             formata={fmt}
           />
         </>

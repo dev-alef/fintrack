@@ -7,12 +7,16 @@ const KEYFRAMES = `
 @keyframes ia-ring {0%{transform:scale(.86);opacity:.4}100%{transform:scale(1.6);opacity:0}}
 `
 
+type Meta = { titulo: string; atual: number; alvo: number }
+
 type Props = {
   sobrou: number
   contasFixas: number
   faturas: number
   contasPagas: number
   totalContas: number
+  investimentos: number
+  meta?: Meta
   formata: (valor: number) => string
 }
 
@@ -25,15 +29,30 @@ type Props = {
  * repeti-los aqui seria inventar um número na cara de quem sabe qual é o dele.
  * Quem produz análise de verdade é a página de Insights, para onde o botão leva.
  */
-export function CartaoIA({ sobrou, contasFixas, faturas, contasPagas, totalContas, formata }: Props) {
+export function CartaoIA({
+  sobrou,
+  contasFixas,
+  faturas,
+  contasPagas,
+  totalContas,
+  investimentos,
+  meta,
+  formata,
+}: Props) {
   const [indice, setIndice] = useState(0)
   const [reduzido, setReduzido] = useState(false)
 
+  const faltamPagar = totalContas - contasPagas
+  const progressoMeta = meta && meta.alvo > 0 ? Math.min(100, Math.round((meta.atual / meta.alvo) * 100)) : 0
+
   const frases = [
-    sobrou >= 0
-      ? `Sobraram ${formata(sobrou)} no seu mês.`
-      : `Seu mês está ${formata(Math.abs(sobrou))} no vermelho.`,
-    `Suas contas fixas somam ${formata(contasFixas)}.`,
+    sobrou >= 0 ? `Sobraram ${formata(sobrou)} no seu mês.` : `Seu mês está ${formata(Math.abs(sobrou))} no vermelho.`,
+    faltamPagar > 0
+      ? `Faltam ${faltamPagar} ${faltamPagar === 1 ? "conta fixa" : "contas fixas"} para pagar.`
+      : totalContas > 0
+        ? "Todas as contas fixas do mês estão pagas."
+        : `Suas contas fixas somam ${formata(contasFixas)}.`,
+    meta ? `${meta.titulo} está em ${progressoMeta}% da sua meta.` : `Você tem ${formata(investimentos)} investidos.`,
     faturas > 0 ? `As faturas dos cartões estão em ${formata(faturas)}.` : "Nenhuma fatura lançada neste mês.",
   ]
 
@@ -52,14 +71,10 @@ export function CartaoIA({ sobrou, contasFixas, faturas, contasPagas, totalConta
     return () => window.clearInterval(t)
   }, [reduzido, frases.length])
 
-  const progresso = totalContas > 0 ? Math.round((contasPagas / totalContas) * 100) : 0
   const play = reduzido ? "paused" : "running"
 
   return (
-    <div
-      className="rounded-2xl border border-border p-6"
-      style={{ background: "var(--ai-card)" }}
-    >
+    <div className="rounded-2xl border border-border p-6" style={{ background: "var(--ai-card)" }}>
       <style>{KEYFRAMES}</style>
 
       <div className="flex items-start gap-5">
@@ -94,26 +109,50 @@ export function CartaoIA({ sobrou, contasFixas, faturas, contasPagas, totalConta
             {frases[indice]}
           </p>
 
-          {totalContas > 0 && (
-            <div className="mt-4">
-              <div className="flex items-center justify-between text-xs text-muted">
-                <span>Contas fixas pagas</span>
-                <span>
-                  {contasPagas} de {totalContas}
-                </span>
+          {/* Os três números que a frase comenta, sempre visíveis. Sem eles a
+              rotação esconderia dois terços da informação a cada instante. */}
+          <div className="mt-5 grid gap-4 sm:grid-cols-3">
+            {meta && (
+              <div>
+                <p className="truncate text-xs text-muted" title={meta.titulo}>
+                  {meta.titulo}
+                </p>
+                <p className="mt-0.5 text-sm font-semibold tabular-nums text-text">{progressoMeta}%</p>
+                <div className="mt-1.5 h-1.5 overflow-hidden rounded-full" style={{ background: "var(--track)" }}>
+                  <div
+                    className="h-full rounded-full transition-[width] duration-500"
+                    style={{ width: `${progressoMeta}%`, background: "var(--income)" }}
+                  />
+                </div>
               </div>
-              <div className="mt-1.5 h-2 overflow-hidden rounded-full" style={{ background: "var(--track)" }}>
-                <div
-                  className="h-full rounded-full transition-[width] duration-500"
-                  style={{ width: `${progresso}%`, background: "var(--success)" }}
-                />
-              </div>
+            )}
+
+            <div>
+              <p className="text-xs text-muted">Investimentos</p>
+              <p className="mt-0.5 text-sm font-semibold tabular-nums" style={{ color: "var(--income)" }}>
+                {formata(investimentos)}
+              </p>
             </div>
-          )}
+
+            {totalContas > 0 && (
+              <div>
+                <p className="text-xs text-muted">Contas fixas</p>
+                <p className="mt-0.5 text-sm font-semibold tabular-nums text-text">
+                  {faltamPagar > 0 ? `faltam ${faltamPagar}` : "todas pagas"}
+                </p>
+                <div className="mt-1.5 h-1.5 overflow-hidden rounded-full" style={{ background: "var(--track)" }}>
+                  <div
+                    className="h-full rounded-full transition-[width] duration-500"
+                    style={{ width: `${(contasPagas / totalContas) * 100}%`, background: "var(--success)" }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
 
           <Link
             to="/insights"
-            className="mt-4 inline-flex items-center rounded-full px-4 py-2 text-sm font-medium transition-colors"
+            className="mt-5 inline-flex items-center rounded-full px-4 py-2 text-sm font-medium transition-colors"
             style={{ background: "var(--primary)", color: "var(--primary-fg)" }}
           >
             Ver o plano da IA
