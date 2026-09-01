@@ -1,6 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Login from './pages/Login'
-import Register from './pages/Register'
 import ConfirmeSeuEmail from './pages/ConfirmeSeuEmail'
 import EmailConfirmado from './pages/EmailConfirmado'
 import EsqueciSenha from './pages/EsqueciSenha'
@@ -19,7 +18,9 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
+      {/* Mesma tela: o desenho juntou entrar e criar conta em abas. A rota
+          antiga continua valendo para quem tem link ou memoria dela. */}
+      <Route path="/register" element={<Login />} />
       {/* Publicas de proposito: quem acabou de se cadastrar ainda nao tem sessao,
           e o link do e-mail costuma ser aberto em outro navegador. */}
       <Route path="/confirme-seu-email" element={<ConfirmeSeuEmail />} />

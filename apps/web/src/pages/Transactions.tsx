@@ -128,7 +128,7 @@ export default function Transactions() {
               {data?.data?.map((t: { id: string; title: string; amount: string; type: string; date: string; category_name: string }) => (
                 <TableRow key={t.id}>
                   <TableCell className="w-10">
-                    <span className={t.type === 'income' ? 'text-success' : 'text-danger'} aria-hidden="true">
+                    <span className={t.type === 'income' ? 'text-income' : 'text-expense'} aria-hidden="true">
                       {t.type === 'income' ? <TrendingUp className="h-5 w-5" /> : <TrendingDown className="h-5 w-5" />}
                     </span>
                   </TableCell>
@@ -138,7 +138,7 @@ export default function Transactions() {
                       {new Date(t.date).toLocaleDateString('pt-BR')}{t.category_name ? ` · ${t.category_name}` : ''}
                     </p>
                   </TableCell>
-                  <TableCell className={`text-right font-bold ${t.type === 'income' ? 'text-success' : 'text-danger'}`}>
+                  <TableCell className={`text-right font-bold ${t.type === 'income' ? 'text-income' : 'text-expense'}`}>
                     {t.type === 'expense' ? '-' : '+'}{fmt(t.amount)}
                   </TableCell>
                   <TableCell className="w-10 text-right">

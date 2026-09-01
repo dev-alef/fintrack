@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from "react-router-dom"
-import { LayoutDashboard, ArrowLeftRight, TrendingUp, Target, Sparkles, LogOut, X, Settings } from "lucide-react"
+import { LayoutDashboard, ArrowLeftRight, TrendingUp, Target, Sparkles, LogOut, X, Settings, LifeBuoy } from "lucide-react"
 import { useAuthStore } from "../../store/auth.store"
 import { signOut } from "../../lib/auth-client"
 import { Logo } from "../logo"
@@ -77,6 +77,18 @@ export default function Sidebar({ isMobile = false, isOpen = false, onClose }: S
       </nav>
 
       <div className="mt-auto flex flex-col gap-4 pt-6">
+        {/* Fora do <nav> de propósito: suporte não é uma area do app, e no meio
+            dos itens principais competiria com o uso do dia a dia. Aqui fica a
+            um clique de qualquer tela para quem travou em alguma. */}
+        <NavLink
+          to="/configuracoes#suporte"
+          onClick={isMobile ? onClose : undefined}
+          className="flex items-center gap-3 rounded-lg px-3.5 py-2.5 text-sm text-muted hover:bg-surface-2 hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        >
+          <LifeBuoy className="h-4 w-4 shrink-0" aria-hidden="true" />
+          Suporte
+        </NavLink>
+
         <div className="flex justify-start">
           <ThemeToggle />
         </div>

@@ -29,6 +29,8 @@ type Props = {
   label: string
   disabled?: boolean
   onError: (message: string) => void
+  /** Permite ao login novo trocar o formato do botao sem duplicar a logica do OAuth. */
+  className?: string
 }
 
 /**
@@ -37,7 +39,7 @@ type Props = {
  * que ja tem conta cai no mesmo usuario, entao nao existe "cadastrar" separado
  * de "entrar" - so o texto do botao muda.
  */
-export function GoogleButton({ label, disabled, onError }: Props) {
+export function GoogleButton({ label, disabled, onError, className }: Props) {
   const [loading, setLoading] = useState(false)
 
   async function handleClick() {
@@ -76,7 +78,7 @@ export function GoogleButton({ label, disabled, onError }: Props) {
       variant="outline"
       onClick={handleClick}
       disabled={disabled || loading}
-      className="w-full gap-2"
+      className={className ?? "w-full gap-2"}
     >
       <GoogleIcon />
       {loading ? "Redirecionando..." : label}

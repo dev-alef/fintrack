@@ -1,28 +1,93 @@
 @import "tailwindcss";
 
-[data-theme="dark"] {
-  --bg:#0B0D14; --surface:#141822; --surface-2:#1C2130; --border:#262C3B;
-  --text:#F2F4F8; --text-2:#9BA3B4; --text-3:#666E80;
-  --primary:#7C6BFF; --primary-hover:#9284FF; --primary-fg:#FFFFFF;
-  --success:#34D399; --danger:#F87171; --warning:#FBBF24;
-  --ring:rgba(124,107,255,.45); --shadow:0 4px 24px rgba(0,0,0,.4);
-  --brand-grad:linear-gradient(150deg,#231F52 0%,#0E1020 72%);
-}
+/* Paleta Organic: creme, terracota e salvia.
+ *
+ * EXCECAO deliberada: dinheiro. --income e --expense continuam verde e vermelho
+ * (dessaturados para conviver com o creme) porque a leitura precisa ser
+ * instantanea - num painel financeiro a pessoa bate o olho para saber se o mes
+ * fechou bem, e salvia contra marrom obriga a ler o sinal. A regra ja estava
+ * escrita no design system anterior: "semantica de dinheiro nao muda com
+ * decoracao".
+ *
+ * --success e --danger ficam para ESTADO de interface (confirmacao, erro), e
+ * --income/--expense para VALOR. Antes eram a mesma coisa, e por isso a troca
+ * de paleta levou o vermelho da despesa junto.
+ *
+ * Substitui o indigo anterior sem renomear token nenhum - toda tela que usa
+ * bg-surface, text-muted ou border-border acompanha sozinha. Foi o que tornou
+ * a troca de identidade barata: as cores literais nunca chegaram ao JSX.
+ *
+ * Duas vozes de cor: terracota como acento, salvia (--success) para o que e
+ * positivo - dinheiro guardado, receita, economia.
+ */
 [data-theme="light"] {
-  --bg:#F7F8FB; --surface:#FFFFFF; --surface-2:#F0F2F7; --border:#E2E6EF;
-  --text:#131722; --text-2:#5A6377; --text-3:#8A93A6;
-  --primary:#5B4BE8; --primary-hover:#4A3AD4; --primary-fg:#FFFFFF;
-  --success:#0F9D6E; --danger:#DC2F3E; --warning:#B7791F;
-  --ring:rgba(91,75,232,.35); --shadow:0 4px 20px rgba(19,23,34,.08);
-  --brand-grad:linear-gradient(150deg,#5B4BE8 0%,#3A2FB0 72%);
+  --bg:#f7eedd; --bg-2:#efe0c6; --surface:#fbf5ea; --surface-2:#f7e7d8; --border:#ded1b8;
+  --text:#201e1d; --text-2:#6b6357; --text-3:#8d8474;
+  --primary:#c67139; --primary-hover:#b05f2d; --primary-active:#8f4d24; --primary-fg:#f5ead8;
+  --success:#7a8a5e; --danger:#8a2626; --warning:#b0771f;
+  --income:#2f7d5a; --expense:#8a2626;
+  --ring:#c67139; --shadow:0 4px 20px rgba(32,30,29,.08);
+  --brand-grad:linear-gradient(150deg,#c67139 0%,#8f4d24 72%);
+  /* Papeis que so o design novo usa */
+  --rail:#f2e6cf; --field:#ffffff; --link:#8f4d24; --track:#e5d7bd;
+  --ai-card:#f7e7d8; --ai-ring:#e6b992;
+  --orb:radial-gradient(circle at 34% 30%, #d89a67, #8f4d24);
+  --blob-1:rgba(198,113,57,.16); --blob-2:rgba(122,138,94,.16);
+  --cat-1:#c67139; --cat-2:#7a8a5e; --cat-3:#d89a67; --cat-4:#a8b389; --cat-5:#8f4d24; --cat-6:#c3ceac;
+}
+[data-theme="dark"] {
+  --bg:#1c1a18; --bg-2:#171614; --surface:#2b2825; --surface-2:#39332c; --border:#413b34;
+  --text:#f5ead8; --text-2:#b7ab98; --text-3:#8d8474;
+  --primary:#d89a67; --primary-hover:#e6b992; --primary-active:#f0d3ba; --primary-fg:#1c1a17;
+  --success:#c3ceac; --danger:#e08a86; --warning:#e0b45f;
+  --income:#8fbf9f; --expense:#e08a86;
+  --ring:#d89a67; --shadow:0 4px 24px rgba(0,0,0,.4);
+  --brand-grad:linear-gradient(150deg,#3a2f26 0%,#1c1a18 72%);
+  /* No escuro, erro e link precisam de tons CLAROS da rampa. Usar 700/800 aqui
+     foi um bug real registrado no handoff: o texto some no fundo. */
+  --rail:#221f1c; --field:#3a352f; --link:#e6b992; --track:#3b352e;
+  --ai-card:#332e28; --ai-ring:#8f4d24;
+  --orb:radial-gradient(circle at 34% 30%, #e6b992, #b05f2d);
+  --blob-1:rgba(216,154,103,.12); --blob-2:rgba(195,206,172,.10);
+  --cat-1:#d89a67; --cat-2:#a8b389; --cat-3:#e6b992; --cat-4:#c3ceac; --cat-5:#b05f2d; --cat-6:#8b9a70;
+}
+/* Tech: terminal verde sobre preto.
+ *
+ * Convive com o Organic sem contradiza-lo porque a regra do dinheiro vale nos
+ * quatro temas - receita verde, despesa vermelha.
+ *
+ * Aqui isso criava uma colisao: verde e o acento da interface E a cor de
+ * receita, entao um link verde pareceria um valor positivo. Por isso o --link
+ * e ciano, que em terminal ja e a cor de informacao. O acento continua verde,
+ * mas so aparece em botao preenchido, onde a forma resolve a leitura.
+ */
+[data-theme="tech"] {
+  --bg:#0a0e0a; --bg-2:#060906; --surface:#111811; --surface-2:#182219; --border:#1c2a1f;
+  --text:#d6f5df; --text-2:#8aa894; --text-3:#5f7a68;
+  --primary:#3ddc84; --primary-hover:#5aeb9b; --primary-active:#2bbf6d; --primary-fg:#06110a;
+  --success:#3ddc84; --danger:#ff6b6b; --warning:#e3b341;
+  --income:#4ade80; --expense:#ff6b6b;
+  --ring:#3ddc84; --shadow:0 4px 24px rgba(0,0,0,.55);
+  --brand-grad:linear-gradient(150deg,#14301f 0%,#0a0e0a 72%);
+  --rail:#0c110c; --field:#0f150f; --link:#38bdf8; --track:#1c2a1f;
+  --ai-card:#101a14; --ai-ring:#1f6f47;
+  --orb:radial-gradient(circle at 34% 30%, #5aeb9b, #12603a);
+  --blob-1:rgba(61,220,132,.10); --blob-2:rgba(56,189,248,.08);
+  --cat-1:#3ddc84; --cat-2:#38bdf8; --cat-3:#e3b341; --cat-4:#a78bfa; --cat-5:#ff6b6b; --cat-6:#5eead4;
 }
 [data-theme="pink"] {
-  --bg:#FDF8FA; --surface:#FFFFFF; --surface-2:#F9F0F4; --border:#EEDCE4;
-  --text:#33202B; --text-2:#7A6270; --text-3:#A8919C;
-  --primary:#B25580; --primary-hover:#9A4670; --primary-fg:#FFFFFF;
-  --success:#12946B; --danger:#CC4A4A; --warning:#B0771F;
-  --ring:rgba(178,85,128,.30); --shadow:0 4px 20px rgba(120,70,95,.09);
-  --brand-grad:linear-gradient(150deg,#9C5378 0%,#5E3049 72%);
+  --bg:#fbf0ef; --bg-2:#f2dcdd; --surface:#fdf8f7; --surface-2:#f8e7ea; --border:#e8cdd0;
+  --text:#33232a; --text-2:#836b72; --text-3:#a8919c;
+  --primary:#b3697c; --primary-hover:#9d5769; --primary-active:#834657; --primary-fg:#fff8f8;
+  --success:#6f8a72; --danger:#9c2f30; --warning:#a87a4a;
+  --income:#3d6e52; --expense:#9c2f30;
+  --ring:#b3697c; --shadow:0 4px 20px rgba(120,70,95,.09);
+  --brand-grad:linear-gradient(150deg,#b3697c 0%,#834657 72%);
+  --rail:#f6e2e5; --field:#ffffff; --link:#9d5769; --track:#f0dcdf;
+  --ai-card:#f8e7ea; --ai-ring:#eccfd6;
+  --orb:radial-gradient(circle at 34% 30%, #d998a6, #a45c6f);
+  --blob-1:rgba(179,105,124,.14); --blob-2:rgba(111,138,114,.12);
+  --cat-1:#b3697c; --cat-2:#6f8a72; --cat-3:#d29aa6; --cat-4:#9db08f; --cat-5:#834657; --cat-6:#e3c3cc;
 }
 
 @theme {
@@ -49,6 +114,32 @@
   --color-card: var(--surface);
   --color-card-foreground: var(--text);
   --color-input: var(--border);
+  --color-bg-2: var(--bg-2);
+  --color-rail: var(--rail);
+  --color-field: var(--field);
+  --color-link: var(--link);
+  --color-track: var(--track);
+  --color-ai-card: var(--ai-card);
+  --color-primary-active: var(--primary-active);
+  --color-income: var(--income);
+  --color-expense: var(--expense);
+  --font-heading: Caprasimo, Georgia, serif;
+  --font-body: Figtree, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+
+/* A fonte de titulo do tema Tech.
+ *
+ * Precisa vir DEPOIS do @theme: o Tailwind emite as variaveis dele em :root,
+ * que tem a mesma especificidade de [data-theme], e nesse empate vence quem
+ * aparece por ultimo. Declarada la em cima, esta linha nao teria efeito.
+ *
+ * Monoespacada do sistema, sem download: Caprasimo num tema de terminal
+ * entregaria a cor certa e a letra errada, e o conjunto continuaria lendo como
+ * "Organic a noite".
+ */
+[data-theme="tech"] {
+  --font-heading: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
 }
 
 * {
@@ -63,7 +154,7 @@ html {
 body {
   margin: 0;
   padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: Figtree, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background: var(--bg);
   color: var(--text);
   -webkit-font-smoothing: antialiased;

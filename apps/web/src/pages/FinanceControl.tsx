@@ -16,7 +16,9 @@ const MONTHS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "
 // decoracao de tema: o valor vai para credit_cards.color, que e VARCHAR(7).
 // Precisa ser hex e nao pode virar token - "var(--primary)" nao cabe na coluna
 // e faria o cartao mudar de cor junto com o tema, perdendo a distincao visual.
-const CARD_COLORS = ["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899"]
+// Hex literal, nao token: este valor vira credit_cards.color, VARCHAR(7) no
+// banco - "var(--cat-1)" tem 12 caracteres e o INSERT falharia.
+const CARD_COLORS = ["#c67139", "#7a8a5e", "#d89a67", "#a8b389", "#8f4d24", "#c3ceac", "#b05f2d"]
 
 interface Card { id: string; name: string; due_day: number; color: string }
 interface Bill { id: string; name: string; amount: string; due_day: number; paid?: boolean; payment_id?: string }
@@ -29,7 +31,7 @@ export default function FinanceControl() {
   const [month, setMonth] = useState(now.getMonth() + 1)
   const [year, setYear] = useState(now.getFullYear())
   const [editingCard, setEditingCard] = useState<Card | null>(null)
-  const [newCard, setNewCard] = useState({ name: "", due_day: "", color: "#6366f1" })
+  const [newCard, setNewCard] = useState({ name: "", due_day: "", color: "#c67139" })
   const [newBill, setNewBill] = useState({ name: "", amount: "", due_day: "" })
   const [editingBill, setEditingBill] = useState<Bill | null>(null)
   const [showNewCard, setShowNewCard] = useState(false)
@@ -49,7 +51,7 @@ export default function FinanceControl() {
   const prevYear = month === 1 ? year - 1 : year
   const { data: prevConfig } = useQuery<Config>({ queryKey: ["config", prevMonth, prevYear], queryFn: () => api.get(`/finance/config?month=${prevMonth}&year=${prevYear}`).then((r) => r.data) })
 
-  const createCard = useMutation({ mutationFn: (d: unknown) => api.post("/finance/cards", d), onSuccess: () => { inv(["cards"]); setShowNewCard(false); setNewCard({ name: "", due_day: "", color: "#6366f1" }) } })
+  const createCard = useMutation({ mutationFn: (d: unknown) => api.post("/finance/cards", d), onSuccess: () => { inv(["cards"]); setShowNewCard(false); setNewCard({ name: "", due_day: "", color: "#c67139" }) } })
   const updateCard = useMutation({ mutationFn: ({ id, ...d }: { id: string; name?: string; due_day?: number; color?: string }) => api.put(`/finance/cards/${id}`, d), onSuccess: () => { inv(["cards"]); setEditingCard(null) } })
   const deleteCard = useMutation({ mutationFn: (id: string) => api.delete(`/finance/cards/${id}`), onSuccess: () => inv(["cards", "expenses", "annual"]) })
   const createBill = useMutation({ mutationFn: (d: unknown) => api.post("/finance/bills", d), onSuccess: () => { inv(["payments", "annualSummary"]); setShowNewBill(false); setNewBill({ name: "", amount: "", due_day: "" }) } })
@@ -114,13 +116,13 @@ export default function FinanceControl() {
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {[
-            { label: "Receita estimada", value: estimatedIncome, tone: "text-success" as const },
+            { label: "Receita estimada", value: estimatedIncome, tone: "text-income" as const },
             { label: "Mês anterior", value: Number(prevConfig?.estimated_income || 0), tone: "text-primary" as const },
             { label: "Total contas fixas", value: totalBills, tone: "text-warning" as const },
-            { label: "Total faturas", value: totalCards, tone: "text-danger" as const },
-            { label: "Sobrou no mês", value: leftover, tone: leftover >= 0 ? "text-success" as const : "text-danger" as const },
+            { label: "Total faturas", value: totalCards, tone: "text-expense" as const },
+            { label: "Sobrou no mês", value: leftover, tone: leftover >= 0 ? "text-income" as const : "text-expense" as const },
             { label: "Saldo atual", value: balance, tone: "text-primary" as const },
-            { label: "Investimentos", value: investments, tone: "text-success" as const },
+            { label: "Investimentos", value: investments, tone: "text-income" as const },
           ].map((item) => (
             <Card key={item.label}>
               <CardContent className="p-4">
@@ -243,7 +245,7 @@ export default function FinanceControl() {
               {totalCards > 0 && (
                 <div className="mt-1 flex justify-between border-t border-border pt-2.5">
                   <span className="text-sm text-muted">Total faturas</span>
-                  <span className="text-sm font-bold text-danger">{fmt(totalCards)}</span>
+                  <span className="text-sm font-bold text-expense">{fmt(totalCards)}</span>
                 </div>
               )}
             </div>
@@ -343,9 +345,9 @@ export default function FinanceControl() {
                 return (
                   <TableRow key={m} className={isCurrentMonth ? "bg-primary/10" : ""}>
                     <TableCell className={cn(isCurrentMonth ? "font-bold text-primary" : "text-text")}>{m}</TableCell>
-                    <TableCell className="text-right text-success">{income > 0 ? fmt(income) : "-"}</TableCell>
-                    <TableCell className="text-right text-danger">{gastos > 0 ? fmt(gastos) : "-"}</TableCell>
-                    <TableCell className={cn("text-right", sob >= 0 ? "text-success" : "text-danger")}>{income > 0 ? fmt(sob) : "-"}</TableCell>
+                    <TableCell className="text-right text-income">{income > 0 ? fmt(income) : "-"}</TableCell>
+                    <TableCell className="text-right text-expense">{gastos > 0 ? fmt(gastos) : "-"}</TableCell>
+                    <TableCell className={cn("text-right", sob >= 0 ? "text-income" : "text-expense")}>{income > 0 ? fmt(sob) : "-"}</TableCell>
                     {annual.map((c: AnnualCard) => {
                       const cardRow = (c as unknown as { monthly_breakdown?: { month: number; amount: string }[] }).monthly_breakdown?.find((b) => b.month === i + 1)
                       return <TableCell key={c.id} className="text-right text-muted">{cardRow ? fmt(cardRow.amount) : "-"}</TableCell>
@@ -355,9 +357,9 @@ export default function FinanceControl() {
               })}
               <TableRow className="border-t-2 border-border font-bold">
                 <TableCell className="text-text">Total</TableCell>
-                <TableCell className="text-right text-success">{fmt(annualTotal)}</TableCell>
-                <TableCell className="text-right text-danger">{fmt(annualBills)}</TableCell>
-                <TableCell className={cn("text-right", annualTotal - annualBills >= 0 ? "text-success" : "text-danger")}>{fmt(annualTotal - annualBills)}</TableCell>
+                <TableCell className="text-right text-income">{fmt(annualTotal)}</TableCell>
+                <TableCell className="text-right text-expense">{fmt(annualBills)}</TableCell>
+                <TableCell className={cn("text-right", annualTotal - annualBills >= 0 ? "text-income" : "text-expense")}>{fmt(annualTotal - annualBills)}</TableCell>
                 {annual.map((c: AnnualCard) => (
                   <TableCell key={c.id} className="text-right" style={{ color: c.color }}>
                     {fmt(c.annual_total)}

@@ -1,4 +1,4 @@
-import { Sun, Moon, Flower2 } from "lucide-react"
+import { Sun, Moon, Flower2, Terminal } from "lucide-react"
 import { useTheme, type Theme } from "@/components/theme-provider"
 import { cn } from "@/lib/utils"
 
@@ -6,6 +6,7 @@ const themes: { value: Theme; label: string; icon: typeof Sun }[] = [
   { value: "light", label: "Tema claro", icon: Sun },
   { value: "dark", label: "Tema escuro", icon: Moon },
   { value: "pink", label: "Tema rosa", icon: Flower2 },
+  { value: "tech", label: "Tema terminal", icon: Terminal },
 ]
 
 export function ThemeToggle({ className }: { className?: string }) {
