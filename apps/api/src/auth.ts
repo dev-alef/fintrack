@@ -5,6 +5,7 @@ import { twoFactor } from 'better-auth/plugins'
 import pool from './db/client'
 import { enviarEmail } from './email'
 import { emailDeVerificacao, emailDeRecuperacao } from './emails/templates'
+import { avisaSeAcessoNovo } from './acesso-novo'
 
 const googleClientId = process.env.GOOGLE_CLIENT_ID
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET
@@ -115,6 +116,22 @@ export const auth = betterAuth({
   session: {
     expiresIn: 60 * 60 * 24 * 7,
     updateAge: 60 * 60 * 24,
+  },
+
+  databaseHooks: {
+    session: {
+      create: {
+        // Depois, nao antes: o aviso compara com as sessoes ja existentes, e o
+        // gancho `before` rodaria com a sessao nova ainda fora da tabela.
+        //
+        // Sem await de proposito. O e-mail leva centenas de milissegundos, e
+        // segurar o login por causa dele faria a tela parecer travada em toda
+        // entrada de dispositivo novo. A funcao trata os proprios erros.
+        after: async (sessao) => {
+          void avisaSeAcessoNovo(sessao)
+        },
+      },
+    },
   },
 
   // A sessao viaja em cookie httpOnly entre dominios diferentes (Vercel no
