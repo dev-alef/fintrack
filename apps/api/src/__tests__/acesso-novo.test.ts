@@ -88,6 +88,18 @@ describe('Aviso de acesso novo', () => {
     expect(avisos()).toHaveLength(0)
   })
 
+  it('atualizar o navegador nao conta como dispositivo novo', async () => {
+    const usuario = await criaConta(NOTEBOOK)
+
+    // Mesmo aparelho, Chrome atualizado de 120 para 121.
+    await entra(usuario, NOTEBOOK.replace('Chrome/120.0', 'Chrome/121.0'))
+
+    // Sem ignorar os numeros do user-agent, cada atualizacao do navegador ou
+    // do sistema viraria alerta de invasao. Um falso positivo a cada poucas
+    // semanas e o caminho mais curto para a pessoa parar de ler o aviso.
+    expect(avisos()).toHaveLength(0)
+  })
+
   it('descreve o dispositivo de forma reconhecivel', () => {
     expect(descreveDispositivo(CELULAR)).toBe('Safari em iPhone ou iPad')
     expect(descreveDispositivo(NOTEBOOK)).toBe('Chrome em Windows')

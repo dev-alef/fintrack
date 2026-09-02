@@ -24,12 +24,25 @@ export async function avisaSeAcessoNovo(sessao: {
   try {
     if (!sessao.userAgent) return
 
-    // "Conhecido" e ter havido outra sessao com o mesmo user-agent. O IP fica
-    // de fora do criterio de proposito: em rede movel ele muda o tempo todo, e
+    // "Conhecido" e ter havido outra sessao no mesmo dispositivo. O IP fica de
+    // fora do criterio de proposito: em rede movel ele muda o tempo todo, e
     // usa-lo faria a pessoa receber aviso ao trocar de wi-fi para 4G.
+    //
+    // A comparacao ignora numeros no user-agent. Sem isso, atualizar o
+    // navegador (Chrome/120 -> Chrome/121) ou o sistema (iPhone OS 17_0 ->
+    // 17_1) viraria "dispositivo novo", e a pessoa receberia alerta de invasao
+    // a cada poucas semanas - o tipo de falso positivo que faz o alerta de
+    // verdade ser ignorado.
+    //
+    // O custo e que dois aparelhos com o mesmo navegador e sistema passam a se
+    // confundir. E o lado certo do erro: alerta a menos incomoda menos que
+    // alerta a toa toda semana, e o preco de errar para o outro lado seria
+    // treinar a pessoa a arquivar sem ler.
     const conhecido = await query(
       `SELECT 1 FROM "session"
-        WHERE "userId" = $1 AND "userAgent" = $2 AND id <> $3
+        WHERE "userId" = $1
+          AND regexp_replace("userAgent", '[0-9._]+', '', 'g') = regexp_replace($2, '[0-9._]+', '', 'g')
+          AND id <> $3
         LIMIT 1`,
       [sessao.userId, sessao.userAgent, sessao.id],
     )
