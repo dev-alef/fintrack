@@ -13,6 +13,7 @@ type Etapa =
   | { nome: "pedindoSenha" }
   | { nome: "escaneando"; totpURI: string; backupCodes: string[] }
   | { nome: "guardandoCodigos"; backupCodes: string[] }
+  | { nome: "renovandoCodigos" }
   | { nome: "desativando" }
 
 export default function Settings() {
@@ -94,6 +95,27 @@ export default function Settings() {
     }
   }
 
+  async function renovarCodigos(e: React.FormEvent) {
+    e.preventDefault()
+    setErro("")
+    setCarregando(true)
+    try {
+      const { data, error } = await twoFactor.generateBackupCodes({ password: senha })
+      if (error) {
+        setErro(error.status === 400 ? "Senha incorreta." : "Não foi possível gerar novos códigos agora.")
+        return
+      }
+      // Reaproveita a mesma etapa da ativacao: exibir uma unica vez, com o
+      // mesmo aviso. Sao os mesmos codigos e o mesmo risco de perde-los.
+      setEtapa({ nome: "guardandoCodigos", backupCodes: (data?.backupCodes ?? []) as string[] })
+      setSenha("")
+    } catch {
+      setErro("Não foi possível falar com o servidor.")
+    } finally {
+      setCarregando(false)
+    }
+  }
+
   async function desativar(e: React.FormEvent) {
     e.preventDefault()
     setErro("")
@@ -160,13 +182,58 @@ export default function Settings() {
           )}
 
           {etapa.nome === "parado" && ativo && (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => { limpa(); setEtapa({ nome: "desativando" }) }}
-            >
-              Desativar
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              {/* Ate aqui, quem perdesse os codigos so tinha a saida de
+                  desativar e reativar o 2FA - reescaneando o QR sem
+                  necessidade. O endpoint sempre existiu; faltava o botao. */}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => { limpa(); setEtapa({ nome: "renovandoCodigos" }) }}
+              >
+                Gerar novos códigos de recuperação
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => { limpa(); setEtapa({ nome: "desativando" }) }}
+              >
+                Desativar
+              </Button>
+            </div>
+          )}
+
+          {etapa.nome === "renovandoCodigos" && (
+            <form onSubmit={renovarCodigos} className="space-y-4">
+              <Aviso tipo="atencao">
+                Os códigos atuais deixam de valer assim que os novos forem gerados.
+                Se você ainda tem a lista antiga guardada, pode descartá-la depois.
+              </Aviso>
+
+              <div className="space-y-2">
+                <Label htmlFor="senha-renovar">Confirme sua senha</Label>
+                <Input
+                  id="senha-renovar"
+                  type="password"
+                  autoComplete="current-password"
+                  value={senha}
+                  onChange={(e) => setSenha(e.target.value)}
+                  required
+                  autoFocus
+                />
+              </div>
+
+              {erro && <Aviso tipo="erro">{erro}</Aviso>}
+
+              <div className="flex gap-2">
+                <Button type="submit" disabled={carregando}>
+                  {carregando ? "Gerando..." : "Gerar novos códigos"}
+                </Button>
+                <Button type="button" variant="outline" onClick={() => { setEtapa({ nome: "parado" }); limpa() }}>
+                  Cancelar
+                </Button>
+              </div>
+            </form>
           )}
 
           {etapa.nome === "pedindoSenha" && (

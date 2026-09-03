@@ -216,6 +216,57 @@ describe('Dois fatores (TOTP)', () => {
     expect(repetido.status).toBeGreaterThanOrEqual(400)
   })
 
+  it('gerar codigos novos invalida os antigos', async () => {
+    const { usuario, cookie, totpURI, backupCodes } = await contaComDoisFatores()
+    const sessao = await confirma(cookie, totpURI)
+
+    const novos = await request(app)
+      .post('/api/auth/two-factor/generate-backup-codes')
+      .set('Cookie', sessao)
+      .set('Origin', ORIGEM)
+      .send({ password: usuario.password })
+    expect(novos.status).toBe(200)
+    expect(novos.body.backupCodes.length).toBeGreaterThan(0)
+
+    const login = await request(app)
+      .post('/api/auth/sign-in/email')
+      .set('Origin', ORIGEM)
+      .send({ email: usuario.email, password: usuario.password })
+    const desafio = login.headers['set-cookie'] as unknown as string[]
+
+    // O antigo tem de morrer. Se continuasse valendo, uma lista vazada seguiria
+    // abrindo a conta mesmo depois de a pessoa ter "trocado" os codigos - e ela
+    // acharia ter resolvido.
+    const comAntigo = await request(app)
+      .post('/api/auth/two-factor/verify-backup-code')
+      .set('Cookie', desafio)
+      .set('Origin', ORIGEM)
+      .send({ code: backupCodes[0] })
+    expect(comAntigo.status).toBeGreaterThanOrEqual(400)
+
+    const comNovo = await request(app)
+      .post('/api/auth/two-factor/verify-backup-code')
+      .set('Cookie', desafio)
+      .set('Origin', ORIGEM)
+      .send({ code: novos.body.backupCodes[0] })
+    expect(comNovo.status).toBe(200)
+  })
+
+  it('gerar codigos novos exige a senha atual', async () => {
+    const { cookie, totpURI } = await contaComDoisFatores()
+    const sessao = await confirma(cookie, totpURI)
+
+    // Sem a senha, quem pegasse o notebook destravado geraria codigos novos e
+    // teria uma chave permanente da conta - sem nem precisar do celular.
+    const res = await request(app)
+      .post('/api/auth/two-factor/generate-backup-codes')
+      .set('Cookie', sessao)
+      .set('Origin', ORIGEM)
+      .send({ password: 'senhaErrada' })
+
+    expect(res.status).toBeGreaterThanOrEqual(400)
+  })
+
   it('desativar devolve o login por senha, e exige a senha', async () => {
     const { usuario, cookie, totpURI } = await contaComDoisFatores()
     const sessao = await confirma(cookie, totpURI)
