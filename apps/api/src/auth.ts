@@ -114,7 +114,19 @@ export const auth = betterAuth({
   },
 
   session: {
-    expiresIn: 60 * 60 * 24 * 7,
+    // Dois dias, nao sete. Ultima peca do pacote contra roubo de sessao.
+    //
+    // Encurtar nao expulsa um invasor ATIVO - ele usa o cookie e a validade se
+    // renova junto. O que isso mata e o cenario mais comum do infostealer: o
+    // log e exfiltrado, vendido em lote e usado dias ou semanas depois. Com
+    // dois dias, a maioria dos cookies roubados chega morta ao comprador.
+    expiresIn: 60 * 60 * 24 * 2,
+
+    // A renovacao a cada 24h e o que torna o encurtamento indolor: quem abre o
+    // app ao menos uma vez a cada dois dias nunca e deslogado, porque a
+    // validade se estende no uso. Sem isso, dois dias significaria digitar a
+    // senha duas vezes por semana - e o custo recairia sobre quem usa, nao
+    // sobre quem rouba.
     updateAge: 60 * 60 * 24,
   },
 
