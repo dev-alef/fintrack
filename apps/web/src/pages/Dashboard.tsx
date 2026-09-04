@@ -16,6 +16,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { cn } from "@/lib/utils"
 
 const fmt = (v: string | number) => Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+// Dois formatos, dois usos. Por extenso onde o mes e lido como texto - o
+// titulo e o seletor -, e abreviado na tabela anual, onde sao 12 linhas numa
+// coluna estreita e "Setembro" empurraria as colunas de valor.
+const MESES = [
+  "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+]
 const MONTHS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"]
 // Paleta que o usuario escolhe para identificar cada cartao. Sao dados, nao
 // decoracao de tema: o valor vai para credit_cards.color, que e VARCHAR(7).
@@ -139,14 +146,14 @@ export default function Dashboard() {
           {/* O titulo acompanha o seletor de mes: dizer "Dashboard" enquanto a
               tela mostra outro mes esconde justamente o que mudou. */}
           <h2 className="mt-1 text-2xl text-text" style={{ fontFamily: "var(--font-heading)" }}>
-            {MONTHS[month - 1]} em uma olhada
+            {MESES[month - 1]} em uma olhada
           </h2>
         </div>
         <div className="flex items-center gap-2">
           <Select value={String(month)} onValueChange={(v) => setMonth(Number(v))}>
-            <SelectTrigger className="w-[130px]"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-[150px]"><SelectValue /></SelectTrigger>
             <SelectContent>
-              {MONTHS.map((m, i) => <SelectItem key={i} value={String(i + 1)}>{m}</SelectItem>)}
+              {MESES.map((m, i) => <SelectItem key={i} value={String(i + 1)}>{m}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
