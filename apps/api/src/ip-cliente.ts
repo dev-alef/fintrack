@@ -81,13 +81,26 @@ function normaliza(ip: string): string {
  */
 export function montaFaixas(valor: string | undefined, rotulo: string): BlockList {
   const bloco = new BlockList()
+  const entradas = itens(valor)
 
-  for (const entrada of itens(valor)) {
+  // O aviso diz a POSICAO da entrada, nunca o conteudo dela.
+  //
+  // Nao porque uma faixa de IP seja segredo - nao e, sao ranges publicos da
+  // Cloudflare. E porque despejar variavel de ambiente no log e o habito que um
+  // dia despeja a errada, e do lado destas moram BETTER_AUTH_SECRET e a chave
+  // do Resend. Log de producao e lido por quem opera, indexado por quem coleta,
+  // e nao da para despublicar. Contar virgulas ate a terceira entrada custa
+  // dez segundos; tirar um segredo de todo lugar onde o log ja foi custa um dia.
+  const avisa = (posicao: number) =>
+    console.warn(`[ip] ${rotulo}: entrada ${posicao} ignorada, nao e IP nem CIDR valido`)
+
+  for (let i = 0; i < entradas.length; i++) {
+    const entrada = entradas[i]!
     const [endereco, prefixo] = entrada.split('/')
     const tipo = isIPv4(endereco ?? '') ? 'ipv4' : isIPv6(endereco ?? '') ? 'ipv6' : null
 
     if (!endereco || !tipo) {
-      console.warn(`[ip] entrada invalida em ${rotulo}, ignorada: ${entrada}`)
+      avisa(i + 1)
       continue
     }
 
@@ -95,7 +108,7 @@ export function montaFaixas(valor: string | undefined, rotulo: string): BlockLis
       if (prefixo === undefined) bloco.addAddress(endereco, tipo)
       else bloco.addSubnet(endereco, Number(prefixo), tipo)
     } catch {
-      console.warn(`[ip] entrada invalida em ${rotulo}, ignorada: ${entrada}`)
+      avisa(i + 1)
     }
   }
 
