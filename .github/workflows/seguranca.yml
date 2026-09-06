@@ -7,15 +7,21 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
-  # A varredura completa do historico e manual: nos eventos acima o gitleaks
-  # olha so os commits novos, que e o que interessa no dia a dia. Rodar tudo
-  # tem valor uma vez, quando se quer saber o que ficou para tras.
+  # Para rodar sob demanda, sem esperar commit - util depois de mexer na
+  # configuracao, ou quando se quer varrer o historico de proposito.
   workflow_dispatch:
 
 jobs:
   segredos:
     name: Segredos no historico
     runs-on: ubuntu-latest
+
+    # O padrao do GITHUB_TOKEN e amplo demais para o que este job faz. Leitura
+    # do codigo, e escrita so em comentario de PR, que e como o gitleaks aponta
+    # onde achou.
+    permissions:
+      contents: read
+      pull-requests: write
 
     steps:
       - uses: actions/checkout@v4
@@ -35,6 +41,9 @@ jobs:
   dependencias:
     name: Vulnerabilidade em dependencia
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
 
     steps:
       - uses: actions/checkout@v4
