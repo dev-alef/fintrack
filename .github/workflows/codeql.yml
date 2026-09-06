@@ -1,0 +1,47 @@
+# Analise estatica de seguranca do proprio codigo.
+#
+# O `npm audit` olha as dependencias; este olha o que nos escrevemos - injecao
+# de SQL, caminho de arquivo montado com entrada do usuario, comparacao de
+# segredo que vaza tempo. Sao os erros que passam na revisao porque o codigo
+# parece certo.
+#
+# Gratuito porque o repositorio e publico. Os achados aparecem na aba Security
+# do GitHub, e nos PRs como comentario.
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  # O banco de consultas cresce depois que o codigo foi escrito: uma varredura
+  # semanal encontra no codigo parado o que a regra nova passou a reconhecer.
+  schedule:
+    - cron: '0 6 * * 1'
+
+jobs:
+  analise:
+    name: Analise CodeQL
+    runs-on: ubuntu-latest
+
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Preparar CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          # O conjunto padrao evita falso positivo a todo custo e por isso cala
+          # coisa util. Em app financeiro vale o inverso: prefiro descartar um
+          # achado a mao a nao ver o que era de verdade.
+          queries: security-extended
+
+      - name: Analisar
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: '/language:javascript-typescript'
