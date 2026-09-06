@@ -47,10 +47,8 @@ jobs:
         env:
           DATABASE_URL: postgresql://fintrack:fintrack123@localhost:5432/fintrack_db
           REDIS_URL: redis://localhost:6379
+          # Fallback do BETTER_AUTH_SECRET; e o unico JWT_* que o codigo le.
           JWT_SECRET: test_secret_key_ci
-          JWT_REFRESH_SECRET: test_refresh_secret_ci
-          JWT_EXPIRES_IN: 15m
-          JWT_REFRESH_EXPIRES_IN: 7d
           NODE_ENV: test
         run: npx drizzle-kit migrate
 
@@ -59,10 +57,8 @@ jobs:
         env:
           DATABASE_URL: postgresql://fintrack:fintrack123@localhost:5432/fintrack_db
           REDIS_URL: redis://localhost:6379
+          # Fallback do BETTER_AUTH_SECRET; e o unico JWT_* que o codigo le.
           JWT_SECRET: test_secret_key_ci
-          JWT_REFRESH_SECRET: test_refresh_secret_ci
-          JWT_EXPIRES_IN: 15m
-          JWT_REFRESH_EXPIRES_IN: 7d
           NODE_ENV: test
         run: npm test
 

@@ -1,0 +1,36 @@
+# Abre PR sozinho quando sai correcao de dependencia vulneravel, e mantem o
+# resto perto do atual - pular tres anos de versao de uma vez e o que torna
+# atualizar assustador.
+version: 2
+
+updates:
+  # Um lockfile so na raiz cobre os dois workspaces (apps/api e apps/web).
+  - package-ecosystem: npm
+    directory: '/'
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: America/Sao_Paulo
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: 'chore(deps)'
+    groups:
+      # Patch e minor viram um PR so por semana. Separados, seriam quinze PRs
+      # que ninguem le - e alerta que ninguem le nao protege de nada.
+      rotina:
+        update-types: [minor, patch]
+    ignore:
+      # Major fica de fora do automatico: quebra sem avisar e precisa de alguem
+      # olhando o build. O alerta de seguranca passa por cima deste ignore.
+      - dependency-name: '*'
+        update-types: [version-update:semver-major]
+
+  # As Actions tambem sao codigo de terceiro rodando com acesso ao repositorio,
+  # e um `@v3` abandonado envelhece igual.
+  - package-ecosystem: github-actions
+    directory: '/'
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: 'chore(ci)'

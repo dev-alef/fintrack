@@ -6,6 +6,7 @@ import pool from './db/client'
 import { enviarEmail } from './email'
 import { emailDeVerificacao, emailDeRecuperacao } from './emails/templates'
 import { avisaSeAcessoNovo } from './acesso-novo'
+import { CABECALHO_IP } from './ip-cliente'
 
 const googleClientId = process.env.GOOGLE_CLIENT_ID
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET
@@ -16,17 +17,6 @@ const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET
 // credenciais o servidor responde que o provedor nao existe, e a tela mostra
 // uma mensagem em portugues.
 export const googleEnabled = Boolean(googleClientId && googleClientSecret)
-
-// Le uma variavel de ambiente com valores separados por virgula. Devolve
-// undefined quando nao ha nada util, para o chamador decidir o padrao - uma
-// lista vazia significaria "configurado como vazio", que e outra coisa.
-function lista(valor: string | undefined): string[] | undefined {
-  const itens = (valor ?? '')
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean)
-  return itens.length > 0 ? itens : undefined
-}
 
 // Better Auth reaproveita a tabela `users` que ja existe, em vez de criar a
 // tabela `user` dele. Isso e deliberado: dez tabelas apontam para users.id com
@@ -162,36 +152,17 @@ export const auth = betterAuth({
       sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
     },
 
-    // Sem isto o rate limiting nao funciona em producao. O Better Auth so aceita
-    // o x-forwarded-for quando consegue confiar na cadeia:
+    // Quem descobre o IP e ip-cliente.ts, e o motivo esta documentado la: o
+    // cabecalho da Vercel so vale quando a cadeia prova que a requisicao passou
+    // por ela, senao qualquer um forja o proprio balde de rate limiting.
     //
-    //   if (forwardedIps.length !== 1) return null   // multi-hop irresolvivel
-    //
-    // Como o navegador fala com a Vercel, que encaminha para o Render, o
-    // cabecalho chega com dois saltos e a resolucao falha. O limite entao cai
-    // num balde unico compartilhado - e uma pessoa tentando senhas em massa
-    // consome a cota de todo mundo, trancando os demais para fora.
-    //
-    // Com trustedProxies a cadeia e percorrida da direita para a esquerda,
-    // pulando os saltos confiaveis, ate o primeiro nao confiavel: o cliente
-    // real. Os valores ficam em variavel de ambiente porque os IPs de saida da
-    // Vercel e do Render mudam sem aviso, e trocar CIDR nao deveria exigir
-    // deploy. Vazio mantem o comportamento atual, sem regressao.
-    //
-    // So que pelo proxy isso nao basta: a Vercel sai por IPs variados e nao
-    // publicados, entao a cadeia para no salto dela - que muda a cada
-    // requisicao. A resolucao "tem sucesso" devolvendo um IP diferente toda
-    // vez, cada uma vira um balde novo, e o limite nunca acumula. Medido em
-    // producao: 6 logins seguidos pelo proxy passaram sem 429; direto no
-    // Render, a quarta foi barrada.
-    //
-    // Por isso a lista de cabecalhos comeca por x-vercel-forwarded-for, que a
-    // Vercel preenche com o IP real do cliente num valor unico. Quem bate
-    // direto no Render nao tem esse cabecalho e cai no x-forwarded-for, onde
-    // trustedProxies resolve a cadeia.
+    // Aqui fica so o consumo. Um cabecalho unico, escrito pelo nosso middleware
+    // a cada requisicao, e trustedProxies vazio de proposito: a cadeia ja foi
+    // percorrida, e mandar o Better Auth percorrer de novo um valor que ele nao
+    // sabe que e final so criaria um segundo lugar onde errar.
     ipAddress: {
-      ipAddressHeaders: lista(process.env.IP_ADDRESS_HEADERS) ?? ['x-forwarded-for'],
-      trustedProxies: lista(process.env.TRUSTED_PROXIES) ?? [],
+      ipAddressHeaders: [CABECALHO_IP],
+      trustedProxies: [],
     },
   },
 

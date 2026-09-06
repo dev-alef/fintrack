@@ -1,0 +1,68 @@
+# Duas checagens que nao dependem de rodar o codigo: segredo commitado e
+# dependencia com vulnerabilidade conhecida.
+name: Seguranca
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  # Para rodar sob demanda, sem esperar commit - util depois de mexer na
+  # configuracao, ou quando se quer varrer o historico de proposito.
+  workflow_dispatch:
+
+jobs:
+  segredos:
+    name: Segredos no historico
+    runs-on: ubuntu-latest
+
+    # O padrao do GITHUB_TOKEN e amplo demais para o que este job faz. Leitura
+    # do codigo, e escrita so em comentario de PR, que e como o gitleaks aponta
+    # onde achou.
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Sem o historico o gitleaks nao tem o que comparar e nao ve nada.
+          fetch-depth: 0
+
+      # Chave de API, token e senha commitados nao somem com um commit de
+      # remocao: continuam no historico, e num repositorio publico ja foram
+      # lidos por robo antes de alguem perceber. A unica correcao e rotacionar.
+      # Barrar na entrada e a diferenca entre um susto e um incidente.
+      - name: Procurar segredos
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  dependencias:
+    name: Vulnerabilidade em dependencia
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      # Barra o que chega ao usuario. `--omit=dev` de proposito: vite, vitest e
+      # afins nao vao para o pacote nem rodam no Render, e uma falha no servidor
+      # de desenvolvimento de outra pessoa nao deveria travar um merge aqui.
+      - name: Auditar o que vai para producao
+        run: npm audit --omit=dev --audit-level=high
+
+      # As de desenvolvimento aparecem no log sem reprovar. Elas importam - o
+      # servidor de dev do vite ja teve leitura de arquivo arbitraria -, mas o
+      # conserto costuma ser subir versao maior de ferramenta de build, e isso
+      # merece PR proprio. Quem abre esse PR e o Dependabot.
+      - name: Listar as de desenvolvimento
+        if: always()
+        run: npm audit || true

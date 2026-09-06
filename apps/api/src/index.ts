@@ -1,8 +1,10 @@
 import 'dotenv/config'
 import * as Sentry from '@sentry/node'
 import express from 'express'
+import helmet from 'helmet'
 import { toNodeHandler } from 'better-auth/node'
 import { auth } from './auth'
+import { faixasDoAmbiente, ipDoCliente, resolveIpDoCliente } from './ip-cliente'
 import cors from 'cors'
 import transactionRoutes from './routes/transaction.routes'
 import goalsRoutes from './routes/goals.routes'
@@ -67,7 +69,30 @@ const corsOrigins = (process.env.CORS_ORIGINS || 'http://localhost:5173')
   .map((origin) => origin.trim())
   .filter(Boolean)
 
+// Cabecalhos de seguranca. Vem antes de tudo para valerem tambem nas respostas
+// de erro e nas do proprio Better Auth, que nao passam pelas rotas daqui.
+//
+// A politica de conteudo fica no padrao (default-src 'self'): esta API so
+// devolve JSON, entao nao ha script nem estilo para liberar, e o padrao
+// restritivo nao atrapalha nada.
+//
+// O ajuste e um so. O padrao de Cross-Origin-Resource-Policy e same-origin, e
+// esta API e chamada de outra origem de proposito - pelo front em
+// localhost:5173 no desenvolvimento, e pelo dominio publico em producao.
+// Mantido same-origin, o navegador recusaria as respostas.
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  }),
+)
+
 app.use(cors({ origin: corsOrigins, credentials: true }))
+
+// Descobre o IP real de quem chamou e o publica num cabecalho proprio, que e o
+// unico que o rate limiting le. Antes do handler do Better Auth por isso - e
+// tambem antes do express.json(), porque mexe so em cabecalho e nao encosta no
+// corpo da requisicao.
+app.use(ipDoCliente(faixasDoAmbiente))
 
 // O handler do Better Auth precisa vir antes do express.json(): ele le o corpo
 // da requisicao direto do stream, e um parser antes dele consumiria o stream e
@@ -100,6 +125,12 @@ app.get('/health', (req, res) => {
         'cf-connecting-ip': req.headers['cf-connecting-ip'] ?? null,
         'true-client-ip': req.headers['true-client-ip'] ?? null,
         socket: req.socket.remoteAddress ?? null,
+        // O que o rate limiting vai realmente usar. Chamando /health pelo
+        // dominio do front e depois direto no Render, os dois valores tem de
+        // ser diferentes - e o segundo tem de ser o seu IP de verdade. Se o
+        // primeiro vier null, o IP de saida da Vercel mudou e precisa entrar em
+        // VERCEL_PROXY_IPS.
+        resolvido: resolveIpDoCliente(req.headers as Record<string, unknown>, faixasDoAmbiente),
       },
     })
   }
