@@ -1,49 +1,47 @@
 /**
  * Descobre o IP de quem chamou, e so devolve um valor em que da para confiar.
  *
- * # O buraco que isto fecha
+ * # De onde vem a confianca
  *
- * O rate limiting do Better Auth conta tentativas por IP. Ate aqui o IP saia de
- * `IP_ADDRESS_HEADERS=x-vercel-forwarded-for,x-forwarded-for`: o cabecalho da
- * Vercel primeiro, porque pelo proxy ele e o unico que traz o cliente real num
- * valor unico.
+ * O `x-forwarded-for` e montado salto a salto: cada proxy acrescenta a DIREITA
+ * o endereco de quem falou com ele. O que o cliente escreve fica sempre a
+ * ESQUERDA, e ele nao alcanca o resto. Por isso a leitura e da direita para a
+ * esquerda, pulando os saltos conhecidos (TRUSTED_PROXIES: faixas da Cloudflare,
+ * que fica na frente do Render, e a rede interna do Render), ate o primeiro
+ * desconhecido. Esse e o cliente, e nao ha como falsifica-lo:
  *
- * So que a API no Render tambem atende conexao direta, e o endereco dela esta
- * em `apps/web/vercel.json`, num repositorio publico. Quem batesse direto podia
- * mandar `x-vercel-forwarded-for: 1.2.3.4`, trocar o numero a cada tentativa e
- * ganhar um balde novo toda vez - forca bruta sem limite nenhum. O cabecalho e
- * confiavel *pelo proxy*, onde a Vercel o sobrescreve, e forjavel fora dele.
- * A Vercel nao assina nada, entao o cabecalho sozinho nao prova de onde veio.
- *
- * # Como isto resolve
- *
- * A prova nao esta no cabecalho, esta na cadeia. `x-forwarded-for` e montado
- * salto a salto: cada proxy acrescenta o endereco de quem falou com ele. O que
- * o cliente escreve fica sempre a ESQUERDA; o que a infraestrutura acrescenta
- * fica a direita e ele nao alcanca. Por isso a leitura e da direita para a
- * esquerda, pulando os saltos conhecidos, ate o primeiro desconhecido - esse e
- * o cliente, e nao ha como falsifica-lo.
- *
- * Se pelo caminho aparecer um IP de saida da Vercel (VERCEL_PROXY_IPS), entao a
- * requisicao passou pelo nosso proxy de verdade, e so ai o cabecalho dela vale.
- *
- *   Pelo proxy:  [cliente, saidaDaVercel, cloudflare, rede-do-render]
- *                                ^ reconhecido -> confia no cabecalho da Vercel
- *
- *   Direto:      [forjado, forjado, IP-REAL-DO-ATACANTE, cloudflare, ...]
- *                                          ^ primeiro desconhecido -> e este
- *                 \______ nunca alcancados ______/
+ *   [forjado, forjado, IP-REAL, cloudflare, rede-do-render]
+ *                         ^ primeiro desconhecido - e este
+ *    \____ nunca alcancados ____/
  *
  * O resultado vai para um cabecalho proprio, que o middleware sempre reescreve.
- * O Better Auth le so esse - se alguem mandar um `x-provisao-client-ip` de
- * fora, ele e descartado antes de qualquer coisa ler.
+ * O Better Auth le so esse - um `x-provisao-client-ip` mandado de fora e
+ * descartado antes de qualquer coisa ler.
  *
- * # Por que a lista de cabecalhos saiu do ambiente
+ * # Por que o x-vercel-forwarded-for nao e usado
  *
- * `IP_ADDRESS_HEADERS` nao e lido mais. Era configuracao, mas define uma
- * fronteira de confianca: um valor esquecido no painel do Render reabriria o
- * buraco em silencio, e ninguem repara numa variavel que continua funcionando.
- * As faixas de IP seguem no ambiente, porque sao dados que mudam sem deploy.
+ * Pelo proxy da Vercel esse cabecalho traz o IP real do cliente num valor
+ * unico, e e tentador: sem ele, todo mundo que passa pelo proxy resolve para o
+ * IP de SAIDA da Vercel e divide balde de rate limiting.
+ *
+ * A tentacao custou um bug. A versao anterior confiava no cabecalho quando
+ * reconhecia um IP de saida da Vercel na cadeia (VERCEL_PROXY_IPS). Mas esse IP
+ * prova "veio da rede da Vercel", nao "veio pelo rewrite do NOSSO projeto" - e
+ * so a segunda afirmacao justifica confiar no cabecalho.
+ *
+ * A diferenca importa porque os IPs de saida sao compartilhados entre clientes
+ * da Vercel. Qualquer um com conta gratuita sobe uma funcao que faz fetch para
+ * esta API escolhendo os proprios cabecalhos: a Vercel sobrescreve o
+ * x-vercel-forwarded-for na ENTRADA, em requisicao que chega no deployment, mas
+ * nao no fetch de SAIDA do codigo do cliente. A requisicao sairia por um IP da
+ * lista, com o cabecalho forjado, e o bypass voltaria inteiro.
+ *
+ * Pode ser que a Vercel separe o egress dos rewrites do egress das funcoes. Nao
+ * ha documentacao publica disso, e nao da para apoiar uma fronteira de seguranca
+ * em topologia de terceiro que ninguem verifica e que muda sem aviso.
+ *
+ * O preco de nao usar e um limite por IP mais grosseiro pelo proxy. Quem cobre
+ * isso e o limite por conta (limite-por-conta.ts), que nao depende de IP nenhum.
  */
 import { BlockList, isIPv4, isIPv6 } from 'node:net'
 import type { NextFunction, Request, Response } from 'express'
@@ -51,15 +49,7 @@ import type { NextFunction, Request, Response } from 'express'
 /** Onde o middleware publica o resultado, e o unico lugar de onde o auth le. */
 export const CABECALHO_IP = 'x-provisao-client-ip'
 
-const CABECALHO_VERCEL = 'x-vercel-forwarded-for'
 const CABECALHO_CADEIA = 'x-forwarded-for'
-
-export type Faixas = {
-  /** Proxies entre a internet e este processo: Cloudflare, rede do Render. */
-  confiaveis: BlockList
-  /** IPs de saida do proxy da Vercel - o nosso front encaminhando. */
-  vercel: BlockList
-}
 
 function itens(valor: string | undefined): string[] {
   return (valor ?? '')
@@ -75,9 +65,9 @@ function normaliza(ip: string): string {
 }
 
 /**
- * Monta a lista de faixas. Entrada invalida e ignorada com aviso, nunca tratada
- * como faixa vazia que combina com tudo: um CIDR com erro de digitacao passaria
- * a confiar no mundo inteiro.
+ * Monta a lista de faixas confiaveis. Entrada invalida e ignorada com aviso,
+ * nunca tratada como faixa vazia que combina com tudo: um CIDR com erro de
+ * digitacao passaria a confiar no mundo inteiro.
  */
 export function montaFaixas(valor: string | undefined, rotulo: string): BlockList {
   const bloco = new BlockList()
@@ -89,8 +79,8 @@ export function montaFaixas(valor: string | undefined, rotulo: string): BlockLis
   // Cloudflare. E porque despejar variavel de ambiente no log e o habito que um
   // dia despeja a errada, e do lado destas moram BETTER_AUTH_SECRET e a chave
   // do Resend. Log de producao e lido por quem opera, indexado por quem coleta,
-  // e nao da para despublicar. Contar virgulas ate a terceira entrada custa
-  // dez segundos; tirar um segredo de todo lugar onde o log ja foi custa um dia.
+  // e nao da para despublicar. Contar virgulas ate a terceira entrada custa dez
+  // segundos; tirar um segredo de todo lugar onde o log ja passou custa um dia.
   const avisa = (posicao: number) =>
     console.warn(`[ip] ${rotulo}: entrada ${posicao} ignorada, nao e IP nem CIDR valido`)
 
@@ -138,26 +128,12 @@ function valorDe(cabecalhos: Record<string, unknown>, nome: string): string | nu
  */
 export function resolveIpDoCliente(
   cabecalhos: Record<string, unknown>,
-  faixas: Faixas,
+  confiaveis: BlockList,
 ): string | null {
   const cadeia = valorDe(cabecalhos, CABECALHO_CADEIA)
   if (!cadeia) return null
 
   const saltos = itens(cadeia).map(normaliza)
-  if (saltos.length === 0) return null
-
-  const doVercel = () => {
-    const valor = valorDe(cabecalhos, CABECALHO_VERCEL)
-    if (!valor) return null
-    // A Vercel manda um valor unico. Uma lista aqui significa que o cabecalho
-    // nao veio dela, e nao ha como escolher entre os valores com seguranca.
-    const unico = itens(valor)
-    if (unico.length !== 1) return null
-    const ip = normaliza(unico[0]!)
-    return isIPv4(ip) || isIPv6(ip) ? ip : null
-  }
-
-  let passouPelaVercel = false
 
   for (let i = saltos.length - 1; i >= 0; i--) {
     const salto = saltos[i]!
@@ -166,33 +142,26 @@ export function resolveIpDoCliente(
     // partir dali nao da para saber onde o trecho confiavel termina.
     if (!isIPv4(salto) && !isIPv6(salto)) return null
 
-    if (contem(faixas.vercel, salto)) {
-      passouPelaVercel = true
-      continue
-    }
-    if (contem(faixas.confiaveis, salto)) continue
+    if (contem(confiaveis, salto)) continue
 
-    // Primeiro salto desconhecido: e o cliente. Pelo proxy, a Vercel ja escreveu
-    // aqui o endereco real, e o cabecalho dela diz o mesmo - preferimos o
-    // cabecalho porque e o valor que ela mantem explicitamente.
-    return passouPelaVercel ? (doVercel() ?? salto) : salto
+    return salto
   }
 
   // Cadeia inteira conhecida: nao sobrou nenhum cliente para apontar.
-  return passouPelaVercel ? doVercel() : null
+  return null
 }
 
 /**
  * Middleware. Precisa vir antes do handler do Better Auth, e reescreve o
  * cabecalho sempre - inclusive apagando quando nao ha resposta confiavel.
  */
-export function ipDoCliente(faixas: Faixas) {
+export function ipDoCliente(confiaveis: BlockList) {
   return (req: Request, _res: Response, next: NextFunction) => {
     // Apagar primeiro, sem excecao: e isto que impede alguem de simplesmente
     // mandar o cabecalho pronto e escolher o proprio balde.
     delete req.headers[CABECALHO_IP]
 
-    const ip = resolveIpDoCliente(req.headers as Record<string, unknown>, faixas)
+    const ip = resolveIpDoCliente(req.headers as Record<string, unknown>, confiaveis)
     if (ip) req.headers[CABECALHO_IP] = ip
 
     next()
@@ -200,7 +169,4 @@ export function ipDoCliente(faixas: Faixas) {
 }
 
 /** Faixas lidas do ambiente, montadas uma vez no boot. */
-export const faixasDoAmbiente: Faixas = {
-  confiaveis: montaFaixas(process.env.TRUSTED_PROXIES, 'TRUSTED_PROXIES'),
-  vercel: montaFaixas(process.env.VERCEL_PROXY_IPS, 'VERCEL_PROXY_IPS'),
-}
+export const proxiesConfiaveis = montaFaixas(process.env.TRUSTED_PROXIES, 'TRUSTED_PROXIES')

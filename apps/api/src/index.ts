@@ -4,7 +4,7 @@ import express from 'express'
 import helmet from 'helmet'
 import { toNodeHandler } from 'better-auth/node'
 import { auth } from './auth'
-import { faixasDoAmbiente, ipDoCliente, resolveIpDoCliente } from './ip-cliente'
+import { ipDoCliente, proxiesConfiaveis, resolveIpDoCliente } from './ip-cliente'
 import cors from 'cors'
 import transactionRoutes from './routes/transaction.routes'
 import goalsRoutes from './routes/goals.routes'
@@ -92,7 +92,7 @@ app.use(cors({ origin: corsOrigins, credentials: true }))
 // unico que o rate limiting le. Antes do handler do Better Auth por isso - e
 // tambem antes do express.json(), porque mexe so em cabecalho e nao encosta no
 // corpo da requisicao.
-app.use(ipDoCliente(faixasDoAmbiente))
+app.use(ipDoCliente(proxiesConfiaveis))
 
 // O handler do Better Auth precisa vir antes do express.json(): ele le o corpo
 // da requisicao direto do stream, e um parser antes dele consumiria o stream e
@@ -106,11 +106,11 @@ app.get('/health', (req, res) => {
 
   // Diagnostico da cadeia de proxies, desligado por padrao.
   //
-  // O rate limiting precisa saber quais saltos do x-forwarded-for sao proxies
-  // confiaveis, e isso nao da para deduzir: depende de por onde a requisicao
-  // passou (Vercel -> Render) e de quais IPs de saida cada um usa hoje. Ligando
-  // DEBUG_IP=1 por um minuto, esta rota mostra a cadeia real; dai os valores vao
-  // para TRUSTED_PROXIES e a variavel volta a ficar desligada.
+  // O rate limiting por IP precisa saber quais saltos do x-forwarded-for sao
+  // proxies confiaveis, e isso nao da para deduzir: depende de por onde a
+  // requisicao passou (Vercel -> Cloudflare -> Render). Ligando DEBUG_IP=1 por
+  // um minuto, esta rota mostra a cadeia real; dai os valores vao para
+  // TRUSTED_PROXIES e a variavel volta a ficar desligada.
   //
   // So expoe cabecalhos de roteamento - o IP de quem chamou e os proxies pelo
   // caminho. Nada de sessao, cookie ou corpo. Ainda assim fica atras de uma
@@ -125,12 +125,12 @@ app.get('/health', (req, res) => {
         'cf-connecting-ip': req.headers['cf-connecting-ip'] ?? null,
         'true-client-ip': req.headers['true-client-ip'] ?? null,
         socket: req.socket.remoteAddress ?? null,
-        // O que o rate limiting vai realmente usar. Chamando /health pelo
-        // dominio do front e depois direto no Render, os dois valores tem de
-        // ser diferentes - e o segundo tem de ser o seu IP de verdade. Se o
-        // primeiro vier null, o IP de saida da Vercel mudou e precisa entrar em
-        // VERCEL_PROXY_IPS.
-        resolvido: resolveIpDoCliente(req.headers as Record<string, unknown>, faixasDoAmbiente),
+        // O que o rate limiting por IP vai realmente usar. Batendo direto no
+        // Render, tem de ser o seu IP real. Pelo dominio do front, hoje resolve
+        // para o IP de SAIDA da Vercel, nao para o seu - motivo documentado em
+        // ip-cliente.ts. E o preco assumido pelo limite por conta segurar o que
+        // importa.
+        resolvido: resolveIpDoCliente(req.headers as Record<string, unknown>, proxiesConfiaveis),
       },
     })
   }
