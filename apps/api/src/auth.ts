@@ -1,12 +1,14 @@
 import { randomUUID } from 'crypto'
 import bcrypt from 'bcryptjs'
 import { betterAuth } from 'better-auth'
+import { createAuthMiddleware } from 'better-auth/api'
 import { twoFactor } from 'better-auth/plugins'
 import pool from './db/client'
 import { enviarEmail } from './email'
 import { emailDeVerificacao, emailDeRecuperacao } from './emails/templates'
 import { avisaSeAcessoNovo } from './acesso-novo'
 import { CABECALHO_IP } from './ip-cliente'
+import { anotaTentativa, barraSeExcedeu } from './limite-por-conta'
 
 const googleClientId = process.env.GOOGLE_CLIENT_ID
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET
@@ -120,6 +122,43 @@ export const auth = betterAuth({
     updateAge: 60 * 60 * 24,
   },
 
+  // Limite por conta no login, em cima do limite por IP que o Better Auth ja
+  // faz. Por que so login, e nao cadastro tambem: limite-por-conta.ts.
+  //
+  // O `before` barra antes de a senha ser sequer verificada; o `after` anota o
+  // desfecho, porque so ali se sabe se deu certo. Os dois rodam para todos os
+  // endpoints - quem filtra pelo caminho e o proprio limite-por-conta.ts, para
+  // a lista de caminhos protegidos morar num lugar so.
+  hooks: {
+    before: createAuthMiddleware(async (ctx) => {
+      barraSeExcedeu(ctx.path, ctx.body)
+    }),
+    after: createAuthMiddleware(async (ctx) => {
+      // Quando o endpoint recusa, ele lanca um APIError que o dispatch captura
+      // e deixa aqui em `returned`. Resposta de sucesso e um objeto comum.
+      const retorno = ctx.context.returned as { statusCode?: number } | undefined
+      const falhou =
+        retorno instanceof Error || (typeof retorno?.statusCode === 'number' && retorno.statusCode >= 400)
+
+      anotaTentativa(ctx.path, ctx.body, falhou)
+    }),
+  },
+
+  // O limite por IP fica generoso de proposito.
+  //
+  // O padrao do Better Auth e 3 tentativas por 10s por IP, e isso pressupoe que
+  // cada pessoa tenha o proprio IP. Aqui nao tem: pelo proxy da Vercel, todo
+  // mundo resolve para o IP de saida dela, e umas poucas pessoas usando o app ao
+  // mesmo tempo se barrariam entre si. Com o limite por conta segurando o que
+  // importa, este vira rede de fundo contra volume, e a folga e o que impede que
+  // ele derrube gente legitima.
+  rateLimit: {
+    customRules: {
+      '/sign-in/email': { window: 60, max: 60 },
+      '/sign-up/email': { window: 60, max: 30 },
+    },
+  },
+
   databaseHooks: {
     session: {
       create: {
@@ -152,9 +191,9 @@ export const auth = betterAuth({
       sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
     },
 
-    // Quem descobre o IP e ip-cliente.ts, e o motivo esta documentado la: o
-    // cabecalho da Vercel so vale quando a cadeia prova que a requisicao passou
-    // por ela, senao qualquer um forja o proprio balde de rate limiting.
+    // Quem descobre o IP e ip-cliente.ts, e o motivo esta documentado la: a
+    // cadeia do x-forwarded-for lida da direita para a esquerda e a unica fonte
+    // que o cliente nao consegue escolher.
     //
     // Aqui fica so o consumo. Um cabecalho unico, escrito pelo nosso middleware
     // a cada requisicao, e trustedProxies vazio de proposito: a cadeia ja foi
