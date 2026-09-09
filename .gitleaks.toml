@@ -1,0 +1,20 @@
+title = "gitleaks - Provisao"
+
+[extend]
+useDefault = true
+
+# generic-api-key e heuristica de entropia: qualquer string alfanumerica
+# razoavel virando valor de uma chave chamada password/secret/token parece
+# segredo pra ela - inclusive senha de teste hardcoded como "qualquerCoisa123",
+# que e a forma correta e universal de escrever fixture de teste, nao um
+# habito a corrigir. Confirmado sistemico, nao pontual: recuperacao-senha.test.ts
+# ja tinha duas ocorrencias iguais, mergeadas antes deste workflow existir.
+#
+# So esta regra e reescrita. As de padrao estrutural (AWS, GitHub, chave
+# privada, etc.) continuam valendo em todo arquivo, teste incluso: se uma
+# dessas aparecer ali, e porque alguem colou um segredo de verdade sem querer.
+[[rules]]
+id = "generic-api-key"
+
+[rules.allowlist]
+paths = ['''__tests__/''']
