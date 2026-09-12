@@ -9,6 +9,7 @@ import { emailDeVerificacao, emailDeRecuperacao } from './emails/templates'
 import { avisaSeAcessoNovo } from './acesso-novo'
 import { CABECALHO_IP } from './ip-cliente'
 import { anotaTentativa, barraSeExcedeu } from './limite-por-conta'
+import { registraAceite } from './aceites'
 
 const googleClientId = process.env.GOOGLE_CLIENT_ID
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET
@@ -160,6 +161,23 @@ export const auth = betterAuth({
   },
 
   databaseHooks: {
+    user: {
+      create: {
+        // Aqui, e nao no endpoint de cadastro: este gancho dispara tanto no
+        // cadastro por e-mail quanto na primeira entrada pelo Google. Amarrar
+        // ao /sign-up/email cobriria so metade das contas.
+        //
+        // Com await, diferente do aviso de acesso novo: gravar o aceite e uma
+        // linha no mesmo banco, nao uma chamada de rede, e o registro precisa
+        // existir antes de a conta ser considerada criada. A funcao trata os
+        // proprios erros e nunca lanca - cadastro nao morre por causa da
+        // tabela de auditoria.
+        after: async (usuario, contexto) => {
+          await registraAceite(usuario.id, contexto?.headers)
+        },
+      },
+    },
+
     session: {
       create: {
         // Depois, nao antes: o aviso compara com as sessoes ja existentes, e o

@@ -1,0 +1,14 @@
+# Provisão — canal para reportar vulnerabilidade de segurança.
+# Formato: RFC 9116 (https://www.rfc-editor.org/rfc/rfc9116)
+#
+# O canal principal é o relatório privado de vulnerabilidade do GitHub: cria
+# uma conversa fechada entre quem reportou e o mantenedor, sem expor a falha
+# publicamente enquanto não houver correção. O formulário de suporte do app
+# NÃO serve para isso — ele exige conta, e quem encontra uma falha em geral
+# não tem uma.
+
+Contact: https://github.com/dev-alef/fintrack/security/advisories/new
+Expires: 2027-09-12T00:00:00.000Z
+Preferred-Languages: pt-BR, en
+Canonical: https://provisao.space/.well-known/security.txt
+Policy: https://github.com/dev-alef/fintrack/blob/main/SECURITY.md

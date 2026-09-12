@@ -1,13 +1,22 @@
 import { DocumentoLegal } from "@/components/documento-legal"
 
-// Preencha estes tres campos antes de publicar de verdade. Sao os unicos
-// dados que o codigo nao tem como verificar sozinho - o resto do documento foi
-// escrito contra o schema, os provedores configurados e o codigo de seguranca
-// deste repositorio, nao por modelo generico de internet.
+// O unico dado pessoal que precisa aparecer aqui.
+//
+// A LGPD (art. 9º) exige identificar o controlador e dar um canal de contato -
+// nao exige publicar CPF nem endereco residencial. Uma versao anterior deste
+// arquivo pedia os dois; estava errado e foi corrigido. CPF publico junto do
+// nome completo e material pronto para fraude de identidade, e nao compra
+// conformidade nenhuma em troca.
+//
+// Se um dia existir CNPJ, troque por razao social + CNPJ: ai sim o numero e
+// publico por natureza, e passa a ser o identificador correto.
 const CONTROLADOR_NOME = "[SEU NOME COMPLETO]"
-const CONTROLADOR_CPF = "[SEU CPF]"
-const CONTROLADOR_CIDADE_UF = "[SUA CIDADE, UF]"
 
+/**
+ * Versao do documento. Precisa ser igual a VERSAO_PRIVACIDADE em
+ * apps/api/src/aceites.ts, que e o que fica gravado no registro de aceite -
+ * mudou o texto de forma relevante, muda os dois.
+ */
 const VIGENCIA = "12 de setembro de 2026"
 
 export default function PoliticaDePrivacidade() {
@@ -15,8 +24,7 @@ export default function PoliticaDePrivacidade() {
     <DocumentoLegal titulo="Política de Privacidade" vigencia={VIGENCIA}>
       <h2>1. Quem trata os seus dados</h2>
       <p>
-        A Provisão é operada por <strong>{CONTROLADOR_NOME}</strong>, CPF{" "}
-        <strong>{CONTROLADOR_CPF}</strong>, domiciliado em {CONTROLADOR_CIDADE_UF}, na qualidade
+        A Provisão é operada por <strong>{CONTROLADOR_NOME}</strong>, pessoa física, na qualidade
         de controlador dos dados pessoais tratados nesta plataforma, nos termos da Lei nº
         13.709/2018 (LGPD).
       </p>

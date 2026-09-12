@@ -1,10 +1,14 @@
 import { Link } from "react-router-dom"
 import { DocumentoLegal } from "@/components/documento-legal"
 
+// Mesmo criterio da Politica de Privacidade: so o nome. Sem CPF, e sem
+// comarca - ver a secao 11, que elege o foro do domicilio de QUEM USA.
 const CONTROLADOR_NOME = "[SEU NOME COMPLETO]"
-const CONTROLADOR_CPF = "[SEU CPF]"
-const FORO_COMARCA_UF = "[SUA COMARCA, UF]"
 
+/**
+ * Precisa ser igual a VERSAO_TERMOS em apps/api/src/aceites.ts, que e o que
+ * fica gravado no registro de aceite.
+ */
 const VIGENCIA = "12 de setembro de 2026"
 
 export default function TermosDeUso() {
@@ -101,17 +105,18 @@ export default function TermosDeUso() {
         reflete a versão vigente.
       </p>
 
-      <h2>11. Lei aplicável</h2>
+      <h2>11. Lei aplicável e foro</h2>
       <p>
-        Estes termos são regidos pela lei brasileira. Fica eleito o foro da comarca de{" "}
-        {FORO_COMARCA_UF} para dirimir qualquer controvérsia, com renúncia a qualquer outro, por
-        mais privilegiado que seja.
+        Estes termos são regidos pela lei brasileira. Qualquer controvérsia será resolvida no{" "}
+        <strong>foro do domicílio de quem usa o serviço</strong> — e não em uma comarca escolhida
+        por nós. É o que o Código de Defesa do Consumidor garante (art. 101, I), e cláusula que
+        obrigasse você a processar longe de casa seria abusiva de qualquer forma.
       </p>
 
       <h2>12. Contato</h2>
       <p>
-        Serviço operado por {CONTROLADOR_NOME}, CPF {CONTROLADOR_CPF}. Para qualquer dúvida sobre
-        estes termos, use o formulário de suporte dentro do app.
+        Serviço operado por {CONTROLADOR_NOME}. Para qualquer dúvida sobre estes termos, use o
+        formulário de suporte dentro do app.
       </p>
     </DocumentoLegal>
   )
