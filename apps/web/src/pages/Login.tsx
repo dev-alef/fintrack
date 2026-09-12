@@ -647,6 +647,25 @@ export default function Login() {
                 </div>
               )}
 
+              {/* So no cadastro: e o momento em que a pessoa esta de fato
+                  aceitando algo, nao em todo login. Sem checkbox por
+                  enquanto - o clique em "Criar conta" e o aceite, como na
+                  maioria dos apps; virar exigencia bloqueante e registro
+                  auditavel de consentimento e melhoria de acompanhamento. */}
+              {criando && (
+                <p style={{ fontSize: 12.5, lineHeight: 1.5, color: "var(--text-2)" }}>
+                  Ao criar sua conta, você concorda com os{" "}
+                  <Link to="/termos" target="_blank" style={{ color: "var(--link)" }}>
+                    Termos de Uso
+                  </Link>{" "}
+                  e a{" "}
+                  <Link to="/privacidade" target="_blank" style={{ color: "var(--link)" }}>
+                    Política de Privacidade
+                  </Link>
+                  .
+                </p>
+              )}
+
               <button
                 type="submit"
                 className="pv-primary"
@@ -705,6 +724,17 @@ export default function Login() {
               />
             </div>
           </form>
+
+          <p style={{ fontSize: 12.5, color: "var(--text-2)", textAlign: "center" }}>
+            © {new Date().getFullYear()} Provisão ·{" "}
+            <Link to="/termos" style={{ color: "var(--text-2)" }}>
+              Termos de Uso
+            </Link>{" "}
+            ·{" "}
+            <Link to="/privacidade" style={{ color: "var(--text-2)" }}>
+              Política de Privacidade
+            </Link>
+          </p>
         </div>
       </div>
     </div>
