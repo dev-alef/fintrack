@@ -10,7 +10,7 @@ import { DocumentoLegal } from "@/components/documento-legal"
 //
 // Se um dia existir CNPJ, troque por razao social + CNPJ: ai sim o numero e
 // publico por natureza, e passa a ser o identificador correto.
-const CONTROLADOR_NOME = "[SEU NOME COMPLETO]"
+const CONTROLADOR_NOME = "Alerson Ferreira"
 
 /**
  * Versao do documento. Precisa ser igual a VERSAO_PRIVACIDADE em

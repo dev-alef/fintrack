@@ -3,7 +3,7 @@ import { DocumentoLegal } from "@/components/documento-legal"
 
 // Mesmo criterio da Politica de Privacidade: so o nome. Sem CPF, e sem
 // comarca - ver a secao 11, que elege o foro do domicilio de QUEM USA.
-const CONTROLADOR_NOME = "[SEU NOME COMPLETO]"
+const CONTROLADOR_NOME = "Alerson Ferreira"
 
 /**
  * Precisa ser igual a VERSAO_TERMOS em apps/api/src/aceites.ts, que e o que
