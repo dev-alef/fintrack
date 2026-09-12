@@ -1,0 +1,32 @@
+# Quebra de linha: LF em todo lugar, sempre.
+#
+# Sem isto, um editor configurado para CRLF reescreve o arquivo inteiro ao
+# salvar, e o git passa a mostrar TODAS as linhas como alteradas mesmo quando
+# so uma mudou de verdade. Ja aconteceu aqui, com index.html e vercel.json:
+# o diff tinha 15 linhas alteradas e nenhuma mudanca de conteudo, e travou um
+# `git pull` com "your local changes would be overwritten".
+#
+# O custo real nao e o diff feio - e a mudanca de verdade ficar escondida no
+# meio do ruido numa revisao de codigo.
+#
+# `eol=lf` em vez de so `text=auto`: o segundo normaliza o que entra no
+# repositorio, mas ainda entrega CRLF no diretorio de trabalho em Windows.
+# Como tudo aqui roda em Linux - desenvolvimento, CI e os dois deploys - LF
+# dos dois lados evita a conversao de ida e volta.
+* text=auto eol=lf
+
+# Binario nao e texto. Sem marcar, o git tenta "normalizar" os bytes e corrompe
+# a imagem - o print do dashboard no README seria a primeira vitima.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
+
+# Gerado por ferramenta, e enorme: some da revisao de PR. Continua versionado e
+# continua sendo baixado normalmente - so nao polui o diff.
+package-lock.json linguist-generated=true
