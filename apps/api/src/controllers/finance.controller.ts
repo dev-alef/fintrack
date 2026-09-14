@@ -1,4 +1,5 @@
 import { Request, Response } from 'express'
+import { z } from 'zod'
 import * as S from '../services/finance.service'
 
 const uid = (req: Request) => req.user!.userId
@@ -100,4 +101,55 @@ export async function getAnnual(req: Request, res: Response) {
     const { year } = req.query
     res.json(await S.getAnnualSummary(uid(req), Number(year)))
   } catch { res.status(500).json({ error: 'Erro interno' }) }
+}
+
+// PLANEJAMENTO DO ANO
+export async function toggleCardExpense(req: Request, res: Response) {
+  try {
+    const { cardId, month, year, paid } = req.body
+    res.json(
+      await S.toggleCardExpensePayment(uid(req), cardId, Number(month), Number(year), Boolean(paid)),
+    )
+  } catch (err) {
+    if (isNotFound(err)) { res.status(404).json({ error: (err as Error).message }); return }
+    console.error(err)
+    res.status(500).json({ error: 'Erro interno' })
+  }
+}
+
+/**
+ * Validação com Zod aqui, e não no estilo solto dos endpoints vizinhos.
+ *
+ * O corpo é uma lista aninhada vinda de uma tela que edita doze meses de uma
+ * vez: um `Number(undefined)` virando NaN no meio disso grava sujeira em massa,
+ * e o erro só apareceria semanas depois, num mês que ninguém estava olhando.
+ */
+const planejamentoSchema = z.object({
+  year: z.number().int().min(2000).max(2100),
+  meses: z
+    .array(
+      z.object({
+        month: z.number().int().min(1).max(12),
+        estimated_income: z.number().min(0).optional(),
+        cards: z
+          .array(z.object({ cardId: z.string().uuid(), amount: z.number().min(0) }))
+          .optional(),
+      }),
+    )
+    .min(1),
+})
+
+export async function salvarPlanejamento(req: Request, res: Response) {
+  try {
+    const dados = planejamentoSchema.parse(req.body)
+    res.json(await S.salvaPlanejamento(uid(req), dados.year, dados.meses))
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      res.status(400).json({ error: err.issues[0].message })
+      return
+    }
+    if (isNotFound(err)) { res.status(404).json({ error: (err as Error).message }); return }
+    console.error(err)
+    res.status(500).json({ error: 'Erro interno' })
+  }
 }

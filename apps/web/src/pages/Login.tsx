@@ -725,6 +725,28 @@ export default function Login() {
             </div>
           </form>
 
+          {/* Para quem chegou sem saber o que e isto. Fora do cartao e sem cor de
+              acao primaria de proposito: nao pode competir com o formulario de
+              quem ja tem conta, que e a maioria de quem abre esta tela. */}
+          <Link
+            to="/conhecer"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "10px 20px",
+              borderRadius: 999,
+              fontSize: 14,
+              fontWeight: 500,
+              color: "var(--text)",
+              background: "var(--surface)",
+              border: "1px solid var(--border)",
+            }}
+          >
+            Conhecer a Provisão
+            <span aria-hidden="true">→</span>
+          </Link>
+
           <p style={{ fontSize: 12.5, color: "var(--text-2)", textAlign: "center" }}>
             © {new Date().getFullYear()} Provisão ·{" "}
             <Link to="/termos" style={{ color: "var(--text-2)" }}>

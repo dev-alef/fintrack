@@ -15,6 +15,7 @@ r.delete('/cards/:id', C.removeCard)
 r.get('/cards/expenses', C.getExpenses)
 r.post('/cards/expenses', C.setExpense)
 r.get('/cards/annual', C.getCardAnnual)
+r.post('/cards/expenses/toggle', C.toggleCardExpense)
 
 // Despesas fixas
 r.get('/bills', C.getBills)
@@ -30,5 +31,8 @@ r.post('/payments/toggle', C.togglePayment)
 r.get('/config', C.getConfig)
 r.post('/config', C.setConfig)
 r.get('/annual', C.getAnnual)
+
+// Planejamento do ano inteiro: grava varios meses numa transacao so.
+r.post('/planejamento', C.salvarPlanejamento)
 
 export default r

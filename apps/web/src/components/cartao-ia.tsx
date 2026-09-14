@@ -20,8 +20,39 @@ type Props = {
   sobrou: number
   contasFixas: number
   faturas: number
+  /** Contas fixas JA pagas no mes, em quantidade. */
   contasPagas: number
   totalContas: number
+  /**
+   * Faturas de cartao pagas e total de faturas lancadas no mes.
+   *
+   * A barra junta contas fixas e faturas numa conta so, e o motivo e o mesmo
+   * que faz o cartao existir: "faltam 2 de 5 contas" escondia a fatura do
+   * cartao, que costuma ser o maior compromisso do mes. Separadas, a barra
+   * dizia "tudo em dia" com a fatura em aberto.
+   */
+  faturasPagas: number
+  totalFaturas: number
+  /** Valor ja pago das faturas - o mesmo papel de contasFixasPagas. */
+  faturasPagasValor: number
+  /**
+   * Onde o ano termina, com as parcelas separadas.
+   *
+   * `undefined` quando nao ha mes planejado a frente - ai nao ha projecao, e
+   * inventar um numero sobre o fim do ano seria repetir o saldo de hoje com
+   * outro nome.
+   *
+   * `guardadoEmMetas` ENTRA na soma: neste produto o dinheiro de uma meta e
+   * um terceiro bolso, separado do saldo do mes e dos investimentos. Aparece
+   * como parcela propria em vez de somado em silencio - e a unica forma de
+   * quem confere perceber se acabou contando o mesmo dinheiro duas vezes.
+   */
+  dezembro?: {
+    saldoHoje: number
+    planejado: number
+    mesesConsiderados: number
+    guardadoEmMetas: number
+  }
   investimentos: number
   patrimonio: number
   /** Valor ja pago das contas fixas - a contagem sozinha nao diz quanto falta em dinheiro. */
@@ -82,6 +113,10 @@ export function CartaoIA({
   faturas,
   contasPagas,
   totalContas,
+  faturasPagas,
+  totalFaturas,
+  faturasPagasValor,
+  dezembro,
   investimentos,
   patrimonio,
   contasFixasPagas,
@@ -92,20 +127,46 @@ export function CartaoIA({
   const [indice, setIndice] = useState(0)
   const [reduzido, setReduzido] = useState(false)
 
-  const faltamPagar = totalContas - contasPagas
+  // Contas fixas e faturas contam juntas: sao os dois compromissos fechados do
+  // mes, e separar os dois fazia a barra dizer "tudo em dia" com a fatura do
+  // cartao - quase sempre a maior delas - ainda em aberto.
+  const pagos = contasPagas + faturasPagas
+  const totalCompromissos = totalContas + totalFaturas
+  const faltamPagar = totalCompromissos - pagos
+  const valorEmAberto = contasFixas + faturas - contasFixasPagas - faturasPagasValor
+
   const progressoMeta = meta && meta.alvo > 0 ? Math.min(100, Math.round((meta.atual / meta.alvo) * 100)) : 0
   const fatiaInvestida = patrimonio > 0 ? Math.round((investimentos / patrimonio) * 100) : 0
 
   const frases = [
     sobrou >= 0 ? `Sobraram ${formata(sobrou)} no seu mês.` : `Seu mês está ${formata(Math.abs(sobrou))} no vermelho.`,
     faltamPagar > 0
-      ? `Faltam ${faltamPagar} ${faltamPagar === 1 ? "conta fixa" : "contas fixas"} para pagar.`
-      : totalContas > 0
-        ? "Todas as contas fixas do mês estão pagas."
+      ? `Falta${faltamPagar === 1 ? "" : "m"} ${faltamPagar} ${
+          faltamPagar === 1 ? "conta" : "contas"
+        } para pagar, ${formata(valorEmAberto)} no total.`
+      : totalCompromissos > 0
+        ? "Contas fixas e faturas do mês, tudo pago."
         : `Suas contas fixas somam ${formata(contasFixas)}.`,
     meta ? `${meta.titulo} está em ${progressoMeta}% da sua meta.` : `Você tem ${formata(investimentos)} investidos.`,
     faturas > 0 ? `As faturas dos cartões estão em ${formata(faturas)}.` : "Nenhuma fatura lançada neste mês.",
   ]
+
+  // Saldo projetado + investido + metas = patrimonio em dezembro. Exatamente a
+  // mesma regra do card "Patrimonio total" do painel: duas definicoes
+  // diferentes de patrimonio na mesma tela seria pior que nenhuma, e quem
+  // comparasse os dois numeros nao teria como saber qual acreditar.
+  const saldoDezembro = dezembro ? dezembro.saldoHoje + dezembro.planejado : 0
+  const patrimonioDezembro = saldoDezembro + investimentos + (dezembro?.guardadoEmMetas ?? 0)
+
+  // A pergunta que originou o app entra na rotacao. Fica por ultimo de
+  // proposito: as outras falam do mes, esta olha adiante.
+  if (dezembro) {
+    frases.push(
+      patrimonioDezembro >= 0
+        ? `Em dezembro você deve ter ${formata(patrimonioDezembro)}.`
+        : `Em dezembro você fecha ${formata(Math.abs(patrimonioDezembro))} no vermelho.`,
+    )
+  }
 
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)")
@@ -213,16 +274,74 @@ export function CartaoIA({
               }
             />
 
-            {totalContas > 0 && (
+            {totalCompromissos > 0 && (
               <Barra
-                rotulo="Contas fixas pagas"
-                valor={`${contasPagas} de ${totalContas}`}
-                percentual={(contasPagas / totalContas) * 100}
+                rotulo="Contas fixas e faturas pagas"
+                valor={`${pagos} de ${totalCompromissos}`}
+                percentual={(pagos / totalCompromissos) * 100}
                 cor="var(--success)"
-                detalhe={faltamPagar > 0 ? `faltam ${formata(contasFixas - contasFixasPagas)}` : "tudo em dia neste mês"}
+                detalhe={
+                  faltamPagar > 0 ? `faltam ${formata(valorEmAberto)}` : "tudo em dia neste mês"
+                }
               />
             )}
           </div>
+
+          {/* O fim do ano, com a conta aberta.
+
+              Cada parcela aparece com o nome de onde saiu. Numero sobre o
+              proprio dinheiro sem origem visivel nao se confere, e o que nao
+              se confere nao se usa para decidir nada. */}
+          {dezembro && (
+            <div className="mt-6 border-t border-border pt-5">
+              <p className="text-xs uppercase tracking-[0.1em] text-muted">Em dezembro você deve ter</p>
+              <p
+                className="mt-1.5 text-2xl tabular-nums"
+                style={{
+                  fontFamily: "var(--font-heading)",
+                  color: patrimonioDezembro >= 0 ? "var(--income)" : "var(--expense)",
+                }}
+              >
+                {formata(patrimonioDezembro)}
+              </p>
+
+              <dl className="mt-4 space-y-1.5 text-[13px]">
+                {[
+                  { termo: "Saldo de hoje", valor: dezembro.saldoHoje, nota: "saldo base + o que sobrou neste mês" },
+                  {
+                    termo: `Sobra de ${dezembro.mesesConsiderados} ${dezembro.mesesConsiderados === 1 ? "mês planejado" : "meses planejados"}`,
+                    valor: dezembro.planejado,
+                    nota: "receita menos contas fixas e faturas, mês a mês",
+                  },
+                  { termo: "Investimentos", valor: investimentos, nota: "valor aplicado, como você cadastrou" },
+                  ...(dezembro.guardadoEmMetas > 0
+                    ? [{
+                        termo: "Metas",
+                        valor: dezembro.guardadoEmMetas,
+                        nota: "já guardado, somando todas as suas metas",
+                      }]
+                    : []),
+                ].map((linha) => (
+                  <div key={linha.termo} className="flex flex-wrap items-baseline justify-between gap-x-3">
+                    <dt className="text-muted">
+                      {linha.termo} <span className="text-text-3">· {linha.nota}</span>
+                    </dt>
+                    <dd className="shrink-0 tabular-nums text-text">{formata(linha.valor)}</dd>
+                  </div>
+                ))}
+              </dl>
+
+              {/* O aviso trocou de conteudo junto com a conta. Antes explicava
+                  por que metas NAO somavam; agora somam, e o risco virou o
+                  oposto: contar o mesmo dinheiro duas vezes. */}
+              {dezembro.guardadoEmMetas > 0 && (
+                <p className="mt-3 text-[13px] leading-relaxed text-muted">
+                  As metas entram como dinheiro separado. Se o valor de uma meta já estiver
+                  dentro do seu saldo ou dos investimentos, ele está sendo contado duas vezes.
+                </p>
+              )}
+            </div>
+          )}
 
           <Link
             to="/insights"

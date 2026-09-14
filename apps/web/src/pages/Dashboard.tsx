@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { CartaoIA } from "@/components/cartao-ia"
 import { GraficoAno } from "@/components/grafico-ano"
@@ -12,8 +12,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
+import { PlanejamentoAnual, projecaoFimDoAno, type CartaoDoAno } from "@/components/planejamento-anual"
 
 const fmt = (v: string | number) => Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
 // Dois formatos, dois usos. Por extenso onde o mes e lido como texto - o
@@ -23,7 +23,6 @@ const MESES = [
   "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
 ]
-const MONTHS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"]
 // Paleta que o usuario escolhe para identificar cada cartao. Sao dados, nao
 // decoracao de tema: o valor vai para credit_cards.color, que e VARCHAR(7).
 // Precisa ser hex e nao pode virar token - "var(--primary)" nao cabe na coluna
@@ -39,10 +38,12 @@ const CARD_COLORS = ["var(--cat-1)", "var(--cat-2)", "var(--cat-3)", "var(--cat-
 
 interface Card { id: string; name: string; due_day: number; color: string }
 interface Bill { id: string; name: string; amount: string; due_day: number; paid?: boolean }
-interface CardExpense { card_id: string; card_name: string; color: string; amount: string }
+interface CardExpense { card_id: string; card_name: string; color: string; amount: string; paid?: boolean }
 interface Config { estimated_income: string; balance: string; investments: string }
 interface Goal { id: string; title: string; target_amount: string; current_amount: string; progress_pct: string }
-interface AnnualCard { id: string; name: string; color: string; annual_total: string; monthly_breakdown?: { month: number; amount: string }[] }
+// monthly_breakdown carrega valor e status de pago por mes - e o que a
+// tabela editavel do ano consome.
+type AnnualCard = CartaoDoAno & { annual_total: string }
 
 export default function Dashboard() {
   const { data: session } = useSession()
@@ -82,19 +83,51 @@ export default function Dashboard() {
   const deleteBill = useMutation({ mutationFn: (id: string) => api.delete(`/finance/bills/${id}`), onSuccess: () => inv(["payments", "annualSummary"]) })
   const togglePayment = useMutation({ mutationFn: (d: unknown) => api.post("/finance/payments/toggle", d), onSuccess: () => inv(["payments"]) })
   const setExpense = useMutation({ mutationFn: (d: unknown) => api.post("/finance/cards/expenses", d), onSuccess: () => inv(["expenses", "annual", "annualSummary"]) })
+  const toggleCardExpense = useMutation({ mutationFn: (d: unknown) => api.post("/finance/cards/expenses/toggle", d), onSuccess: () => inv(["expenses", "annual"]) })
   const saveConfig = useMutation({ mutationFn: (d: unknown) => api.post("/finance/config", d), onSuccess: () => inv(["config", "annualSummary"]) })
 
   const totalBills = bills.reduce((s, b) => s + Number(b.amount), 0)
   const totalPaid = bills.filter((b) => b.paid).reduce((s, b) => s + Number(b.amount), 0)
   const totalCards = expenses.reduce((s, e) => s + Number(e.amount), 0)
+  // Faturas entram na mesma conta das contas fixas no cartao da IA. So conta
+  // fatura com valor: cartao cadastrado sem lancamento no mes nao e um
+  // compromisso em aberto, e contaria como "faltando pagar" sem nada a pagar.
+  const faturasLancadas = expenses.filter((e) => Number(e.amount) > 0)
+  const faturasPagasLista = faturasLancadas.filter((e) => e.paid)
+  const faturasPagasValor = faturasPagasLista.reduce((s, e) => s + Number(e.amount), 0)
   const estimatedIncome = Number(config?.estimated_income || 0)
   const balanceBase = Number(config?.balance || 0)
   const investments = Number(config?.investments || 0)
   const leftover = estimatedIncome - totalBills - totalCards
   const balance = balanceBase + leftover
-  const patrimonio = balance + investments
-  const annualTotal = annualSummary.reduce((s, r) => s + Number(r.estimated_income || 0), 0)
-  const annualExpenses = annualSummary.reduce((s, r) => s + Number(r.total_fixed_bills || 0) + Number(r.total_card_expenses || 0), 0)
+  // Quanto ja foi guardado nas metas.
+  //
+  // ENTRA no patrimonio por decisao do dono do produto: aqui, o dinheiro de uma
+  // meta fica separado do saldo do mes e dos investimentos - e um terceiro
+  // bolso, nao um recorte dos outros dois.
+  //
+  // Isso so vale enquanto quem usa nao contar o mesmo dinheiro duas vezes (por
+  // exemplo, somar a reserva no "Saldo atual" E cadastra-la como meta). Por
+  // isso a linha de metas fica visivel embaixo do total, em vez de somada em
+  // silencio: quem conferir ve a parcela e percebe se duplicou.
+  const guardadoEmMetas = goals.reduce((s, g) => s + Number(g.current_amount || 0), 0)
+
+  const patrimonio = balance + investments + guardadoEmMetas
+
+  // Projecao de fim de ano para o cartao da IA. Usa o que esta SALVO - o
+  // rascunho da tabela nao existe aqui. Mesma funcao que a tabela usa, para
+  // as duas leituras nunca discordarem.
+  const projecaoAno = projecaoFimDoAno({
+    saldoAtual: balance,
+    mesAtual: year === now.getFullYear() ? month : 0,
+    fixasPorMes: Number(annualSummary[0]?.total_fixed_bills || 0),
+    meses: new Map(
+      annualSummary.map((l) => [
+        l.month,
+        { receita: Number(l.estimated_income || 0), faturas: Number(l.total_card_expenses || 0) },
+      ]),
+    ),
+  })
 
   // O grafico passou de "ultimos 6 meses" para o ano inteiro. A serie vem do
   // annualSummary, que a tela ja buscava para a tabela do fim da pagina - nao
@@ -123,10 +156,40 @@ export default function Dashboard() {
     .sort((a, b) => Number(b.progress_pct) - Number(a.progress_pct))[0]
 
   const byCategory = chartData?.byCategory || []
-  const fatiasPorCategoria = byCategory.map((c: { category: string; total: string }) => ({
-    nome: c.category,
-    valor: Number(c.total),
-  }))
+
+  /**
+   * "Para onde foi" soma as TRES origens de gasto do mes, nao so as transacoes.
+   *
+   * Antes vinha apenas de `byCategory`, que existe somente para lancamentos
+   * avulsos. Quem organiza o mes por contas fixas e fatura de cartao - a maior
+   * parte das pessoas - via a rosca vazia, ou mostrando uma fatia de farmacia
+   * ao lado de um aluguel invisivel. O grafico dizia menos que nada: dizia
+   * errado.
+   *
+   * A chave e o NOME: conta fixa entra pelo nome dela, fatura pelo nome do
+   * cartao. Nomes iguais viram uma fatia so - o que tambem significa que
+   * lancar "Aluguel" como transacao AVULSA tendo uma conta fixa "Aluguel"
+   * soma os dois. E o comportamento certo para quem usa um registro ou outro,
+   * e some sozinho quando a importacao de extrato entrar e a duplicidade
+   * passar a ser tratada na origem.
+   */
+  const fatiasPorCategoria = useMemo(() => {
+    const porNome = new Map<string, number>()
+
+    const soma = (nome: string | undefined, valor: number) => {
+      const limpo = nome?.trim()
+      if (!limpo || !Number.isFinite(valor) || valor <= 0) return
+      porNome.set(limpo, (porNome.get(limpo) ?? 0) + valor)
+    }
+
+    for (const c of byCategory as { category: string; total: string }[]) {
+      soma(c.category, Number(c.total))
+    }
+    for (const b of bills) soma(b.name, Number(b.amount))
+    for (const e of expenses) soma(e.card_name, Number(e.amount))
+
+    return [...porNome].map(([nome, valor]) => ({ nome, valor }))
+  }, [byCategory, bills, expenses])
 
   const isInitialLoading = cardsLoading || billsLoading || expensesLoading || configLoading || annualLoading || chartLoading
   const hasCriticalError = cardsError || billsError || configError || chartError
@@ -227,7 +290,14 @@ export default function Dashboard() {
                   <TrendingUp className="h-3.5 w-3.5 text-primary" aria-hidden="true" /> Patrimônio total
                 </div>
                 <p className="text-xl font-bold text-primary">{fmt(patrimonio)}</p>
-                <p className="mt-1 text-xs text-muted">Saldo + Investimentos</p>
+                <p className="mt-1 text-xs text-muted">Saldo + Investimentos + Metas</p>
+                {/* Responde no proprio card a duvida de quem olha: a meta nao
+                    soma por cima - o dinheiro dela ja esta num dos dois acima. */}
+                {guardadoEmMetas > 0 && (
+                  <p className="mt-0.5 text-xs text-text-3">
+                    inclui {fmt(guardadoEmMetas)} guardados em metas
+                  </p>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -240,6 +310,19 @@ export default function Dashboard() {
             faturas={totalCards}
             contasPagas={bills.filter((b) => b.paid).length}
             totalContas={bills.length}
+            faturasPagas={faturasPagasLista.length}
+            totalFaturas={faturasLancadas.length}
+            faturasPagasValor={faturasPagasValor}
+            dezembro={
+              projecaoAno.mesesConsiderados > 0
+                ? {
+                    saldoHoje: balance,
+                    planejado: projecaoAno.somaPlanejada,
+                    mesesConsiderados: projecaoAno.mesesConsiderados,
+                    guardadoEmMetas,
+                  }
+                : undefined
+            }
             investimentos={investments}
             patrimonio={patrimonio}
             temMetas={goals.length > 0}
@@ -345,13 +428,46 @@ export default function Dashboard() {
                   </div>
                 ) : (
                   <div key={`${c.id}-${month}-${year}`} className="flex items-center gap-2.5">
+                    {/* Mesmo ponto redondo das contas fixas, logo ao lado. Sem
+                        ele, o unico lugar de marcar fatura paga era a tabela do
+                        ano la embaixo - e o painel dizia quanto falta pagar sem
+                        dar como mexer nisso aqui, onde o mes e administrado. */}
+                    <button
+                      type="button"
+                      disabled={val <= 0}
+                      onClick={() => toggleCardExpense.mutate({ cardId: c.id, month, year, paid: !exp?.paid })}
+                      aria-pressed={!!exp?.paid}
+                      aria-label={`Marcar fatura ${c.name} como ${exp?.paid ? "em aberto" : "paga"}`}
+                      title={val <= 0 ? "Lance o valor da fatura primeiro" : undefined}
+                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-[1.5px] border-border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
+                      style={{ background: exp?.paid ? "var(--success)" : "transparent" }}
+                    >
+                      <span
+                        className="h-2 w-2 rounded-full"
+                        style={{ background: exp?.paid ? "var(--surface)" : "transparent" }}
+                      />
+                    </button>
                     <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: c.color }} aria-hidden="true" />
                     <div className="flex-1 min-w-0">
-                      <p className="truncate text-sm font-medium text-text">
+                      <p className={cn("truncate text-sm font-medium", exp?.paid ? "text-muted line-through" : "text-text")}>
                         {c.name} <span className="text-xs font-normal text-muted">dia {c.due_day}</span>
                       </p>
                     </div>
+                    {/* O `val` entra na key de proposito.
+
+                        Este campo e nao-controlado (defaultValue) e grava no
+                        blur. Sem o valor na key, React reaproveita o input
+                        quando o dado muda por outro caminho - a tabela do ano
+                        logo abaixo edita a MESMA fatura -, o campo segue
+                        exibindo o numero velho, e o proximo blur grava o velho
+                        por cima do novo, sem ninguem digitar nada.
+
+                        Reproduzido: valor alterado para 1500 por outra via,
+                        um foco e um Tab no campo, e a fatura voltou para
+                        687,40. Com o valor na key o input remonta e passa a
+                        refletir o dado atual. */}
                     <Input
+                      key={`exp-${c.id}-${month}-${year}-${val}`}
                       type="number"
                       step="0.01"
                       placeholder="R$ 0,00"
@@ -369,10 +485,18 @@ export default function Dashboard() {
                 )
               })}
               {cards.length === 0 && <p className="text-sm text-muted">Nenhum cartão cadastrado</p>}
+              {/* Mesmo rodape das despesas fixas, logo abaixo: pago, total e o
+                  que falta. So o total dizia quanto as faturas somam, nao
+                  quanto ainda vai sair do bolso - que e a pergunta de quem
+                  olha no meio do mes. */}
               {totalCards > 0 && (
-                <div className="mt-1 flex justify-between border-t border-border pt-2.5">
-                  <span className="text-sm text-muted">Total faturas</span>
-                  <span className="text-sm font-bold text-expense">{fmt(totalCards)}</span>
+                <div className="mt-1 flex flex-wrap justify-between gap-2 border-t border-border pt-2.5 text-sm">
+                  <span className="text-muted">
+                    Pagas: {fmt(faturasPagasValor)} / Total: {fmt(totalCards)}
+                  </span>
+                  <span className="font-bold text-warning">
+                    Pendente: {fmt(totalCards - faturasPagasValor)}
+                  </span>
                 </div>
               )}
             </div>
@@ -467,69 +591,30 @@ export default function Dashboard() {
         <DonutCategorias fatias={fatiasPorCategoria} formata={fmt} />
       </div>
 
-      {/* Tabela anual */}
+      {/* Planejamento do ano: a mesma tabela anual que ja existia aqui, agora
+          editavel. Trocada no lugar em vez de virar tela nova - e onde a
+          pessoa ja olha o ano, e onde ela ja configura o mes logo acima. */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-sm">
-            <Calendar className="h-4 w-4 text-muted" aria-hidden="true" /> Totais anuais — {year}
+            <Calendar className="h-4 w-4 text-muted" aria-hidden="true" /> Planejamento do ano — {year}
           </CardTitle>
         </CardHeader>
-        <CardContent className="overflow-x-auto p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                {["Mês", "Receita", "Gastos", "Sobrou", ...annual.map((c: AnnualCard) => c.name)].map((h, i) => (
-                  <TableHead
-                    key={i}
-                    className={cn(i === 0 ? "text-left" : "text-right", i >= 4 ? "text-primary" : "")}
-                    style={i >= 4 ? { color: (annual[i - 4] as AnnualCard)?.color } : undefined}
-                  >
-                    {h}
-                  </TableHead>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {MONTHS.map((m, i) => {
-                const row = annualSummary.find((r) => r.month === i + 1)
-                const income = Number(row?.estimated_income || 0)
-                const gastos = Number(row?.total_fixed_bills || 0) + Number(row?.total_card_expenses || 0)
-                const sob = income - gastos
-                const isCurrent = i + 1 === month && year === now.getFullYear()
-                return (
-                  <TableRow key={m} className={isCurrent ? "bg-primary/10" : ""}>
-                    <TableCell className={cn("font-medium", isCurrent ? "text-primary font-bold" : "text-text")}>{m}</TableCell>
-                    <TableCell className="text-right text-income">{income > 0 ? fmt(income) : "-"}</TableCell>
-                    <TableCell className="text-right text-expense">{gastos > 0 ? fmt(gastos) : "-"}</TableCell>
-                    <TableCell className={cn("text-right", sob >= 0 ? "text-income" : "text-expense")}>{income > 0 ? fmt(sob) : "-"}</TableCell>
-                    {annual.map((c: AnnualCard) => {
-                      const cardRow = c.monthly_breakdown?.find((b) => b.month === i + 1)
-                      return (
-                        <TableCell key={c.id} className="text-right text-muted">
-                          {cardRow ? fmt(cardRow.amount) : "-"}
-                        </TableCell>
-                      )
-                    })}
-                  </TableRow>
-                )
-              })}
-              <TableRow className="border-t-2 border-border font-bold">
-                <TableCell className="text-text">Total</TableCell>
-                <TableCell className="text-right text-income">{fmt(annualTotal)}</TableCell>
-                <TableCell className="text-right text-expense">{fmt(annualExpenses)}</TableCell>
-                <TableCell className={cn("text-right", annualTotal - annualExpenses >= 0 ? "text-income" : "text-expense")}>
-                  {fmt(annualTotal - annualExpenses)}
-                </TableCell>
-                {annual.map((c: AnnualCard) => (
-                  <TableCell key={c.id} className="text-right" style={{ color: c.color }}>
-                    {fmt(c.annual_total)}
-                  </TableCell>
-                ))}
-              </TableRow>
-            </TableBody>
-          </Table>
+        <CardContent>
+          {annualLoading ? (
+            <p className="text-sm text-muted">Carregando o ano...</p>
+          ) : (
+            <PlanejamentoAnual
+              ano={year}
+              mesAtual={year === now.getFullYear() ? month : 0}
+              cartoes={annual}
+              linhas={annualSummary}
+              formata={fmt}
+            />
+          )}
         </CardContent>
       </Card>
+
     </div>
   )
 }

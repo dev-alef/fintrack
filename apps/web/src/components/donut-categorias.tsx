@@ -24,7 +24,10 @@ export function DonutCategorias({ fatias, formata }: Props) {
         <h2 className="text-xl text-text" style={{ fontFamily: "var(--font-heading)" }}>
           Para onde foi
         </h2>
-        <p className="mt-4 text-sm text-muted">Nenhuma despesa categorizada neste período.</p>
+        <p className="mt-4 text-sm text-muted">
+          Nada lançado neste mês ainda. Assim que houver uma conta fixa, uma fatura ou uma
+          transação, elas aparecem aqui divididas por nome.
+        </p>
       </div>
     )
   }
