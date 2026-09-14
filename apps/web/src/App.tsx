@@ -5,6 +5,7 @@ import EmailConfirmado from './pages/EmailConfirmado'
 import EsqueciSenha from './pages/EsqueciSenha'
 import NovaSenha from './pages/NovaSenha'
 import DoisFatores from './pages/DoisFatores'
+import Conhecer from './pages/Conhecer'
 import TermosDeUso from './pages/TermosDeUso'
 import PoliticaDePrivacidade from './pages/PoliticaDePrivacidade'
 import Settings from './pages/Settings'
@@ -34,6 +35,7 @@ export default function App() {
       <Route path="/dois-fatores" element={<DoisFatores />} />
       {/* Publicas: quem esta decidindo se cria conta precisa ler antes de se
           cadastrar, e o link do rodape do cadastro roda antes de haver sessao. */}
+      <Route path="/conhecer" element={<Conhecer />} />
       <Route path="/termos" element={<TermosDeUso />} />
       <Route path="/privacidade" element={<PoliticaDePrivacidade />} />
       <Route path="/" element={<PrivateRoute><AppLayout /></PrivateRoute>}>

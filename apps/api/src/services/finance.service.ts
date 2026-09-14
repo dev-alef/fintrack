@@ -1,4 +1,4 @@
-import { query } from '../db/client'
+import pool, { query } from '../db/client'
 
 // ── CARTÕES ──────────────────────────────────────────────
 export async function listCards(userId: string) {
@@ -66,7 +66,7 @@ export async function getCardAnnualTotal(userId: string, year: number) {
   const result = await query(
     `SELECT cc.id, cc.name, cc.color,
        COALESCE(SUM(ce.amount), 0) as annual_total,
-       json_agg(json_build_object('month', ce.month, 'amount', ce.amount) ORDER BY ce.month) as monthly_breakdown
+       json_agg(json_build_object('month', ce.month, 'amount', ce.amount, 'paid', ce.paid) ORDER BY ce.month) as monthly_breakdown
      FROM credit_cards cc
      LEFT JOIN card_expenses ce ON cc.id = ce.card_id AND ce.year = $2
      WHERE cc.user_id = $1
@@ -192,4 +192,110 @@ export async function getAnnualSummary(userId: string, year: number) {
     [userId, year]
   )
   return result.rows
+}
+
+// ── PLANEJAMENTO DO ANO ──────────────────────────────────
+
+/**
+ * Marca a fatura de um cartão como paga, ou desmarca.
+ *
+ * Espelha toggleBillPayment, inclusive na checagem de dono: sem ela, bastaria
+ * mandar o id de um cartão alheio para mexer na fatura de outra pessoa.
+ *
+ * Cria a linha da fatura se ela ainda não existir. Marcar como paga uma fatura
+ * que nunca foi lançada é estranho, mas recusar seria pior: a tela mostra a
+ * caixinha, e a pessoa não tem como saber que precisa digitar um valor antes.
+ */
+export async function toggleCardExpensePayment(
+  userId: string,
+  cardId: string,
+  month: number,
+  year: number,
+  paid: boolean,
+) {
+  const cartao = await query('SELECT id FROM credit_cards WHERE id = $1 AND user_id = $2', [cardId, userId])
+  if (cartao.rows.length === 0) throw new Error('Cartão não encontrado')
+
+  const result = await query(
+    `INSERT INTO card_expenses (user_id, card_id, month, year, amount, paid, paid_at)
+     VALUES ($1, $2, $3, $4, 0, $5, $6)
+     ON CONFLICT (card_id, month, year)
+     DO UPDATE SET paid = $5, paid_at = $6, updated_at = now()
+     RETURNING *`,
+    [userId, cardId, month, year, paid, paid ? new Date() : null],
+  )
+  return result.rows[0]
+}
+
+export type MesPlanejado = {
+  month: number
+  estimated_income?: number
+  cards?: { cardId: string; amount: number }[]
+}
+
+/**
+ * Grava vários meses de uma vez — receita estimada e faturas.
+ *
+ * Tudo numa transação só, e essa é a razão de a função existir em vez de o
+ * frontend chamar o endpoint de mês em loop. Gravação parcial num planejamento
+ * anual é pior que falha: a pessoa fecharia a tela achando que salvou doze
+ * meses e teria salvo cinco, sem nada na interface denunciando quais.
+ *
+ * Os cartões são conferidos ANTES de qualquer escrita. Um id alheio no meio da
+ * lista derruba a operação inteira sem ter gravado nada — em vez de gravar os
+ * meses anteriores e falhar no meio.
+ */
+export async function salvaPlanejamento(userId: string, year: number, meses: MesPlanejado[]) {
+  const idsDeCartao = [...new Set(meses.flatMap((m) => (m.cards ?? []).map((c) => c.cardId)))]
+
+  const cliente = await pool.connect()
+  try {
+    await cliente.query('BEGIN')
+
+    if (idsDeCartao.length > 0) {
+      const donos = await cliente.query(
+        'SELECT id FROM credit_cards WHERE user_id = $1 AND id = ANY($2::uuid[])',
+        [userId, idsDeCartao],
+      )
+      if (donos.rows.length !== idsDeCartao.length) {
+        throw new Error('Cartão não encontrado')
+      }
+    }
+
+    let faturas = 0
+
+    for (const mes of meses) {
+      if (mes.estimated_income !== undefined) {
+        await cliente.query(
+          `INSERT INTO monthly_config (user_id, month, year, estimated_income)
+           VALUES ($1, $2, $3, $4)
+           ON CONFLICT (user_id, month, year)
+           DO UPDATE SET estimated_income = $4, updated_at = now()`,
+          [userId, mes.month, year, mes.estimated_income],
+        )
+      }
+
+      for (const cartao of mes.cards ?? []) {
+        // Só o valor: `paid` fica de fora de propósito. Ele é marcado na hora
+        // pela caixinha, e sobrescrevê-lo aqui apagaria essa marcação toda vez
+        // que alguém salvasse o planejamento.
+        await cliente.query(
+          `INSERT INTO card_expenses (user_id, card_id, month, year, amount)
+           VALUES ($1, $2, $3, $4, $5)
+           ON CONFLICT (card_id, month, year)
+           DO UPDATE SET amount = $5, updated_at = now()`,
+          [userId, cartao.cardId, mes.month, year, cartao.amount],
+        )
+        faturas++
+      }
+    }
+
+    await cliente.query('COMMIT')
+    return { meses: meses.length, faturas }
+  } catch (erro) {
+    await cliente.query('ROLLBACK')
+    throw erro
+  } finally {
+    cliente.release()
+  }
 }

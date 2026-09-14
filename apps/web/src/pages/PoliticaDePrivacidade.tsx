@@ -17,7 +17,7 @@ const CONTROLADOR_NOME = "Alerson Ferreira"
  * apps/api/src/aceites.ts, que e o que fica gravado no registro de aceite -
  * mudou o texto de forma relevante, muda os dois.
  */
-const VIGENCIA = "12 de setembro de 2026"
+const VIGENCIA = "14 de setembro de 2026"
 
 export default function PoliticaDePrivacidade() {
   return (
@@ -164,10 +164,10 @@ export default function PoliticaDePrivacidade() {
         self-service, direto nas Configurações, está no roadmap do produto.
       </p>
 
-      <h2>9. Menores de idade</h2>
+      <h2>9. Idade mínima</h2>
       <p>
-        Este serviço não é destinado a menores de 18 anos. Se você tem menos de 18 anos, não crie
-        uma conta.
+        Este serviço não é destinado a menores de 16 anos. Se você tem entre 16 e 17 anos, use com
+        o acompanhamento de um responsável.
       </p>
 
       <h2>10. Mudanças nesta política</h2>

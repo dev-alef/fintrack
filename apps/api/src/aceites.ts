@@ -39,7 +39,11 @@ import { query } from './db/client'
  * mude os dois lugares.
  */
 export const VERSAO_TERMOS = '2026-09-12'
-export const VERSAO_PRIVACIDADE = '2026-09-12'
+// Subiu sozinha em 14/09: a idade minima passou de 18 para 16 anos, com nota
+// sobre acompanhamento de responsavel entre 16 e 17. Mudanca de quem pode usar
+// o servico e mudanca relevante - quem aceitou a versao anterior aceitou outra
+// coisa. E o caso que justifica as duas constantes serem separadas.
+export const VERSAO_PRIVACIDADE = '2026-09-14'
 
 const DOCUMENTOS = [
   { documento: 'termos', versao: VERSAO_TERMOS },
