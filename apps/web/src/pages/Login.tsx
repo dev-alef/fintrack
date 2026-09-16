@@ -472,7 +472,11 @@ export default function Login() {
               transition: "background 400ms ease",
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+            {/* "Provisao" e termo contabil correto - reservar recurso para uma
+                obrigacao futura -, mas quem chega frio nao faz essa ligacao, e
+                a tela nao dizia em lugar nenhum do que se trata. A linha
+                funcional resolve isso; a de baixo diz o que se ganha. */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
               <span style={{ fontFamily: "var(--font-heading)", fontSize: 26 }}>Provisão</span>
               <span
                 style={{
@@ -498,6 +502,13 @@ export default function Login() {
                 IA acordada
               </span>
             </div>
+
+            <p style={{ fontSize: 14.5, fontWeight: 600, color: "var(--text)", marginBottom: 4 }}>
+              Controle financeiro pessoal
+            </p>
+            <p style={{ fontSize: 13.5, lineHeight: 1.55, color: "var(--text)", opacity: 0.78, marginBottom: 18 }}>
+              Saiba para onde vai o seu dinheiro — e quanto sobra no fim do ano.
+            </p>
 
             <div role="tablist" aria-label="Entrar ou criar conta" style={{ display: "flex", gap: 6, padding: 5, borderRadius: 999, background: "var(--surface-2)", marginBottom: 18 }}>
               {(["entrar", "criar"] as const).map((m) => (
@@ -747,16 +758,22 @@ export default function Login() {
             <span aria-hidden="true">→</span>
           </Link>
 
-          <p style={{ fontSize: 12.5, color: "var(--text-2)", textAlign: "center" }}>
-            © {new Date().getFullYear()} Provisão ·{" "}
-            <Link to="/termos" style={{ color: "var(--text-2)" }}>
-              Termos de Uso
-            </Link>{" "}
-            ·{" "}
-            <Link to="/privacidade" style={{ color: "var(--text-2)" }}>
-              Política de Privacidade
-            </Link>
-          </p>
+          {/* Duas linhas em vez de uma fila so: no celular os quatro itens
+              lado a lado quebravam no meio de "Politica de Privacidade". */}
+          <div style={{ textAlign: "center", lineHeight: 1.7 }}>
+            <p style={{ fontSize: 12.5, color: "var(--text-2)" }}>
+              © {new Date().getFullYear()} Provisão · Desenvolvido por Genesis Code
+            </p>
+            <p style={{ fontSize: 12.5, color: "var(--text-2)" }}>
+              <Link to="/termos" style={{ color: "var(--text-2)" }}>
+                Termos de Uso
+              </Link>{" "}
+              ·{" "}
+              <Link to="/privacidade" style={{ color: "var(--text-2)" }}>
+                Política de Privacidade
+              </Link>
+            </p>
+          </div>
         </div>
       </div>
     </div>
