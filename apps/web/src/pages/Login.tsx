@@ -14,6 +14,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom"
 import { signIn, signUp } from "../lib/auth-client"
 import { GoogleButton } from "@/components/google-button"
+import { Logo } from "@/components/logo"
 import { ThemeToggle } from "@/components/theme-toggle"
 
 const CHIPS = [
@@ -476,8 +477,11 @@ export default function Login() {
                 obrigacao futura -, mas quem chega frio nao faz essa ligacao, e
                 a tela nao dizia em lugar nenhum do que se trata. A linha
                 funcional resolve isso; a de baixo diz o que se ganha. */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-              <span style={{ fontFamily: "var(--font-heading)", fontSize: 26 }}>Provisão</span>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "8px 16px", marginBottom: 4 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <Logo size={32} />
+                <span style={{ fontFamily: "var(--font-heading)", fontSize: 26 }}>Provisão</span>
+              </div>
               <span
                 style={{
                   fontSize: 11,
