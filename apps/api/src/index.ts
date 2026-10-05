@@ -12,6 +12,7 @@ import insightsRoutes from './routes/insights.routes'
 import financeRoutes from './routes/finance.routes'
 import suporteRoutes from './routes/suporte.routes'
 import investmentsRoutes from './routes/investments.routes'
+import loansRoutes from './routes/loans.routes'
 
 // A unica condicao para o Sentry ligar e ter DSN. De proposito: gatilho extra
 // em NODE_ENV criaria uma falha silenciosa - se a variavel nao estivesse
@@ -143,6 +144,7 @@ app.use('/goals', goalsRoutes)
 app.use('/insights', insightsRoutes)
 app.use('/finance', financeRoutes)
 app.use('/investments', investmentsRoutes)
+app.use('/loans', loansRoutes)
 app.use('/suporte', suporteRoutes)
 
 Sentry.setupExpressErrorHandler(app)

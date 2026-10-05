@@ -23,6 +23,7 @@
 - 💳 **Controle de cartões** — cartões personalizáveis com faturas mensais e totais anuais
 - 📋 **Despesas fixas** — controle de contas com status pago/pendente por mês
 - 💸 **Transações** — CRUD completo com filtros, paginação e categorias
+- 🤝 **Empréstimos** — valores a pagar e a receber por pessoa, pagamentos parciais, histórico e vencimentos; controle separado do saldo e da projeção
 - 💎 **Carteira de investimentos** — tipos personalizados, rentabilidade, distribuição
 - 🎯 **Metas financeiras** — progresso automático com barra visual
 - 🤖 **Insights com IA** — análise financeira personalizada via Google Gemini, persistente durante a navegação
@@ -47,7 +48,7 @@
 - PostgreSQL, com queries SQL nativas + agregações
 - **Drizzle Kit** — migrations versionadas, com lock e histórico
 - **Better Auth** — sessões, OAuth com Google, 2FA, verificação de e-mail e recuperação de senha
-- **Zod** — validação em transações e metas
+- **Zod** — validação em transações, metas e empréstimos
 - **Resend** — e-mail transacional (verificação, recuperação, alertas, suporte)
 - **Sentry** — monitoramento de erro, com filtro de dado sensível antes do envio
 - Google Gemini AI — análise financeira
@@ -149,7 +150,7 @@ cd apps/api
 npm test
 ```
 
-67 testes automatizados (Vitest + Supertest, contra Postgres real em container) cobrindo autenticação, login com Google com vinculação de conta, 2FA, verificação de e-mail, recuperação de senha, resolução de IP e rate limiting (por IP e por conta), sessões ativas, alerta de acesso novo, suporte e transações — finanças, investimentos, metas e insights ainda sem cobertura automatizada.
+A suíte de integração usa Vitest + Supertest contra PostgreSQL real em container. Cobre autenticação, login com Google, 2FA, e-mail, rate limiting, sessões, suporte, transações e planejamento anual. Em empréstimos, verifica pagamentos parciais, quitação, correção, isolamento entre contas, repetição de requisições e quitações simultâneas, sem alterar os outros dados financeiros. Investimentos, metas e insights ainda não têm cobertura específica.
 
 ## 📡 Principais endpoints
 
@@ -166,6 +167,10 @@ npm test
 | GET | `/finance/payments` | Contas fixas com status |
 | GET | `/investments/portfolio` | Resumo da carteira |
 | GET | `/goals` | Metas financeiras |
+| GET / POST | `/loans` | Listar ou cadastrar empréstimos |
+| PUT / DELETE | `/loans/:id` | Editar ou excluir um empréstimo |
+| POST | `/loans/:id/payments` | Registrar pagamento parcial ou quitação |
+| DELETE | `/loans/:id/payments/:paymentId` | Remover um pagamento lançado por engano |
 | GET | `/insights` | Análise financeira com IA |
 | POST | `/suporte` | Enviar mensagem de suporte |
 
