@@ -5,6 +5,7 @@ import {
   CalendarDays,
   CreditCard,
   Gem,
+  HandCoins,
   LineChart,
   ListChecks,
   Lock,
@@ -38,6 +39,12 @@ type Recurso = {
 }
 
 const DIA_A_DIA: Recurso[] = [
+  {
+    icone: HandCoins,
+    titulo: "Empréstimos",
+    texto:
+      "A quem você deve e quem deve a você, com vencimentos e histórico de pagamentos parciais. Um controle separado, que não altera o saldo nem a projeção do ano.",
+  },
   {
     icone: Receipt,
     titulo: "Entradas e saídas",

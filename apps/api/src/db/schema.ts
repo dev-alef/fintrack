@@ -81,6 +81,35 @@ export const goals = pgTable("goals", {
 		}).onDelete("cascade"),
 ]);
 
+export const loans = pgTable("loans", {
+	id: uuid().defaultRandom().primaryKey(),
+	userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+	direction: varchar({ length: 10 }).notNull(),
+	person: varchar({ length: 120 }).notNull(),
+	description: varchar({ length: 300 }).default('').notNull(),
+	amount: numeric({ precision: 12, scale: 2 }).notNull(),
+	dueDate: date("due_date"),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("loans_user_id_idx").on(table.userId),
+	check("loans_direction_check", sql`${table.direction} IN ('payable', 'receivable')`),
+	check("loans_person_check", sql`length(trim(${table.person})) > 0`),
+	check("loans_amount_check", sql`${table.amount} > 0 AND ${table.amount} <= 999999999.99`),
+]);
+
+export const loanPayments = pgTable("loan_payments", {
+	id: uuid().primaryKey(),
+	loanId: uuid("loan_id").notNull().references(() => loans.id, { onDelete: "cascade" }),
+	amount: numeric({ precision: 12, scale: 2 }).notNull(),
+	paidOn: date("paid_on").notNull(),
+	notes: varchar({ length: 300 }).default('').notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("loan_payments_loan_id_idx").on(table.loanId),
+	check("loan_payments_amount_check", sql`${table.amount} > 0 AND ${table.amount} <= 999999999.99`),
+]);
+
 export const creditCards = pgTable("credit_cards", {
 	id: uuid().default(sql`uuid_generate_v4()`).primaryKey().notNull(),
 	userId: uuid("user_id"),

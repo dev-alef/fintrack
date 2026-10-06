@@ -43,6 +43,13 @@
       "when": 1789420000000,
       "tag": "0005_faturas_pagas",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791072000000,
+      "tag": "0006_emprestimos",
+      "breakpoints": true
     }
   ]
 }
