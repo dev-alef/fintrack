@@ -68,6 +68,10 @@ jobs:
           DATABASE_URL: postgresql://fintrack:fintrack123@localhost:5432/fintrack_db
         run: npm run build
 
+      - name: Test web
+        working-directory: apps/web
+        run: npm test
+
       - name: Build web
         working-directory: apps/web
         run: npm run build

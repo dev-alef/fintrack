@@ -1,3 +1,4 @@
+import { useSession } from '@/lib/auth-client'
 import { useState } from 'react'
 import { Target, CheckCircle2, Trash2, Calendar, PiggyBank, Plus } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -15,6 +16,11 @@ interface Goal {
 }
 
 export default function Goals() {
+  const { data: session } = useSession()
+  return session?.user ? <GoalsPage key={session.user.id} userId={session.user.id} /> : null
+}
+
+function GoalsPage({ userId }: { userId: string }) {
   const queryClient = useQueryClient()
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ title: '', target_amount: '', current_amount: '0', deadline: '' })
@@ -22,14 +28,14 @@ export default function Goals() {
   const [addValues, setAddValues] = useState<Record<string, string>>({})
 
   const { data: goals = [], isLoading } = useQuery({
-    queryKey: ['goals'],
+    queryKey: ['goals', userId],
     queryFn: () => api.get('/goals').then(r => r.data),
   })
 
   const createMutation = useMutation({
     mutationFn: (data: unknown) => api.post('/goals', data).then(r => r.data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['goals'] })
+      queryClient.invalidateQueries({ queryKey: ['goals', userId] })
       setForm({ title: '', target_amount: '', current_amount: '0', deadline: '' })
       setShowForm(false)
     },
@@ -37,13 +43,13 @@ export default function Goals() {
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api.delete('/goals/' + id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['goals'] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['goals', userId] }),
   })
 
   const updateMutation = useMutation({
     mutationFn: ({ id, current_amount }: { id: string; current_amount: number }) =>
       api.put('/goals/' + id, { current_amount }).then(r => r.data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['goals'] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['goals', userId] }),
   })
 
   async function handleCreate(e: React.FormEvent) {

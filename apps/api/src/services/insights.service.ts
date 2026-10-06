@@ -2,6 +2,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 import { getSummary } from './transaction.service'
 import { getBillPayments, getCardExpenses, getMonthlyConfig } from './finance.service'
 import { listInvestments, getPortfolioSummary } from './investments.service'
+import { listGoals } from './goals.service'
 
 export async function generateInsights(userId: string) {
   const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
@@ -11,13 +12,14 @@ export async function generateInsights(userId: string) {
   const month = now.getMonth() + 1
   const year = now.getFullYear()
 
-  const [summary, bills, expenses, config, investments, portfolio] = await Promise.all([
+  const [summary, bills, expenses, config, investments, portfolio, goals] = await Promise.all([
     getSummary(userId, String(month), String(year)),
     getBillPayments(userId, month, year),
     getCardExpenses(userId, month, year),
     getMonthlyConfig(userId, month, year),
     listInvestments(userId),
     getPortfolioSummary(userId),
+    listGoals(userId),
   ])
 
   const { total_income, total_expense } = summary.totals
@@ -28,14 +30,14 @@ export async function generateInsights(userId: string) {
   const totalCards = expenses.reduce((s: number, e: { amount: string }) => s + Number(e.amount), 0)
   const estimatedIncome = Number(config?.estimated_income || 0)
   const saldo = Number(config?.balance || 0)
-  const investmentsValue = Number(config?.investments || 0)
   const leftover = estimatedIncome - totalBills - totalCards
   const balanceReal = saldo + leftover
-  const patrimonio = balanceReal + investmentsValue
 
   // Totais da carteira de investimentos
   const totalInvested = portfolio.reduce((s: number, p: { total_invested: string }) => s + Number(p.total_invested), 0)
-  const totalCurrent = portfolio.reduce((s: number, p: { total_current: string }) => s + Number(p.total_current), 0)
+  const totalCurrent = portfolio.reduce((s: number, p: { total_current: string }) => s + Math.round(Number(p.total_current) * 100), 0) / 100
+  const goalsValue = goals.reduce((s: number, goal: { current_amount: string }) => s + Number(goal.current_amount), 0)
+  const patrimonio = balanceReal + totalCurrent + goalsValue
   const totalProfit = totalCurrent - totalInvested
   const returnPct = totalInvested > 0 ? ((totalProfit / totalInvested) * 100).toFixed(2) : '0'
 
@@ -55,10 +57,10 @@ export async function generateInsights(userId: string) {
       ).join('\n')
 
   const portfolioText = portfolio.length === 0 ? 'Nenhum investimento cadastrado.'
-    : portfolio.map((p: { icon?: string; name: string; total_invested: string; total_current: string; total_profit: string }) => {
+    : portfolio.map((p: { icon?: string; type_name: string; total_invested: string; total_current: string; total_profit: string }) => {
         const profit = Number(p.total_current) - Number(p.total_invested)
         const pct = Number(p.total_invested) > 0 ? ((profit / Number(p.total_invested)) * 100).toFixed(2) : '0'
-        return `- ${p.icon || '📈'} ${p.name}: investido R$ ${Number(p.total_invested).toFixed(2)}, atual R$ ${Number(p.total_current).toFixed(2)} (${profit >= 0 ? '+' : ''}${pct}%)`
+        return `- ${p.icon || '📈'} ${p.type_name}: investido R$ ${Number(p.total_invested).toFixed(2)}, atual R$ ${Number(p.total_current).toFixed(2)} (${profit >= 0 ? '+' : ''}${pct}%)`
       }).join('\n')
 
   const investmentsDetail = investments.length === 0 ? 'Nenhum ativo cadastrado.'
@@ -76,7 +78,8 @@ export async function generateInsights(userId: string) {
 - Total faturas cartões: R$ ${totalCards.toFixed(2)}
 - Sobrou no mês: R$ ${leftover.toFixed(2)}
 - Saldo real (base + sobrou): R$ ${balanceReal.toFixed(2)}
-- Patrimônio total (saldo + investimentos): R$ ${patrimonio.toFixed(2)}
+- Guardado em metas: R$ ${goalsValue.toFixed(2)}
+- Patrimônio total (saldo + investimentos + metas): R$ ${patrimonio.toFixed(2)}
 
 === CONTAS FIXAS ===
 ${billsText}
@@ -120,7 +123,8 @@ Seja direto, amigável, específico com os números reais do usuário. Não use 
       total_cards: totalCards,
       leftover,
       balance: balanceReal,
-      investments: investmentsValue,
+      investments: totalCurrent,
+      goals: goalsValue,
       patrimonio,
       portfolio_invested: totalInvested,
       portfolio_current: totalCurrent,

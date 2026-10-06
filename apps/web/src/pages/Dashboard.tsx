@@ -1,3 +1,7 @@
+import { Link } from "react-router-dom"
+import { ColorPicker } from "@/components/color-picker"
+import { LoansSummary } from "@/components/loans-summary"
+import { usePortfolio } from "@/hooks/usePortfolio"
 import { useMemo, useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { CartaoIA } from "@/components/cartao-ia"
@@ -23,23 +27,15 @@ const MESES = [
   "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
 ]
-// Paleta que o usuario escolhe para identificar cada cartao. Sao dados, nao
-// decoracao de tema: o valor vai para credit_cards.color, que e VARCHAR(7).
-// Precisa ser hex e nao pode virar token - "var(--primary)" nao cabe na coluna
-// e faria o cartao mudar de cor junto com o tema, perdendo a distincao visual.
-// Cores de categoria da paleta Organic. Como sao var(), acompanham os tres
-// temas - com hex fixo os graficos ficariam indigo num app creme.
 function saudacao() {
   const h = new Date().getHours()
   return h < 6 ? "Boa madrugada" : h < 12 ? "Bom dia" : h < 19 ? "Boa tarde" : "Boa noite"
 }
 
-const CARD_COLORS = ["var(--cat-1)", "var(--cat-2)", "var(--cat-3)", "var(--cat-4)", "var(--cat-5)", "var(--cat-6)", "var(--primary)"]
-
 interface Card { id: string; name: string; due_day: number; color: string }
 interface Bill { id: string; name: string; amount: string; due_day: number; paid?: boolean }
 interface CardExpense { card_id: string; card_name: string; color: string; amount: string; paid?: boolean }
-interface Config { estimated_income: string; balance: string; investments: string }
+interface Config { estimated_income: string; balance: string }
 interface Goal { id: string; title: string; target_amount: string; current_amount: string; progress_pct: string }
 // monthly_breakdown carrega valor e status de pago por mes - e o que a
 // tabela editavel do ano consome.
@@ -47,6 +43,10 @@ type AnnualCard = CartaoDoAno & { annual_total: string }
 
 export default function Dashboard() {
   const { data: session } = useSession()
+  return session?.user ? <DashboardPage key={session.user.id} userId={session.user.id} name={session.user.name} /> : null
+}
+
+function DashboardPage({ userId, name }: { userId: string; name: string }) {
   const now = new Date()
   const [month, setMonth] = useState(now.getMonth() + 1)
   const [year, setYear] = useState(now.getFullYear())
@@ -60,18 +60,20 @@ export default function Dashboard() {
 
   const inv = (keys: string[]) => keys.forEach((k) => qc.invalidateQueries({ queryKey: [k] }))
 
-  const { data: cards = [], isLoading: cardsLoading, isError: cardsError } = useQuery<Card[]>({ queryKey: ["cards"], queryFn: () => api.get("/finance/cards").then((r) => r.data) })
-  const { data: bills = [], isLoading: billsLoading, isError: billsError } = useQuery<Bill[]>({ queryKey: ["payments", month, year], queryFn: () => api.get(`/finance/payments?month=${month}&year=${year}`).then((r) => r.data) })
-  const { data: expenses = [], isLoading: expensesLoading } = useQuery<CardExpense[]>({ queryKey: ["expenses", month, year], queryFn: () => api.get(`/finance/cards/expenses?month=${month}&year=${year}`).then((r) => r.data) })
-  const { data: config, isLoading: configLoading, isError: configError } = useQuery<Config>({ queryKey: ["config", month, year], queryFn: () => api.get(`/finance/config?month=${month}&year=${year}`).then((r) => r.data) })
-  const { data: annual = [] } = useQuery<AnnualCard[]>({ queryKey: ["annual", year], queryFn: () => api.get(`/finance/cards/annual?year=${year}`).then((r) => r.data) })
-  const { data: annualSummary = [], isLoading: annualLoading } = useQuery<{ month: number; estimated_income: string; total_fixed_bills: string; total_card_expenses: string }[]>({ queryKey: ["annualSummary", year], queryFn: () => api.get(`/finance/annual?year=${year}`).then((r) => r.data) })
+  const { data: cards = [], isLoading: cardsLoading, isError: cardsError } = useQuery<Card[]>({ queryKey: ["cards", userId], queryFn: () => api.get("/finance/cards").then((r) => r.data) })
+  const { data: bills = [], isLoading: billsLoading, isError: billsError } = useQuery<Bill[]>({ queryKey: ["payments", userId, month, year], queryFn: () => api.get(`/finance/payments?month=${month}&year=${year}`).then((r) => r.data) })
+  const { data: expenses = [], isLoading: expensesLoading, isError: expensesError } = useQuery<CardExpense[]>({ queryKey: ["expenses", userId, month, year], queryFn: () => api.get(`/finance/cards/expenses?month=${month}&year=${year}`).then((r) => r.data) })
+  const { data: config, isLoading: configLoading, isError: configError } = useQuery<Config>({ queryKey: ["config", userId, month, year], queryFn: () => api.get(`/finance/config?month=${month}&year=${year}`).then((r) => r.data) })
+  const { data: annual = [] } = useQuery<AnnualCard[]>({ queryKey: ["annual", userId, year], queryFn: () => api.get(`/finance/cards/annual?year=${year}`).then((r) => r.data) })
+  const { data: annualSummary = [], isLoading: annualLoading } = useQuery<{ month: number; estimated_income: string; total_fixed_bills: string; total_card_expenses: string }[]>({ queryKey: ["annualSummary", userId, year], queryFn: () => api.get(`/finance/annual?year=${year}`).then((r) => r.data) })
 
   const prevMonth = month === 1 ? 12 : month - 1
   const prevYear = month === 1 ? year - 1 : year
-  const { data: goals = [] } = useQuery<Goal[]>({ queryKey: ["goals"], queryFn: () => api.get("/goals").then((r) => r.data) })
+  const { data: goals = [], isLoading: goalsLoading, isError: goalsError } = useQuery<Goal[]>({ queryKey: ["goals", userId], queryFn: () => api.get("/goals").then((r) => r.data) })
 
-  const { data: prevConfig } = useQuery<Config>({ queryKey: ["config", prevMonth, prevYear], queryFn: () => api.get(`/finance/config?month=${prevMonth}&year=${prevYear}`).then((r) => r.data) })
+  const { data: prevConfig } = useQuery<Config>({ queryKey: ["config", userId, prevMonth, prevYear], queryFn: () => api.get(`/finance/config?month=${prevMonth}&year=${prevYear}`).then((r) => r.data) })
+
+  const { data: portfolio = [], isLoading: portfolioLoading, isError: portfolioError } = usePortfolio(userId)
 
   const { data: chartData, isLoading: chartLoading, isError: chartError } = useSummary(String(month), String(year))
 
@@ -97,19 +99,10 @@ export default function Dashboard() {
   const faturasPagasValor = faturasPagasLista.reduce((s, e) => s + Number(e.amount), 0)
   const estimatedIncome = Number(config?.estimated_income || 0)
   const balanceBase = Number(config?.balance || 0)
-  const investments = Number(config?.investments || 0)
+  const investments = portfolio.reduce((sum, entry) => sum + Math.round(Number(entry.total_current) * 100), 0) / 100
   const leftover = estimatedIncome - totalBills - totalCards
   const balance = balanceBase + leftover
-  // Quanto ja foi guardado nas metas.
-  //
-  // ENTRA no patrimonio por decisao do dono do produto: aqui, o dinheiro de uma
-  // meta fica separado do saldo do mes e dos investimentos - e um terceiro
-  // bolso, nao um recorte dos outros dois.
-  //
-  // Isso so vale enquanto quem usa nao contar o mesmo dinheiro duas vezes (por
-  // exemplo, somar a reserva no "Saldo atual" E cadastra-la como meta). Por
-  // isso a linha de metas fica visivel embaixo do total, em vez de somada em
-  // silencio: quem conferir ve a parcela e percebe se duplicou.
+  // Metas são um bolso separado neste produto; cada parcela aparece no total.
   const guardadoEmMetas = goals.reduce((s, g) => s + Number(g.current_amount || 0), 0)
 
   const patrimonio = balance + investments + guardadoEmMetas
@@ -144,7 +137,7 @@ export default function Dashboard() {
 
   // So o primeiro nome: "Boa noite, Alerson Ferreira da Silva" ocupa a linha
   // inteira e soa como cobranca de banco, nao como saudacao.
-  const primeiroNome = session?.user?.name?.trim().split(/\s+/)[0] ?? ""
+  const primeiroNome = name.trim().split(/\s+/)[0] ?? ""
 
   // A meta em destaque e a mais adiantada que ainda nao fechou E ja teve algum
   // aporte. O progresso zero fica de fora de proposito: uma barra vazia parece
@@ -191,8 +184,8 @@ export default function Dashboard() {
     return [...porNome].map(([nome, valor]) => ({ nome, valor }))
   }, [byCategory, bills, expenses])
 
-  const isInitialLoading = cardsLoading || billsLoading || expensesLoading || configLoading || annualLoading || chartLoading
-  const hasCriticalError = cardsError || billsError || configError || chartError
+  const isInitialLoading = cardsLoading || billsLoading || expensesLoading || configLoading || annualLoading || chartLoading || goalsLoading || portfolioLoading
+  const hasCriticalError = cardsError || billsError || expensesError || configError || chartError || goalsError || portfolioError
 
   return (
     <div className="space-y-6">
@@ -243,7 +236,7 @@ export default function Dashboard() {
             <Card key={i} className="animate-pulse"><CardContent className="h-[88px] bg-surface-2/50 p-4" /></Card>
           ))}
         </div>
-      ) : (
+      ) : hasCriticalError ? null : (
         <>
           {/* Cards de resumo */}
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
@@ -252,7 +245,7 @@ export default function Dashboard() {
               { label: "Mês anterior", value: Number(prevConfig?.estimated_income || 0), tone: "text-primary" as const },
               { label: "Contas fixas", value: totalBills, tone: "text-warning" as const },
               { label: "Faturas cartões", value: totalCards, tone: "text-expense" as const },
-              { label: "Total a pagar", value: totalBills + totalCards, tone: "text-expense" as const },
+              { label: "Contas e faturas", value: totalBills + totalCards, tone: "text-expense" as const },
               { label: "Sobrou no mês", value: leftover, tone: leftover >= 0 ? "text-income" as const : "text-expense" as const },
             ].map((item) => (
               <Card key={item.label}>
@@ -281,7 +274,8 @@ export default function Dashboard() {
                   <Wallet className="h-3.5 w-3.5" aria-hidden="true" /> Investimentos
                 </div>
                 <p className="text-xl font-bold text-income">{fmt(investments)}</p>
-                <p className="mt-1 text-xs text-muted">Valor aplicado</p>
+                <p className="mt-1 text-xs text-muted">Valor atual da carteira cadastrada</p>
+                <Link to="/investments" className="mt-1 inline-block text-xs text-primary underline underline-offset-2">Ver investimentos</Link>
               </CardContent>
             </Card>
             <Card className="border-primary/20 bg-surface">
@@ -291,16 +285,16 @@ export default function Dashboard() {
                 </div>
                 <p className="text-xl font-bold text-primary">{fmt(patrimonio)}</p>
                 <p className="mt-1 text-xs text-muted">Saldo + Investimentos + Metas</p>
-                {/* Responde no proprio card a duvida de quem olha: a meta nao
-                    soma por cima - o dinheiro dela ja esta num dos dois acima. */}
                 {guardadoEmMetas > 0 && (
                   <p className="mt-0.5 text-xs text-text-3">
-                    inclui {fmt(guardadoEmMetas)} guardados em metas
+                    {fmt(balance)} + {fmt(investments)} + {fmt(guardadoEmMetas)} em metas
                   </p>
                 )}
               </CardContent>
             </Card>
           </div>
+
+          <LoansSummary userId={userId} />
 
           {/* Logo abaixo dos numeros: a leitura da IA comenta justamente o que
               a pessoa acabou de ler, e nao teria sentido antes deles. */}
@@ -342,7 +336,7 @@ export default function Dashboard() {
       )}
 
       {/* Configuração do mês + Faturas dos cartões */}
-      <div className="grid gap-5 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
             <CardTitle className="flex items-center gap-2 text-sm font-medium">
@@ -352,8 +346,7 @@ export default function Dashboard() {
           <CardContent className="space-y-3">
             {[
               { label: "Receita estimada (R$)", key: "estimated_income", val: config?.estimated_income || "" },
-              { label: "Saldo atual (R$)", key: "balance", val: config?.balance || "" },
-              { label: "Investimentos (R$)", key: "investments", val: config?.investments || "" },
+              { label: "Saldo base (R$)", key: "balance", val: config?.balance || "" },
             ].map((f) => (
               <div key={`${f.key}-${month}-${year}`}>
                 <Label htmlFor={`dash-${f.key}`} className="mb-1.5 block text-xs">{f.label}</Label>
@@ -381,19 +374,7 @@ export default function Dashboard() {
               <div className="flex flex-col gap-2 rounded-lg border border-border bg-bg p-3">
                 <Input placeholder="Nome do cartão" value={newCard.name} onChange={(e) => setNewCard((n) => ({ ...n, name: e.target.value }))} />
                 <Input type="number" placeholder="Dia vencimento" value={newCard.due_day} onChange={(e) => setNewCard((n) => ({ ...n, due_day: e.target.value }))} />
-                <div className="flex flex-wrap gap-1.5">
-                  {CARD_COLORS.map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      aria-label={`Selecionar cor ${c}`}
-                      aria-pressed={newCard.color === c}
-                      onClick={() => setNewCard((n) => ({ ...n, color: c }))}
-                      className={cn("h-6 w-6 rounded-full border-2 transition", newCard.color === c ? "border-primary-fg ring-2 ring-ring" : "border-transparent")}
-                      style={{ background: c }}
-                    />
-                  ))}
-                </div>
+                <ColorPicker value={newCard.color} onChange={color => setNewCard(card => ({ ...card, color }))} />
                 <div className="flex gap-2">
                   <Button size="sm" onClick={() => createCard.mutate({ name: newCard.name, due_day: Number(newCard.due_day), color: newCard.color })}>Salvar</Button>
                   <Button size="sm" variant="outline" onClick={() => setShowNewCard(false)}>Cancelar</Button>
@@ -408,19 +389,7 @@ export default function Dashboard() {
                   <div key={c.id} className="flex flex-col gap-2 rounded-lg border border-border bg-bg p-3">
                     <Input value={editingCard.name} onChange={(e) => setEditingCard((ec) => (ec ? { ...ec, name: e.target.value } : ec))} />
                     <Input type="number" value={editingCard.due_day} onChange={(e) => setEditingCard((ec) => (ec ? { ...ec, due_day: Number(e.target.value) } : ec))} />
-                    <div className="flex flex-wrap gap-1.5">
-                      {CARD_COLORS.map((col) => (
-                        <button
-                          key={col}
-                          type="button"
-                          aria-label={`Selecionar cor ${col}`}
-                          aria-pressed={editingCard.color === col}
-                          onClick={() => setEditingCard((ec) => (ec ? { ...ec, color: col } : ec))}
-                          className={cn("h-5 w-5 rounded-full border-2", editingCard.color === col ? "border-primary-fg ring-2 ring-ring" : "border-transparent")}
-                          style={{ background: col }}
-                        />
-                      ))}
-                    </div>
+                    <ColorPicker value={editingCard.color} onChange={color => setEditingCard(card => card ? { ...card, color } : card)} />
                     <div className="flex gap-2">
                       <Button size="sm" onClick={() => updateCard.mutate({ id: editingCard.id, name: editingCard.name, due_day: editingCard.due_day, color: editingCard.color })}>Salvar</Button>
                       <Button size="sm" variant="outline" onClick={() => setEditingCard(null)}>Cancelar</Button>
@@ -586,7 +555,7 @@ export default function Dashboard() {
       </Card>
 
       {/* Gráficos */}
-      <div className="grid gap-5 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <GraficoAno dados={dadosDoAno} mesAtual={month} formata={fmt} />
         <DonutCategorias fatias={fatiasPorCategoria} formata={fmt} />
       </div>
