@@ -33,7 +33,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Preparar CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           languages: javascript-typescript
           # O conjunto padrao evita falso positivo a todo custo e por isso cala
@@ -42,6 +42,6 @@ jobs:
           queries: security-extended
 
       - name: Analisar
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
         with:
           category: '/language:javascript-typescript'
