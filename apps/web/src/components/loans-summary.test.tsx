@@ -25,7 +25,7 @@ function render(client: QueryClient, userId = 'alice') {
 }
 
 describe('Resumo de empréstimos', () => {
-  it('soma apenas saldos restantes e prioriza atrasados, hoje e próximos, excluindo quitados', () => {
+  it('mostra apenas os totais em aberto e valores atrasados, sem listar pessoas', () => {
     const html = render(fixture([
       loan('Sem data', 'payable', '10.10', null),
       loan('Futuro', 'receivable', '30.30', '2026-10-07'),
@@ -36,19 +36,19 @@ describe('Resumo de empréstimos', () => {
     expect(html).toContain('R$ 30,30')
     expect(html).toContain('R$ 70,70')
     expect(html).toContain('R$ 40,40 em atraso')
-    const priorities = html.slice(html.indexOf('Pendências prioritárias'))
-    expect(priorities.indexOf('Atrasado')).toBeLessThan(priorities.indexOf('Hoje'))
-    expect(priorities.indexOf('Hoje')).toBeLessThan(priorities.indexOf('Futuro'))
-    expect(priorities).not.toContain('Sem data')
+    expect(html).not.toContain('Pendências prioritárias')
+    expect(html).not.toContain('Atrasado')
+    expect(html).not.toContain('Hoje')
+    expect(html).not.toContain('Futuro')
+    expect(html).not.toContain('Sem data')
     expect(html).not.toContain('Quitado')
-    expect(html).toContain('Vence hoje')
     expect(html).toContain('href="/emprestimos"')
   })
 
-  it('inclui empréstimo sem data depois dos datados quando há espaço', () => {
+  it('inclui saldo sem vencimento nos totais sem mostrar detalhes do empréstimo', () => {
     const html = render(fixture([loan('Sem vencimento', 'payable', '0.10', null)]))
     expect(html).toContain('R$ 0,10')
-    expect(html).toContain('Sem vencimento')
+    expect(html).not.toContain('Sem vencimento')
     expect(html).not.toContain('em atraso')
   })
 
