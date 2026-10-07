@@ -15,8 +15,6 @@ export function LoansSummary({ userId }: { userId: string }) {
   const now = new Date()
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
   const pending = (query.data ?? []).filter(loan => cents(loan.remaining_amount) > 0)
-  // ISO calendar dates sort chronologically. Undated loans follow dated ones.
-  const priorities = [...pending].sort((a, b) => (a.due_date ?? '9999').localeCompare(b.due_date ?? '9999') || a.created_at.localeCompare(b.created_at) || a.id.localeCompare(b.id)).slice(0, 3)
 
   return (
     <section aria-labelledby="loans-summary-title" className="space-y-3">
@@ -55,22 +53,7 @@ export function LoansSummary({ userId }: { userId: string }) {
               )
             })}
           </div>
-          {priorities.length ? (
-            <div className="rounded-xl border border-border bg-surface px-4">
-              <h3 className="pt-3 text-xs font-medium text-muted">Pendências prioritárias</h3>
-              <ul className="divide-y divide-border">
-                {priorities.map(loan => (
-                  <li key={loan.id} className="flex items-center justify-between gap-3 py-3">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-text">{loan.person}</p>
-                      <p className="text-xs text-muted">{loan.direction === 'payable' ? 'Eu devo' : 'Me devem'} · {loan.due_date ? `${loan.due_date < today ? 'Vencido em' : loan.due_date === today ? 'Vence hoje —' : 'Vence em'} ${loan.due_date.split('-').reverse().join('/')}` : 'Sem vencimento'}</p>
-                    </div>
-                    <span className={cn('shrink-0 text-sm font-semibold', loan.due_date && loan.due_date < today ? 'text-danger' : 'text-text')}>{fmt(cents(loan.remaining_amount))}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : <p className="text-sm text-muted">Nenhum empréstimo em aberto. Tudo em dia por aqui.</p>}
+          {pending.length === 0 && <p className="text-sm text-muted">Nenhum empréstimo em aberto. Tudo em dia por aqui.</p>}
         </>
       )}
     </section>
