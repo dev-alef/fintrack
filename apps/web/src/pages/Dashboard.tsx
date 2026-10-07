@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom"
 import { ColorPicker } from "@/components/color-picker"
+import { CardPayoffForecast } from "@/components/card-payoff-forecast"
 import { LoansSummary } from "@/components/loans-summary"
 import { usePortfolio } from "@/hooks/usePortfolio"
 import { useMemo, useState } from "react"
@@ -79,13 +80,13 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
 
   const createCard = useMutation({ mutationFn: (d: unknown) => api.post("/finance/cards", d), onSuccess: () => { inv(["cards"]); setShowNewCard(false); setNewCard({ name: "", due_day: "", color: "#c67139" }) } })
   const updateCard = useMutation({ mutationFn: ({ id, ...d }: { id: string; name?: string; due_day?: number; color?: string }) => api.put(`/finance/cards/${id}`, d), onSuccess: () => { inv(["cards"]); setEditingCard(null) } })
-  const deleteCard = useMutation({ mutationFn: (id: string) => api.delete(`/finance/cards/${id}`), onSuccess: () => inv(["cards", "expenses", "annual"]) })
+  const deleteCard = useMutation({ mutationFn: (id: string) => api.delete(`/finance/cards/${id}`), onSuccess: () => inv(["cards", "expenses", "annual", "cardPayoff"]) })
   const createBill = useMutation({ mutationFn: (d: unknown) => api.post("/finance/bills", d), onSuccess: () => { inv(["payments", "annualSummary"]); setShowNewBill(false); setNewBill({ name: "", amount: "", due_day: "" }) } })
   const updateBill = useMutation({ mutationFn: ({ id, ...d }: { id: string; name?: string; amount?: number; due_day?: number }) => api.put(`/finance/bills/${id}`, d), onSuccess: () => { inv(["payments", "annualSummary"]); setEditingBill(null) } })
   const deleteBill = useMutation({ mutationFn: (id: string) => api.delete(`/finance/bills/${id}`), onSuccess: () => inv(["payments", "annualSummary"]) })
   const togglePayment = useMutation({ mutationFn: (d: unknown) => api.post("/finance/payments/toggle", d), onSuccess: () => inv(["payments"]) })
-  const setExpense = useMutation({ mutationFn: (d: unknown) => api.post("/finance/cards/expenses", d), onSuccess: () => inv(["expenses", "annual", "annualSummary"]) })
-  const toggleCardExpense = useMutation({ mutationFn: (d: unknown) => api.post("/finance/cards/expenses/toggle", d), onSuccess: () => inv(["expenses", "annual"]) })
+  const setExpense = useMutation({ mutationFn: (d: unknown) => api.post("/finance/cards/expenses", d), onSuccess: () => inv(["expenses", "annual", "annualSummary", "cardPayoff"]) })
+  const toggleCardExpense = useMutation({ mutationFn: (d: unknown) => api.post("/finance/cards/expenses/toggle", d), onSuccess: () => inv(["expenses", "annual", "cardPayoff"]) })
   const saveConfig = useMutation({ mutationFn: (d: unknown) => api.post("/finance/config", d), onSuccess: () => inv(["config", "annualSummary"]) })
 
   const totalBills = bills.reduce((s, b) => s + Number(b.amount), 0)
@@ -293,6 +294,8 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
               </CardContent>
             </Card>
           </div>
+
+          <CardPayoffForecast userId={userId} />
 
           <LoansSummary userId={userId} />
 
@@ -563,7 +566,7 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
       {/* Planejamento do ano: a mesma tabela anual que ja existia aqui, agora
           editavel. Trocada no lugar em vez de virar tela nova - e onde a
           pessoa ja olha o ano, e onde ela ja configura o mes logo acima. */}
-      <Card>
+      <Card id="annual-planning" className="scroll-mt-20">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-sm">
             <Calendar className="h-4 w-4 text-muted" aria-hidden="true" /> Planejamento do ano — {year}

@@ -15,6 +15,7 @@ r.delete('/cards/:id', C.removeCard)
 r.get('/cards/expenses', C.getExpenses)
 r.post('/cards/expenses', C.setExpense)
 r.get('/cards/annual', C.getCardAnnual)
+r.get('/cards/payoff', C.getCardPayoff)
 r.post('/cards/expenses/toggle', C.toggleCardExpense)
 
 // Despesas fixas

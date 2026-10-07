@@ -182,7 +182,7 @@ export function PlanejamentoAnual({
     onSuccess: () => {
       setRascunho({})
       setSalvo(true)
-      for (const k of ["annualSummary", "annual", "config", "expenses"]) {
+      for (const k of ["annualSummary", "annual", "config", "expenses", "cardPayoff"]) {
         qc.invalidateQueries({ queryKey: [k] })
       }
     },
@@ -192,7 +192,7 @@ export function PlanejamentoAnual({
     mutationFn: (d: { cardId: string; month: number; paid: boolean }) =>
       api.post("/finance/cards/expenses/toggle", { ...d, year: ano }),
     onSuccess: () => {
-      for (const k of ["annual", "expenses", "annualSummary"]) {
+      for (const k of ["annual", "expenses", "annualSummary", "cardPayoff"]) {
         qc.invalidateQueries({ queryKey: [k] })
       }
     },

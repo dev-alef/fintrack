@@ -46,6 +46,10 @@ export async function getCardAnnual(req: Request, res: Response) {
     res.json(await S.getCardAnnualTotal(uid(req), Number(year)))
   } catch { res.status(500).json({ error: 'Erro interno' }) }
 }
+export async function getCardPayoff(req: Request, res: Response) {
+  try { res.json(await S.getCardPayoffMonths(uid(req))) }
+  catch { res.status(500).json({ error: 'Erro interno' }) }
+}
 
 // DESPESAS FIXAS
 export async function getBills(req: Request, res: Response) {
