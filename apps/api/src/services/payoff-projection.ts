@@ -4,7 +4,7 @@ type Config = Period & { estimated_income: string | null; balance: string | null
 type Expense = Period & { card_id: string; amount: string; paid: boolean | null }
 export type PayoffSnapshot = {
   configs: Config[]
-  cards: { id: string; name: string }[]
+  cards: { id: string; name: string; created_year: number | null; created_month: number | null }[]
   expenses: Expense[]
   fixed_total: string
 }
@@ -34,9 +34,40 @@ export function projectCardPayoff(data: PayoffSnapshot, start: Period) {
   const last = months.at(-1)
   const end = last ? { year: last.year, month: last.month } : null
   const base = { start, end }
-  if (!end) return { months, projection: { ...base, status: 'not_applicable' as const } }
-  if (months.some(p => index(p) < index(start))) return { months, projection: { ...base, status: 'past_due' as const } }
-  if (end.year > 2100) return { months, projection: { ...base, status: 'out_of_range' as const } }
+  if (!end) return { months, timeline: [], projection: { ...base, status: 'not_applicable' as const } }
+
+  const groupedAll = new Map<number, { total: bigint; paid: bigint; open: bigint; invoice_count: number }>()
+  const recordedByMonth = new Map<number, Set<string>>()
+  for (const expense of data.expenses) {
+    const i = index(expense)
+    const entry = groupedAll.get(i) ?? { total: 0n, paid: 0n, open: 0n, invoice_count: 0 }
+    const amount = cents(expense.amount)
+    entry.total += amount
+    if (expense.paid) entry.paid += amount
+    else entry.open += amount
+    entry.invoice_count++
+    groupedAll.set(i, entry)
+    const recorded = recordedByMonth.get(i) ?? new Set<string>()
+    recorded.add(expense.card_id)
+    recordedByMonth.set(i, recorded)
+  }
+  const timelineStart = Math.max(2000 * 12, index(end) - 7)
+  const timeline = Array.from({ length: index(end) - timelineStart + 1 }, (_, offset) => {
+    const p = period(timelineStart + offset)
+    const aggregate = groupedAll.get(index(p)) ?? { total: 0n, paid: 0n, open: 0n, invoice_count: 0 }
+    const eligibleCards = data.cards.filter(card => card.created_year == null || card.created_month == null || index({ year: card.created_year, month: card.created_month }) <= index(p))
+    const recorded = recordedByMonth.get(index(p)) ?? new Set<string>()
+    return {
+      ...p,
+      total: money(aggregate.total),
+      paid: money(aggregate.paid),
+      open: money(aggregate.open),
+      invoice_count: aggregate.invoice_count,
+      missing_count: eligibleCards.filter(card => !recorded.has(card.id)).length,
+    }
+  })
+  if (months.some(p => index(p) < index(start))) return { months, timeline, projection: { ...base, status: 'past_due' as const } }
+  if (end.year > 2100) return { months, timeline, projection: { ...base, status: 'out_of_range' as const } }
 
   const configs = new Map(data.configs.map(c => [index(c), c]))
   const expenses = new Map(data.expenses.map(e => [`${index(e)}:${e.card_id}`, e]))
@@ -56,11 +87,11 @@ export function projectCardPayoff(data: PayoffSnapshot, start: Period) {
     }
     if (missingIncome || missingCards.length) missingMonths.push({ ...period(i), income: missingIncome, cards: missingCards })
   }
-  if (missingBalance || missingMonths.length) return { months, projection: { ...base, status: 'incomplete' as const, missingBalance, missingMonths } }
+  if (missingBalance || missingMonths.length) return { months, timeline, projection: { ...base, status: 'incomplete' as const, missingBalance, missingMonths } }
 
   const openingBalance = cents(opening!)
   const fixedBills = cents(data.fixed_total) * BigInt(index(end) - index(start) + 1)
-  return { months, projection: {
+  return { months, timeline, projection: {
     ...base, status: 'ready' as const,
     opening_balance: money(openingBalance), income: money(income), fixed_bills: money(fixedBills), card_expenses: money(cardExpenses),
     balance: money(openingBalance + income - fixedBills - cardExpenses),
