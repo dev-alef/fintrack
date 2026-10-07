@@ -7,7 +7,7 @@ function snapshot(): PayoffSnapshot {
       { ...start, balance: '1000.10', estimated_income: '2000.20' },
       { year: 2027, month: 1, balance: '999999.00', estimated_income: '0.00' },
     ],
-    cards: [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }],
+    cards: [{ id: 'a', name: 'A', created_year: 2025, created_month: 1 }, { id: 'b', name: 'B', created_year: 2025, created_month: 1 }],
     expenses: [
       { ...start, card_id: 'a', amount: '100.10', paid: true },
       { ...start, card_id: 'b', amount: '200.20', paid: false },
@@ -57,7 +57,7 @@ describe('Saldo no mês de quitação', () => {
   it('não promete data ou saldo se todas as faturas estiverem pagas', () => {
     const data = snapshot()
     data.expenses.forEach(e => e.paid = true)
-    expect(projectCardPayoff(data, start)).toEqual({ months: [], projection: { start, end: null, status: 'not_applicable' } })
+    expect(projectCardPayoff(data, start)).toEqual({ months: [], timeline: [], projection: { start, end: null, status: 'not_applicable' } })
   })
   it('falha com dinheiro inválido e limita o horizonte legado', () => {
     const data = snapshot()

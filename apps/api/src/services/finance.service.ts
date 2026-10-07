@@ -101,7 +101,8 @@ export async function getCardPayoffProjection(userId: string, start: Period) {
        COALESCE((SELECT jsonb_agg(jsonb_build_object('year', year, 'month', month,
          'estimated_income', estimated_income::text, 'balance', balance::text))
          FROM monthly_config WHERE user_id = $1), '[]'::jsonb) AS configs,
-       COALESCE((SELECT jsonb_agg(jsonb_build_object('id', id, 'name', name))
+       COALESCE((SELECT jsonb_agg(jsonb_build_object('id', id, 'name', name,
+         'created_year', extract(year from created_at)::int, 'created_month', extract(month from created_at)::int))
          FROM credit_cards WHERE user_id = $1), '[]'::jsonb) AS cards,
        COALESCE((SELECT jsonb_agg(jsonb_build_object('year', ce.year, 'month', ce.month,
          'card_id', ce.card_id, 'amount', ce.amount::text, 'paid', ce.paid))
