@@ -150,3 +150,33 @@ describe('Planejamento do ano', () => {
     }
   })
 })
+
+
+describe('Previsão de quitação dos cartões', () => {
+  it('agrega faturas abertas entre anos, exclui pagas e zeros e acompanha pagamentos', async () => {
+    const { cookie, cartaoId } = await contaComCartao()
+    const segundo = await request(app).post('/finance/cards').set('Cookie', cookie).send({ name: 'Segundo', due_day: 20 })
+    for (const [cardId, year, month, amount] of [[cartaoId, 2031, 12, 10.10], [segundo.body.id, 2031, 12, 20.20], [cartaoId, 2032, 2, 40.40], [cartaoId, 2032, 3, 50], [cartaoId, 2033, 1, 0]]) {
+      const saved = await request(app).post('/finance/cards/expenses').set('Cookie', cookie).send({ cardId, year, month, amount })
+      expect(saved.status).toBe(200)
+    }
+    await request(app).post('/finance/cards/expenses/toggle').set('Cookie', cookie).send({ cardId: cartaoId, year: 2032, month: 3, paid: true })
+    const forecast = () => request(app).get('/finance/cards/payoff').set('Cookie', cookie)
+    expect((await forecast()).body).toEqual([
+      { year: 2031, month: 12, amount: '30.30', invoice_count: 2 },
+      { year: 2032, month: 2, amount: '40.40', invoice_count: 1 },
+    ])
+    await request(app).post('/finance/cards/expenses/toggle').set('Cookie', cookie).send({ cardId: cartaoId, year: 2032, month: 2, paid: true })
+    expect((await forecast()).body).toEqual([{ year: 2031, month: 12, amount: '30.30', invoice_count: 2 }])
+  })
+
+  it('exige autenticação e isola faturas por usuário', async () => {
+    const dono = await contaComCartao()
+    const outro = await contaComCartao()
+    await request(app).post('/finance/cards/expenses').set('Cookie', dono.cookie).send({ cardId: dono.cartaoId, year: 2035, month: 5, amount: 123 })
+    expect((await request(app).get('/finance/cards/payoff')).status).toBe(401)
+    const response = await request(app).get('/finance/cards/payoff').set('Cookie', outro.cookie)
+    expect(response.status).toBe(200)
+    expect(response.body).toEqual([])
+  })
+})

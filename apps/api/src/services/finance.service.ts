@@ -76,6 +76,23 @@ export async function getCardAnnualTotal(userId: string, year: number) {
   return result.rows
 }
 
+// The final unpaid invoice can be in another year. Fixed bills and paid or
+// zero-value invoices do not participate in the payoff forecast.
+export async function getCardPayoffMonths(userId: string) {
+  const result = await query(
+    `SELECT ce.year, ce.month,
+       SUM(ce.amount) as amount,
+       COUNT(*)::integer as invoice_count
+     FROM card_expenses ce
+     JOIN credit_cards cc ON cc.id = ce.card_id AND cc.user_id = $1
+     WHERE ce.user_id = $1 AND ce.amount > 0 AND NOT COALESCE(ce.paid, FALSE)
+     GROUP BY ce.year, ce.month
+     ORDER BY ce.year, ce.month`,
+    [userId],
+  )
+  return result.rows
+}
+
 // ── DESPESAS FIXAS ───────────────────────────────────────
 export async function listBills(userId: string) {
   const result = await query(
