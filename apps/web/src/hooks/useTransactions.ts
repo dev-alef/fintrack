@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '../services/api'
+import { useSession } from '../lib/auth-client'
 
 interface TransactionFilters {
   page?: number
@@ -21,8 +22,10 @@ export function useTransactions(filters: TransactionFilters = {}) {
 }
 
 export function useSummary(month?: string, year?: string) {
+  const { data: session } = useSession()
   return useQuery({
-    queryKey: ['summary', month, year],
+    queryKey: ['summary', session?.user.id, month, year],
+    enabled: !!session?.user.id,
     queryFn: async () => {
       const params = new URLSearchParams()
       if (month) params.set('month', month)

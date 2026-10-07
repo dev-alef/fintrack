@@ -1,3 +1,6 @@
+import { ColorPicker } from "@/components/color-picker"
+import { usePortfolio } from "@/hooks/usePortfolio"
+import { useSession } from "@/lib/auth-client"
 import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { PieChart, Pie, Cell, Legend, Tooltip, ResponsiveContainer, AreaChart, Area, XAxis, YAxis } from "recharts"
@@ -12,12 +15,9 @@ import { cn } from "@/lib/utils"
 
 const fmt = (v: string | number) => Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
 const fmtPct = (v: string | number) => `${Number(v).toFixed(2)}%`
-// Cores dos graficos e da paleta de tipos de investimento. Hex por dois
-// motivos: Recharts recebe cor por prop SVG, nao por CSS; e TYPE_COLORS vira
-// investment_types.color, que e VARCHAR(7) no banco e nao comporta um token.
+// Fallback para cores dos gráficos. As cores escolhidas são salvas em hex.
 const COLORS = ["#c67139", "#7a8a5e", "#d89a67", "#a8b389", "#8f4d24", "#c3ceac", "#b05f2d", "#6f8a72"]
 const ICONS = ["📈", "💰", "🏦", "₿", "🏠", "💎", "📊", "🌍"]
-const TYPE_COLORS = ["#c67139", "#7a8a5e", "#d89a67", "#a8b389", "#8f4d24", "#c3ceac", "#b05f2d"]
 
 interface InvestmentType { id: string; name: string; description?: string; color: string; icon: string; total_invested: string; total_current: string }
 interface Investment { id: string; type_id: string; type_name: string; type_color: string; type_icon: string; name: string; invested_amount: string; current_value: string; monthly_rate: string; target_percent: string; profit: string; return_pct: string; notes?: string }
@@ -139,6 +139,11 @@ function CompoundCalculator() {
 }
 
 export default function Investments() {
+  const { data: session } = useSession()
+  return session?.user ? <InvestmentsPage key={session.user.id} userId={session.user.id} /> : null
+}
+
+function InvestmentsPage({ userId }: { userId: string }) {
   const qc = useQueryClient()
   const inv = (keys: string[]) => keys.forEach((k) => qc.invalidateQueries({ queryKey: [k] }))
 
@@ -149,9 +154,9 @@ export default function Investments() {
   const [newType, setNewType] = useState({ name: "", description: "", color: "#c67139", icon: "📈" })
   const [newInv, setNewInv] = useState({ type_id: "", name: "", invested_amount: "", current_value: "", monthly_rate: "", target_percent: "", notes: "" })
 
-  const { data: types = [], isLoading: typesLoading, isError: typesError } = useQuery<InvestmentType[]>({ queryKey: ["invTypes"], queryFn: () => api.get("/investments/types").then((r) => r.data) })
-  const { data: investments = [], isLoading: invLoading, isError: invError } = useQuery<Investment[]>({ queryKey: ["investments"], queryFn: () => api.get("/investments").then((r) => r.data) })
-  const { data: portfolio = [], isLoading: portfolioLoading, isError: portfolioError } = useQuery<(InvestmentType & { total_profit: string; return_pct?: string })[]>({ queryKey: ["portfolio"], queryFn: () => api.get("/investments/portfolio").then((r) => r.data) })
+  const { data: types = [], isLoading: typesLoading, isError: typesError } = useQuery<InvestmentType[]>({ queryKey: ["invTypes", userId], queryFn: () => api.get("/investments/types").then((r) => r.data) })
+  const { data: investments = [], isLoading: invLoading, isError: invError } = useQuery<Investment[]>({ queryKey: ["investments", userId], queryFn: () => api.get("/investments").then((r) => r.data) })
+  const { data: portfolio = [], isLoading: portfolioLoading, isError: portfolioError } = usePortfolio(userId)
 
   const totalInvested = portfolio.reduce((s, p) => s + Number(p.total_invested), 0)
   const totalCurrent = portfolio.reduce((s, p) => s + Number(p.total_current), 0)
@@ -159,13 +164,13 @@ export default function Investments() {
   const returnPct = totalInvested > 0 ? (totalProfit / totalInvested) * 100 : 0
 
   const createType = useMutation({ mutationFn: (d: unknown) => api.post("/investments/types", d), onSuccess: () => { inv(["invTypes", "portfolio"]); setShowTypeForm(false); setNewType({ name: "", description: "", color: "#c67139", icon: "📈" }) } })
-  const updateType = useMutation({ mutationFn: ({ id, ...d }: { id: string; name?: string; description?: string; color?: string; icon?: string }) => api.put(`/investments/types/${id}`, d), onSuccess: () => { inv(["invTypes", "portfolio"]); setEditingType(null) } })
+  const updateType = useMutation({ mutationFn: ({ id, ...d }: { id: string; name?: string; description?: string; color?: string; icon?: string }) => api.put(`/investments/types/${id}`, d), onSuccess: () => { inv(["invTypes", "portfolio", "investments"]); setEditingType(null) } })
   const deleteType = useMutation({ mutationFn: (id: string) => api.delete(`/investments/types/${id}`), onSuccess: () => inv(["invTypes", "investments", "portfolio"]) })
   const createInv = useMutation({ mutationFn: (d: unknown) => api.post("/investments", d), onSuccess: () => { inv(["investments", "portfolio", "invTypes"]); setShowInvForm(false); setNewInv({ type_id: "", name: "", invested_amount: "", current_value: "", monthly_rate: "", target_percent: "", notes: "" }) } })
   const updateInv = useMutation({ mutationFn: ({ id, ...d }: { id: string; name?: string; invested_amount?: number; current_value?: number; monthly_rate?: number; target_percent?: number }) => api.put(`/investments/${id}`, d), onSuccess: () => { inv(["investments", "portfolio", "invTypes"]); setEditingInv(null) } })
   const deleteInv = useMutation({ mutationFn: (id: string) => api.delete(`/investments/${id}`), onSuccess: () => inv(["investments", "portfolio", "invTypes"]) })
 
-  const pieData = portfolio.filter((p) => Number(p.total_current) > 0).map((p) => ({ name: p.name, value: Number(p.total_current), color: p.color }))
+  const pieData = portfolio.filter((p) => Number(p.total_current) > 0).map((p) => ({ name: p.type_name, value: Number(p.total_current), color: p.color }))
 
   const isLoading = typesLoading || invLoading || portfolioLoading
   const hasError = typesError || invError || portfolioError
@@ -243,9 +248,9 @@ export default function Investments() {
                 const pct = totalCurrent > 0 ? (Number(p.total_current) / totalCurrent) * 100 : 0
                 const profit = Number(p.total_current) - Number(p.total_invested)
                 return (
-                  <div key={p.id} className="space-y-1.5">
+                  <div key={p.type_id} className="space-y-1.5">
                     <div className="flex justify-between">
-                      <span className="text-sm text-text">{p.icon} {p.name}</span>
+                      <span className="text-sm text-text">{p.icon} {p.type_name}</span>
                       <span className="text-sm font-semibold" style={{ color: p.color }}>{fmt(p.total_current)}</span>
                     </div>
                     <div className="flex justify-between">
@@ -302,22 +307,7 @@ export default function Investments() {
                   ))}
                 </div>
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Cor</Label>
-                <div className="flex flex-wrap gap-1.5">
-                  {TYPE_COLORS.map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      aria-label={`Selecionar cor ${c}`}
-                      aria-pressed={newType.color === c}
-                      onClick={() => setNewType((n) => ({ ...n, color: c }))}
-                      className={cn("h-6 w-6 rounded-full border-2", newType.color === c ? "border-primary-fg ring-2 ring-ring" : "border-transparent")}
-                      style={{ background: c }}
-                    />
-                  ))}
-                </div>
-              </div>
+              <ColorPicker value={newType.color} onChange={color => setNewType(type => ({ ...type, color }))} />
               <div className="flex gap-2">
                 <Button size="sm" onClick={() => createType.mutate(newType)}>Salvar</Button>
                 <Button size="sm" variant="outline" onClick={() => setShowTypeForm(false)}>Cancelar</Button>
@@ -374,6 +364,7 @@ export default function Investments() {
                   ))}
                 </div>
               </div>
+              <ColorPicker value={editingType.color} onChange={color => setEditingType(type => type ? { ...type, color } : type)} />
               <div className="flex gap-2">
                 <Button size="sm" onClick={() => updateType.mutate({ id: editingType.id, name: editingType.name, description: editingType.description, color: editingType.color, icon: editingType.icon })}>Salvar</Button>
                 <Button size="sm" variant="outline" onClick={() => setEditingType(null)}>Cancelar</Button>

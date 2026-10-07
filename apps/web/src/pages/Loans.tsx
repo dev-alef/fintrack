@@ -17,30 +17,10 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 
-type Direction = 'payable' | 'receivable'
+import type { Direction, Loan, Payment } from '@/lib/loans'
+
 type StatusFilter = 'pending' | 'settled' | 'overdue' | 'all'
 type LoansQueryKey = readonly ['loans', string]
-
-interface Payment {
-  id: string
-  amount: string
-  paid_on: string
-  notes: string
-  created_at: string
-}
-
-interface Loan {
-  id: string
-  direction: Direction
-  person: string
-  description: string
-  amount: string
-  paid_amount: string
-  remaining_amount: string
-  due_date: string | null
-  created_at: string
-  payments: Payment[]
-}
 
 interface LoanInput {
   person: string

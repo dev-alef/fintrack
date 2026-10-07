@@ -19,12 +19,12 @@
 - 🔐 **Autenticação completa** — cadastro, login, **login com Google** (com vinculação de conta), verificação de e-mail e recuperação de senha
 - 🔒 **2FA por TOTP** — QR code, aplicativo autenticador, códigos de backup com regeneração
 - 🛡️ **Proteção contra roubo de sessão** — alerta por e-mail em acesso de dispositivo novo, tela de sessões ativas com opção de encerrar, sessão curta com renovação automática no uso
-- 📊 **Dashboard financeiro** — receita estimada, saldo calculado automaticamente, patrimônio total, gráfico anual de entradas e saídas
+- 📊 **Dashboard financeiro** — receita estimada, saldo calculado automaticamente, patrimônio com saldo + valor atual da carteira + metas, resumo de empréstimos pendentes e gráfico anual de entradas e saídas
 - 💳 **Controle de cartões** — cartões personalizáveis com faturas mensais e totais anuais
 - 📋 **Despesas fixas** — controle de contas com status pago/pendente por mês
 - 💸 **Transações** — CRUD completo com filtros, paginação e categorias
 - 🤝 **Empréstimos** — valores a pagar e a receber por pessoa, pagamentos parciais, histórico e vencimentos; controle separado do saldo e da projeção
-- 💎 **Carteira de investimentos** — tipos personalizados, rentabilidade, distribuição
+- 💎 **Carteira de investimentos** — tipos personalizados, rentabilidade, distribuição e cores personalizadas
 - 🎯 **Metas financeiras** — progresso automático com barra visual
 - 🤖 **Insights com IA** — análise financeira personalizada via Google Gemini, persistente durante a navegação
 - 🎨 **Quatro temas** — claro, escuro, rosa e um tema "tech" inspirado em terminal
@@ -150,7 +150,9 @@ cd apps/api
 npm test
 ```
 
-A suíte de integração usa Vitest + Supertest contra PostgreSQL real em container. Cobre autenticação, login com Google, 2FA, e-mail, rate limiting, sessões, suporte, transações e planejamento anual. Em empréstimos, verifica pagamentos parciais, quitação, correção, isolamento entre contas, repetição de requisições e quitações simultâneas, sem alterar os outros dados financeiros. Investimentos, metas e insights ainda não têm cobertura específica.
+A suíte de integração usa Vitest + Supertest contra PostgreSQL real em container. Cobre autenticação, login com Google, 2FA, e-mail, rate limiting, sessões, suporte, transações e planejamento anual. Em empréstimos, verifica pagamentos parciais, quitação, correção, isolamento entre contas, repetição de requisições e quitações simultâneas, sem alterar os outros dados financeiros. O cálculo do patrimônio enviado à IA tem teste isolado, sem chamadas ao provedor. O frontend testa a composição do patrimônio (carteira + metas + saldo), isolamento entre contas, falhas de carregamento e prioridades dos empréstimos. Os demais fluxos de investimentos e metas ainda não têm suíte de integração dedicada.
+
+Na raiz, rode `npm test --workspace=apps/web` para os testes do frontend; eles não precisam de banco.
 
 ## 📡 Principais endpoints
 
