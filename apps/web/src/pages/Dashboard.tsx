@@ -36,7 +36,7 @@ function saudacao() {
 interface Card { id: string; name: string; due_day: number; color: string }
 interface Bill { id: string; name: string; amount: string; due_day: number; paid?: boolean }
 interface CardExpense { card_id: string; card_name: string; color: string; amount: string; paid?: boolean }
-interface Config { estimated_income: string; balance: string }
+interface Config { estimated_income: string | null; balance: string | null }
 interface Goal { id: string; title: string; target_amount: string; current_amount: string; progress_pct: string }
 // monthly_breakdown carrega valor e status de pago por mes - e o que a
 // tabela editavel do ano consome.
@@ -78,16 +78,16 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
 
   const { data: chartData, isLoading: chartLoading, isError: chartError } = useSummary(String(month), String(year))
 
-  const createCard = useMutation({ mutationFn: (d: unknown) => api.post("/finance/cards", d), onSuccess: () => { inv(["cards"]); setShowNewCard(false); setNewCard({ name: "", due_day: "", color: "#c67139" }) } })
-  const updateCard = useMutation({ mutationFn: ({ id, ...d }: { id: string; name?: string; due_day?: number; color?: string }) => api.put(`/finance/cards/${id}`, d), onSuccess: () => { inv(["cards"]); setEditingCard(null) } })
+  const createCard = useMutation({ mutationFn: (d: unknown) => api.post("/finance/cards", d), onSuccess: () => { inv(["cards", "cardPayoff"]); setShowNewCard(false); setNewCard({ name: "", due_day: "", color: "#c67139" }) } })
+  const updateCard = useMutation({ mutationFn: ({ id, ...d }: { id: string; name?: string; due_day?: number; color?: string }) => api.put(`/finance/cards/${id}`, d), onSuccess: () => { inv(["cards", "cardPayoff"]); setEditingCard(null) } })
   const deleteCard = useMutation({ mutationFn: (id: string) => api.delete(`/finance/cards/${id}`), onSuccess: () => inv(["cards", "expenses", "annual", "cardPayoff"]) })
-  const createBill = useMutation({ mutationFn: (d: unknown) => api.post("/finance/bills", d), onSuccess: () => { inv(["payments", "annualSummary"]); setShowNewBill(false); setNewBill({ name: "", amount: "", due_day: "" }) } })
-  const updateBill = useMutation({ mutationFn: ({ id, ...d }: { id: string; name?: string; amount?: number; due_day?: number }) => api.put(`/finance/bills/${id}`, d), onSuccess: () => { inv(["payments", "annualSummary"]); setEditingBill(null) } })
-  const deleteBill = useMutation({ mutationFn: (id: string) => api.delete(`/finance/bills/${id}`), onSuccess: () => inv(["payments", "annualSummary"]) })
+  const createBill = useMutation({ mutationFn: (d: unknown) => api.post("/finance/bills", d), onSuccess: () => { inv(["payments", "annualSummary", "cardPayoff"]); setShowNewBill(false); setNewBill({ name: "", amount: "", due_day: "" }) } })
+  const updateBill = useMutation({ mutationFn: ({ id, ...d }: { id: string; name?: string; amount?: number; due_day?: number }) => api.put(`/finance/bills/${id}`, d), onSuccess: () => { inv(["payments", "annualSummary", "cardPayoff"]); setEditingBill(null) } })
+  const deleteBill = useMutation({ mutationFn: (id: string) => api.delete(`/finance/bills/${id}`), onSuccess: () => inv(["payments", "annualSummary", "cardPayoff"]) })
   const togglePayment = useMutation({ mutationFn: (d: unknown) => api.post("/finance/payments/toggle", d), onSuccess: () => inv(["payments"]) })
   const setExpense = useMutation({ mutationFn: (d: unknown) => api.post("/finance/cards/expenses", d), onSuccess: () => inv(["expenses", "annual", "annualSummary", "cardPayoff"]) })
   const toggleCardExpense = useMutation({ mutationFn: (d: unknown) => api.post("/finance/cards/expenses/toggle", d), onSuccess: () => inv(["expenses", "annual", "cardPayoff"]) })
-  const saveConfig = useMutation({ mutationFn: (d: unknown) => api.post("/finance/config", d), onSuccess: () => inv(["config", "annualSummary"]) })
+  const saveConfig = useMutation({ mutationFn: (d: unknown) => api.post("/finance/config", d), onSuccess: () => inv(["config", "annualSummary", "cardPayoff"]) })
 
   const totalBills = bills.reduce((s, b) => s + Number(b.amount), 0)
   const totalPaid = bills.filter((b) => b.paid).reduce((s, b) => s + Number(b.amount), 0)
@@ -295,10 +295,6 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
             </Card>
           </div>
 
-          <CardPayoffForecast userId={userId} />
-
-          <LoansSummary userId={userId} />
-
           {/* Logo abaixo dos numeros: a leitura da IA comenta justamente o que
               a pessoa acabou de ler, e nao teria sentido antes deles. */}
           <CartaoIA
@@ -334,7 +330,10 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
                 : undefined
             }
             formata={fmt}
-          />
+          >
+            <CardPayoffForecast userId={userId} />
+            <LoansSummary userId={userId} />
+          </CartaoIA>
         </>
       )}
 
@@ -348,8 +347,8 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
           </CardHeader>
           <CardContent className="space-y-3">
             {[
-              { label: "Receita estimada (R$)", key: "estimated_income", val: config?.estimated_income || "" },
-              { label: "Saldo base (R$)", key: "balance", val: config?.balance || "" },
+              { label: "Receita estimada (R$)", key: "estimated_income", val: config?.estimated_income ?? "" },
+              { label: "Saldo base no início do mês (R$)", key: "balance", val: config?.balance ?? "" },
             ].map((f) => (
               <div key={`${f.key}-${month}-${year}`}>
                 <Label htmlFor={`dash-${f.key}`} className="mb-1.5 block text-xs">{f.label}</Label>
@@ -358,7 +357,7 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
                   type="number"
                   step="0.01"
                   defaultValue={f.val}
-                  onBlur={(e) => saveConfig.mutate({ month, year, [f.key]: Number(e.target.value) })}
+                  onBlur={(e) => saveConfig.mutate({ month, year, [f.key]: e.target.value === "" ? null : Number(e.target.value) })}
                 />
               </div>
             ))}
@@ -439,12 +438,19 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
                         687,40. Com o valor na key o input remonta e passa a
                         refletir o dado atual. */}
                     <Input
-                      key={`exp-${c.id}-${month}-${year}-${val}`}
+                      key={`exp-${c.id}-${month}-${year}-${exp?.amount ?? "missing"}`}
                       type="number"
                       step="0.01"
-                      placeholder="R$ 0,00"
-                      defaultValue={val || ""}
-                      onBlur={(e) => setExpense.mutate({ cardId: c.id, month, year, amount: Number(e.target.value) })}
+                      placeholder="Não informado"
+                      aria-label={`Valor da fatura ${c.name}`}
+                      defaultValue={exp?.amount ?? ""}
+                      onBlur={(e) => {
+                        if (e.target.value === "") {
+                          e.target.value = exp?.amount ?? ""
+                          return
+                        }
+                        setExpense.mutate({ cardId: c.id, month, year, amount: Number(e.target.value) })
+                      }}
                       className="w-[110px] text-right"
                     />
                     <Button variant="ghost" size="icon" aria-label={`Editar cartão ${c.name}`} onClick={() => setEditingCard(c)}>

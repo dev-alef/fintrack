@@ -20,8 +20,8 @@ export function LoansSummary({ userId }: { userId: string }) {
     <section aria-labelledby="loans-summary-title" className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h2 id="loans-summary-title" className="flex items-center gap-2 text-lg font-semibold text-text"><HandCoins className="h-4 w-4 text-primary" aria-hidden="true" /> Empréstimos</h2>
-          <p className="text-xs text-muted">Pendências atuais, independentemente do mês selecionado.</p>
+          <h3 id="loans-summary-title" className="flex items-center gap-2 text-sm font-semibold text-text"><HandCoins className="h-4 w-4 text-primary" aria-hidden="true" /> Empréstimos</h3>
+          <p className="text-xs text-muted">Pendências atuais, independentemente do mês selecionado. Estes valores não entram no saldo previsto para a quitação dos cartões.</p>
         </div>
         <Button variant="outline" size="sm" asChild><Link to="/emprestimos">Ver todos</Link></Button>
       </div>
@@ -34,7 +34,7 @@ export function LoansSummary({ userId }: { userId: string }) {
         </div>
       ) : (
         <>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {(['payable', 'receivable'] as const).map(direction => {
               const loans = pending.filter(loan => loan.direction === direction)
               const total = loans.reduce((sum, loan) => sum + cents(loan.remaining_amount), 0)
