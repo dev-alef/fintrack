@@ -60,7 +60,6 @@ export function CardPayoffForecast({ userId }: { userId: string }) {
   const query = useQuery({ queryKey: ['cardPayoff', userId, year, month], enabled: !!userId, queryFn: () => api.get<PayoffResponse>(`/finance/cards/payoff/projection?month=${month}&year=${year}`).then(response => response.data) })
   const entries = query.data?.months ?? []
   const timeline = query.data?.timeline ?? []
-  const maxTimelineAmount = Math.max(...timeline.map(period => Number(period.total)), 0)
   const last = entries.at(-1)
   const currentMonth = monthIndex({ year, month })
   const totalInvoices = entries.reduce((sum, entry) => sum + entry.invoice_count, 0)
@@ -79,25 +78,16 @@ export function CardPayoffForecast({ userId }: { userId: string }) {
       <p className="text-xl font-bold text-primary">{onlyOlder ? 'Regularize as faturas pendentes' : label(last)}</p>
       <p className="text-sm text-muted">{fmt(total)} em {totalInvoices} {totalInvoices === 1 ? 'fatura em aberto' : 'faturas em aberto'}.</p>
       <p className="text-xs text-muted">{onlyOlder ? 'Só há faturas de meses anteriores em aberto.' : 'Pelas faturas cadastradas, esse é o último mês com valor a quitar, se você pagar todas elas.'}</p>
-      {timeline.length > 0 && <div className="rounded-xl border border-border bg-surface p-4 space-y-3">
-        <div>
-          <h4 className="text-sm font-semibold text-text">Faturas mensais até a quitação</h4>
-          <p className="mt-1 text-xs text-muted">Total somado de todos os cartões nos últimos {timeline.length} meses até {label(timeline.at(-1)!)}. A barra compara os totais registrados mês a mês.</p>
-        </div>
-        <ol className="space-y-3">
-          {timeline.map(period => {
-            const width = maxTimelineAmount > 0 ? Number(period.total) / maxTimelineAmount * 100 : 0
-            return <li key={`${period.year}-${period.month}`} className="space-y-1">
-              <div className="flex flex-wrap items-baseline justify-between gap-x-3 text-sm">
-                <span className="text-text">{label(period)}</span>
-                <span className="font-semibold tabular-nums text-text">{fmt(period.total)}</span>
-              </div>
-              <div role="img" aria-label={`Total das faturas: ${fmt(period.total)}`} className="h-2 overflow-hidden rounded-full bg-track">
-                <div className="h-full rounded-full bg-primary transition-[width]" style={{ width: `${width}%` }} />
-              </div>
-              <p className="text-xs text-muted">{fmt(period.paid)} pagas · {fmt(period.open)} em aberto{period.missing_count > 0 ? ` · faltam ${period.missing_count} ${period.missing_count === 1 ? 'cartão' : 'cartões'} neste mês` : ''}</p>
-            </li>
-          })}
+      {timeline.length > 0 && <div className="space-y-2">
+        <h4 className="text-sm font-semibold text-text">Faturas mensais dos cartões</h4>
+        <ol className="grid grid-cols-[repeat(auto-fit,minmax(125px,1fr))] gap-2">
+          {timeline.map(period => <li key={`${period.year}-${period.month}`} className="min-w-0 rounded-lg border border-border bg-surface px-3 py-2">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1">
+              <span className="text-xs text-muted">{months[period.month - 1].slice(0, 3)} {period.year}</span>
+              <span className="text-sm font-semibold tabular-nums text-text">{fmt(period.total)}</span>
+            </div>
+            {period.missing_count > 0 && <p className="mt-1 text-xs text-warning">Falta fatura de {period.missing_count} {period.missing_count === 1 ? 'cartão' : 'cartões'}</p>}
+          </li>)}
         </ol>
       </div>}
       {query.data && <BalanceProjection projection={query.data.projection} />}
