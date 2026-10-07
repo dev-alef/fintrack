@@ -35,6 +35,7 @@ export function projectCardPayoff(data: PayoffSnapshot, start: Period) {
   const end = last ? { year: last.year, month: last.month } : null
   const base = { start, end }
   if (!end) return { months, timeline: [], projection: { ...base, status: 'not_applicable' as const } }
+  if (end.year > 2100) return { months, timeline: [], projection: { ...base, status: 'out_of_range' as const } }
 
   const groupedAll = new Map<number, { total: bigint; paid: bigint; open: bigint; invoice_count: number }>()
   const recordedByMonth = new Map<number, Set<string>>()
@@ -51,8 +52,9 @@ export function projectCardPayoff(data: PayoffSnapshot, start: Period) {
     recorded.add(expense.card_id)
     recordedByMonth.set(i, recorded)
   }
-  const timelineStart = Math.max(2000 * 12, index(end) - 7)
-  const timeline = Array.from({ length: index(end) - timelineStart + 1 }, (_, offset) => {
+  const timelineStart = index(start)
+  const timelineEnd = Math.max(index(end), timelineStart)
+  const timeline = Array.from({ length: timelineEnd - timelineStart + 1 }, (_, offset) => {
     const p = period(timelineStart + offset)
     const aggregate = groupedAll.get(index(p)) ?? { total: 0n, paid: 0n, open: 0n, invoice_count: 0 }
     const eligibleCards = data.cards.filter(card => card.created_year == null || card.created_month == null || index({ year: card.created_year, month: card.created_month }) <= index(p))
@@ -67,8 +69,6 @@ export function projectCardPayoff(data: PayoffSnapshot, start: Period) {
     }
   })
   if (months.some(p => index(p) < index(start))) return { months, timeline, projection: { ...base, status: 'past_due' as const } }
-  if (end.year > 2100) return { months, timeline, projection: { ...base, status: 'out_of_range' as const } }
-
   const configs = new Map(data.configs.map(c => [index(c), c]))
   const expenses = new Map(data.expenses.map(e => [`${index(e)}:${e.card_id}`, e]))
   const opening = configs.get(index(start))?.balance
