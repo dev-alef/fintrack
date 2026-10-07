@@ -12,12 +12,12 @@ export type CartaoDoAno = {
   id: string
   name: string
   color: string
-  monthly_breakdown?: { month: number; amount: string; paid?: boolean }[]
+  monthly_breakdown?: { month: number; amount: string | number; paid?: boolean }[]
 }
 
 export type LinhaDoAno = {
   month: number
-  estimated_income: string
+  estimated_income: string | null
   total_fixed_bills: string
   total_card_expenses: string
 }
@@ -127,7 +127,7 @@ export function PlanejamentoAnual({
       cartoes: Object.fromEntries(
         cartoes.map((c) => {
           const b = c.monthly_breakdown?.find((x) => x.month === mes)
-          return [c.id, b?.amount ? String(Number(b.amount)) : ""]
+          return [c.id, b?.amount != null ? String(Number(b.amount)) : ""]
         }),
       ),
     }
@@ -172,7 +172,7 @@ export function PlanejamentoAnual({
     mutationFn: () => {
       const meses = Object.entries(rascunho).map(([mes, dados]) => ({
         month: Number(mes),
-        estimated_income: dados.receita === "" ? 0 : Number(dados.receita),
+        estimated_income: dados.receita === "" ? null : Number(dados.receita),
         cards: cartoes
           .filter((c) => dados.cartoes[c.id] !== undefined && dados.cartoes[c.id] !== "")
           .map((c) => ({ cardId: c.id, amount: Number(dados.cartoes[c.id]) })),

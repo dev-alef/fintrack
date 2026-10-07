@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, type ReactNode } from "react"
 import { Link } from "react-router-dom"
 import { Sparkles } from "lucide-react"
 
@@ -17,6 +17,7 @@ const KEYFRAMES = `
 type Meta = { titulo: string; atual: number; alvo: number }
 
 type Props = {
+  children?: ReactNode
   sobrou: number
   contasFixas: number
   faturas: number
@@ -108,6 +109,7 @@ function Barra({
  * Quem produz análise de verdade é a página de Insights, para onde o botão leva.
  */
 export function CartaoIA({
+  children,
   sobrou,
   contasFixas,
   faturas,
@@ -186,7 +188,7 @@ export function CartaoIA({
   const play = reduzido ? "paused" : "running"
 
   return (
-    <div className="rounded-2xl border border-border p-6" style={{ background: "var(--ai-card)" }}>
+    <section aria-labelledby="ai-reading-title" className="min-w-0 rounded-2xl border border-border p-4 sm:p-6" style={{ background: "var(--ai-card)" }}>
       <style>{KEYFRAMES}</style>
 
       <div className="flex items-start gap-5">
@@ -206,10 +208,11 @@ export function CartaoIA({
         </div>
 
         <div className="min-w-0 flex-1">
-          <p className="flex items-center gap-2 text-xs uppercase tracking-[0.1em] text-muted">
+          <h2 id="ai-reading-title" className="flex items-center gap-2 text-xs uppercase tracking-[0.1em] text-muted">
             <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
             Leitura da IA
-          </p>
+          </h2>
+          <p className="mt-2 text-xs text-muted">Resumo calculado dos seus registros. A IA oferece sugestões; você decide e faz as alterações manualmente.</p>
 
           {/* aria-live para quem usa leitor de tela ouvir a frase trocar sem
               precisar procurar; a rotação é visual e passaria despercebida. */}
@@ -343,6 +346,8 @@ export function CartaoIA({
             </div>
           )}
 
+          {children && <div className="mt-6 space-y-6 border-t border-border pt-5 [&>section+section]:border-t [&>section+section]:border-border [&>section+section]:pt-5">{children}</div>}
+
           <Link
             to="/insights"
             className="mt-5 inline-flex items-center rounded-full px-4 py-2 text-sm font-medium transition-colors"
@@ -352,6 +357,6 @@ export function CartaoIA({
           </Link>
         </div>
       </div>
-    </div>
+    </section>
   )
 }

@@ -68,6 +68,14 @@ describe('Patrimônio no Dashboard', () => {
     expect(html).not.toContain('Patrimônio total')
   })
 
+  it('agrupa quitação e empréstimos dentro da Leitura da IA', () => {
+    const html = render(fixture())
+    const section = html.slice(html.indexOf('aria-labelledby="ai-reading-title"'))
+    expect(section).toContain('id="card-payoff-title"')
+    expect(section).toContain('id="loans-summary-title"')
+    expect(html.slice(0, html.indexOf('aria-labelledby="ai-reading-title"'))).not.toContain('id="loans-summary-title"')
+  })
+
   it('trocar de conta não reutiliza os valores financeiros da sessão anterior', () => {
     const client = fixture()
     auth.userId = 'bob'

@@ -1,4 +1,5 @@
 import pool, { query } from '../db/client'
+import { projectCardPayoff, type PayoffSnapshot, type Period } from './payoff-projection'
 
 // ── CARTÕES ──────────────────────────────────────────────
 export async function listCards(userId: string) {
@@ -93,6 +94,25 @@ export async function getCardPayoffMonths(userId: string) {
   return result.rows
 }
 
+// A single statement keeps the inputs in one PostgreSQL snapshot.
+export async function getCardPayoffProjection(userId: string, start: Period) {
+  const result = await query(
+    `SELECT
+       COALESCE((SELECT jsonb_agg(jsonb_build_object('year', year, 'month', month,
+         'estimated_income', estimated_income::text, 'balance', balance::text))
+         FROM monthly_config WHERE user_id = $1), '[]'::jsonb) AS configs,
+       COALESCE((SELECT jsonb_agg(jsonb_build_object('id', id, 'name', name))
+         FROM credit_cards WHERE user_id = $1), '[]'::jsonb) AS cards,
+       COALESCE((SELECT jsonb_agg(jsonb_build_object('year', ce.year, 'month', ce.month,
+         'card_id', ce.card_id, 'amount', ce.amount::text, 'paid', ce.paid))
+         FROM card_expenses ce JOIN credit_cards cc ON cc.id = ce.card_id
+         WHERE ce.user_id = $1 AND cc.user_id = $1), '[]'::jsonb) AS expenses,
+       COALESCE((SELECT SUM(amount) FROM fixed_bills WHERE user_id = $1 AND active = TRUE), 0)::text AS fixed_total`,
+    [userId],
+  )
+  return projectCardPayoff(result.rows[0] as PayoffSnapshot, start)
+}
+
 // ── DESPESAS FIXAS ───────────────────────────────────────
 export async function listBills(userId: string) {
   const result = await query(
@@ -166,8 +186,8 @@ export async function getMonthlyConfig(userId: string, month: number, year: numb
 }
 
 export async function upsertMonthlyConfig(userId: string, month: number, year: number, data: {
-  estimated_income?: number
-  balance?: number
+  estimated_income?: number | null
+  balance?: number | null
   investments?: number
 }) {
   const result = await query(
@@ -175,12 +195,12 @@ export async function upsertMonthlyConfig(userId: string, month: number, year: n
      VALUES ($1, $2, $3, $4, $5, $6)
      ON CONFLICT (user_id, month, year)
      DO UPDATE SET
-       estimated_income = COALESCE($4, monthly_config.estimated_income),
-       balance = COALESCE($5, monthly_config.balance),
+       estimated_income = CASE WHEN $7 THEN $4 ELSE monthly_config.estimated_income END,
+       balance = CASE WHEN $8 THEN $5 ELSE monthly_config.balance END,
        investments = COALESCE($6, monthly_config.investments),
        updated_at = NOW()
      RETURNING *`,
-    [userId, month, year, data.estimated_income ?? null, data.balance ?? null, data.investments ?? null]
+    [userId, month, year, data.estimated_income ?? null, data.balance ?? null, data.investments ?? null, data.estimated_income !== undefined, data.balance !== undefined]
   )
   return result.rows[0]
 }
@@ -246,7 +266,7 @@ export async function toggleCardExpensePayment(
 
 export type MesPlanejado = {
   month: number
-  estimated_income?: number
+  estimated_income?: number | null
   cards?: { cardId: string; amount: number }[]
 }
 
@@ -284,8 +304,8 @@ export async function salvaPlanejamento(userId: string, year: number, meses: Mes
     for (const mes of meses) {
       if (mes.estimated_income !== undefined) {
         await cliente.query(
-          `INSERT INTO monthly_config (user_id, month, year, estimated_income)
-           VALUES ($1, $2, $3, $4)
+          `INSERT INTO monthly_config (user_id, month, year, estimated_income, balance)
+           VALUES ($1, $2, $3, $4, NULL)
            ON CONFLICT (user_id, month, year)
            DO UPDATE SET estimated_income = $4, updated_at = now()`,
           [userId, mes.month, year, mes.estimated_income],

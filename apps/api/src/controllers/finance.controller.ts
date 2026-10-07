@@ -51,6 +51,16 @@ export async function getCardPayoff(req: Request, res: Response) {
   catch { res.status(500).json({ error: 'Erro interno' }) }
 }
 
+export async function getPayoffProjection(req: Request, res: Response) {
+  const parsed = z.object({
+    month: z.coerce.number().int().min(1).max(12),
+    year: z.coerce.number().int().min(2000).max(2100),
+  }).safeParse(req.query)
+  if (!parsed.success) { res.status(400).json({ error: 'Mês e ano inválidos' }); return }
+  try { res.json(await S.getCardPayoffProjection(uid(req), parsed.data)) }
+  catch { res.status(500).json({ error: 'Não foi possível calcular a projeção' }) }
+}
+
 // DESPESAS FIXAS
 export async function getBills(req: Request, res: Response) {
   try { res.json(await S.listBills(uid(req))) }
@@ -134,7 +144,7 @@ const planejamentoSchema = z.object({
     .array(
       z.object({
         month: z.number().int().min(1).max(12),
-        estimated_income: z.number().min(0).optional(),
+        estimated_income: z.number().min(0).nullable().optional(),
         cards: z
           .array(z.object({ cardId: z.string().uuid(), amount: z.number().min(0) }))
           .optional(),

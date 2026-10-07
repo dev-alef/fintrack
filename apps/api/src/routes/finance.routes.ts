@@ -16,6 +16,7 @@ r.get('/cards/expenses', C.getExpenses)
 r.post('/cards/expenses', C.setExpense)
 r.get('/cards/annual', C.getCardAnnual)
 r.get('/cards/payoff', C.getCardPayoff)
+r.get('/cards/payoff/projection', C.getPayoffProjection)
 r.post('/cards/expenses/toggle', C.toggleCardExpense)
 
 // Despesas fixas

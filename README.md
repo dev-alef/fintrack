@@ -19,7 +19,7 @@
 - 🔐 **Autenticação completa** — cadastro, login, **login com Google** (com vinculação de conta), verificação de e-mail e recuperação de senha
 - 🔒 **2FA por TOTP** — QR code, aplicativo autenticador, códigos de backup com regeneração
 - 🛡️ **Proteção contra roubo de sessão** — alerta por e-mail em acesso de dispositivo novo, tela de sessões ativas com opção de encerrar, sessão curta com renovação automática no uso
-- 📊 **Dashboard financeiro** — receita estimada, saldo calculado automaticamente, patrimônio com saldo + valor atual da carteira + metas, resumo de empréstimos pendentes, previsão de quitação dos cartões pelas faturas abertas cadastradas (inclusive anos seguintes) e gráfico anual de entradas e saídas
+- 📊 **Dashboard financeiro** — receita estimada, saldo calculado automaticamente, patrimônio com saldo + valor atual da carteira + metas, resumo de empréstimos pendentes, quitação dos cartões e saldo previsto no mês final dentro de Leitura da IA, com aviso de planejamento incompleto (inclusive entre anos) e gráfico anual de entradas e saídas
 - 💳 **Controle de cartões** — cartões personalizáveis com faturas mensais e totais anuais
 - 📋 **Despesas fixas** — controle de contas com status pago/pendente por mês
 - 💸 **Transações** — CRUD completo com filtros, paginação e categorias
@@ -150,7 +150,7 @@ cd apps/api
 npm test
 ```
 
-A suíte de integração usa Vitest + Supertest contra PostgreSQL real em container. Cobre autenticação, login com Google, 2FA, e-mail, rate limiting, sessões, suporte, transações e planejamento anual. Em empréstimos, verifica pagamentos parciais, quitação, correção, isolamento entre contas, repetição de requisições e quitações simultâneas, sem alterar os outros dados financeiros. A previsão dos cartões verifica agregação entre anos, exclusão de faturas pagas/zeradas e isolamento entre contas. O cálculo do patrimônio enviado à IA tem teste isolado, sem chamadas ao provedor. O frontend testa a composição do patrimônio (carteira + metas + saldo), isolamento entre contas, falhas de carregamento, resumo de empréstimos e previsão de quitação dos cartões. Os demais fluxos de investimentos e metas ainda não têm suíte de integração dedicada.
+A suíte de integração usa Vitest + Supertest contra PostgreSQL real em container. Cobre autenticação, login com Google, 2FA, e-mail, rate limiting, sessões, suporte, transações e planejamento anual. Em empréstimos, verifica pagamentos parciais, quitação, correção, isolamento entre contas, repetição de requisições e quitações simultâneas, sem alterar os outros dados financeiros. A previsão dos cartões verifica agregação entre anos e isolamento entre contas. O saldo no mês de quitação soma o saldo base inicial e receitas, desconta as contas fixas ativas em cada mês e todas as faturas do período (inclusive pagas), sem acumular saldos futuros. Testes cobrem lacunas no planejamento, zero explícito, saldo negativo e pendências anteriores; investimentos, metas, empréstimos e transações avulsas não são projetados nessa conta. O cálculo do patrimônio enviado à IA tem teste isolado, sem chamadas ao provedor. O frontend testa a composição do patrimônio (carteira + metas + saldo), isolamento entre contas, falhas de carregamento, resumo de empréstimos e previsão de quitação dos cartões. Os demais fluxos de investimentos e metas ainda não têm suíte de integração dedicada.
 
 Na raiz, rode `npm test --workspace=apps/web` para os testes do frontend; eles não precisam de banco.
 
