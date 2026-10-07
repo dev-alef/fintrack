@@ -9,7 +9,7 @@ import { ThemeToggle } from "@/components/theme-toggle"
 const FRASES = [
   "Organize suas faturas e contas fixas.",
   "Acompanhe investimentos, metas e empréstimos.",
-  "Planeje os próximos meses com os valores que você cadastrar.",
+  "A IA sugere; você decide e faz as alterações manualmente.",
 ]
 
 // Toda animacao com delay positivo leva `both`. Sem isso os elementos aparecem
@@ -372,7 +372,7 @@ export default function Login() {
               Controle financeiro pessoal
             </p>
             <p style={{ fontSize: 13.5, lineHeight: 1.55, color: "var(--text)", opacity: 0.78, marginBottom: 18 }}>
-              Registre suas finanças e acompanhe o saldo previsto a partir dos valores informados.
+              Registre suas finanças e acompanhe o saldo previsto a partir dos valores informados. A IA oferece sugestões; lançamentos e cortes de gastos são feitos por você.
             </p>
 
             <div role="tablist" aria-label="Entrar ou criar conta" style={{ display: "flex", gap: 6, padding: 5, borderRadius: 999, background: "var(--surface-2)", marginBottom: 18 }}>
