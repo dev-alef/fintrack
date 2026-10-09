@@ -141,7 +141,7 @@ export function CartaoIA({
   const fatiaInvestida = patrimonio > 0 ? Math.round((investimentos / patrimonio) * 100) : 0
 
   const frases = [
-    sobrou >= 0 ? `Sobraram ${formata(sobrou)} no seu mês.` : `Seu mês está ${formata(Math.abs(sobrou))} no vermelho.`,
+    sobrou >= 0 ? `Pelo planejamento, devem sobrar ${formata(sobrou)} neste mês.` : `Pelo planejamento, faltariam ${formata(Math.abs(sobrou))} neste mês.`,
     faltamPagar > 0
       ? `Falta${faltamPagar === 1 ? "" : "m"} ${faltamPagar} ${
           faltamPagar === 1 ? "conta" : "contas"
@@ -165,7 +165,7 @@ export function CartaoIA({
   if (dezembro) {
     frases.push(
       patrimonioDezembro >= 0
-        ? `Em dezembro você deve ter ${formata(patrimonioDezembro)}.`
+        ? `Seu patrimônio previsto para dezembro é ${formata(patrimonioDezembro)}.`
         : `Em dezembro você fecha ${formata(Math.abs(patrimonioDezembro))} no vermelho.`,
     )
   }
@@ -297,7 +297,7 @@ export function CartaoIA({
               se confere nao se usa para decidir nada. */}
           {dezembro && (
             <div className="mt-6 border-t border-border pt-5">
-              <p className="text-xs uppercase tracking-[0.1em] text-muted">Em dezembro você deve ter</p>
+              <p className="text-xs uppercase tracking-[0.1em] text-muted">Patrimônio previsto em dezembro</p>
               <p
                 className="mt-1.5 text-2xl tabular-nums"
                 style={{

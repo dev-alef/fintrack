@@ -27,7 +27,7 @@ type Rascunho = {
   cartoes: Record<string, string>
 }
 
-export type MesProjetado = { receita: number; faturas: number }
+export type MesProjetado = { receita: number | null; faturas: number }
 
 /**
  * "Seguindo assim, quanto eu tenho em dezembro?"
@@ -64,7 +64,7 @@ export function projecaoFimDoAno({
 
   for (let m = mesAtual + 1; m <= 12; m++) {
     const dados = meses.get(m)
-    if (!dados || dados.receita <= 0) continue
+    if (!dados || dados.receita === null) continue
     somaPlanejada += dados.receita - dados.faturas - fixasPorMes
     mesesConsiderados++
   }
@@ -103,12 +103,14 @@ export function PlanejamentoAnual({
   mesAtual,
   cartoes,
   linhas,
+  patrimonioProjetadoDezembro,
   formata,
 }: {
   ano: number
   mesAtual: number
   cartoes: CartaoDoAno[]
   linhas: LinhaDoAno[]
+  patrimonioProjetadoDezembro?: number
   formata: (valor: number) => string
 }) {
   const qc = useQueryClient()
@@ -201,14 +203,15 @@ export function PlanejamentoAnual({
   const totalReceita = MESES.reduce((s, _, i) => s + Number(valorAtual(i + 1).receita || 0), 0)
 
   // So os meses planejados, igual as linhas acima: mes sem receita mostra "—"
-  // na coluna de contas fixas, e somar os doze aqui faria o total do rodape
-  // nao fechar com o que esta visivel.
+  // e nao entra nos totais. Fatura preenchida sem receita estimada continua
+  // visivel no campo, mas nao entra no acumulado de meses planejados.
   const mesesPlanejados = MESES.filter((_, i) => valorAtual(i + 1).receita !== "").length
   const totalFixas = fixasPorMes * mesesPlanejados
   const totalGastos = MESES.reduce((s, _, i) => {
     const v = valorAtual(i + 1)
+    if (v.receita === "") return s
     const cart = cartoes.reduce((a, c) => a + Number(v.cartoes[c.id] || 0), 0)
-    return s + cart + (v.receita ? fixasPorMes : 0)
+    return s + cart + fixasPorMes
   }, 0)
 
   return (
@@ -218,6 +221,9 @@ export function PlanejamentoAnual({
           Preencha um mês e use{" "}
           <ArrowDownToLine className="inline h-3.5 w-3.5 align-[-2px]" aria-hidden="true" /> para
           repetir nos seguintes. Ajuste depois só os que fogem do padrão.
+        </p>
+        <p className="basis-full text-xs text-muted">
+          “Sobra no mês” é receita menos contas fixas e faturas daquele mês. O patrimônio projetado em dezembro, ao final da tabela, inclui o saldo estimado do mês selecionado, investimentos e metas.
         </p>
 
         <div className="flex items-center gap-3">
@@ -256,7 +262,7 @@ export function PlanejamentoAnual({
                   antiga e faz falta: sem ela, para saber o que sai no mes e
                   preciso somar de cabeca as colunas de cartao mais as fixas. */}
               <TableHead className="text-right">Gastos</TableHead>
-              <TableHead className="text-right">Sobra</TableHead>
+              <TableHead className="text-right">Sobra no mês</TableHead>
               <TableHead />
             </TableRow>
           </TableHeader>
@@ -371,13 +377,14 @@ export function PlanejamentoAnual({
             })}
 
             <TableRow className="border-t-2 border-border font-bold">
-              <TableCell className="text-text">Total</TableCell>
+              <TableCell className="text-text">Total planejado</TableCell>
               <TableCell className="text-right text-income tabular-nums">{formata(totalReceita)}</TableCell>
               {cartoes.map((c) => (
                 <TableCell key={c.id} className="text-right tabular-nums" style={{ color: c.color }}>
-                  {formata(
-                    MESES.reduce((s, _, i) => s + Number(valorAtual(i + 1).cartoes[c.id] || 0), 0),
-                  )}
+                  {formata(MESES.reduce((s, _, i) => {
+                    const v = valorAtual(i + 1)
+                    return v.receita === "" ? s : s + Number(v.cartoes[c.id] || 0)
+                  }, 0))}
                 </TableCell>
               ))}
               <TableCell className="text-right text-muted tabular-nums">{formata(totalFixas)}</TableCell>
@@ -392,6 +399,13 @@ export function PlanejamentoAnual({
               </TableCell>
               <TableCell />
             </TableRow>
+            {patrimonioProjetadoDezembro !== undefined && <TableRow className="border-t-2 border-primary/30 bg-primary/5 font-bold">
+              <TableCell colSpan={4 + cartoes.length} className="text-text">Patrimônio projetado em dezembro <span className="font-normal text-muted">(igual à Leitura da IA)</span></TableCell>
+              <TableCell className={cn("text-right tabular-nums", patrimonioProjetadoDezembro >= 0 ? "text-primary" : "text-expense")}>
+                {formata(patrimonioProjetadoDezembro)}
+              </TableCell>
+              <TableCell />
+            </TableRow>}
           </TableBody>
         </Table>
       </div>

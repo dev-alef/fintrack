@@ -66,7 +66,7 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
   const { data: expenses = [], isLoading: expensesLoading, isError: expensesError } = useQuery<CardExpense[]>({ queryKey: ["expenses", userId, month, year], queryFn: () => api.get(`/finance/cards/expenses?month=${month}&year=${year}`).then((r) => r.data) })
   const { data: config, isLoading: configLoading, isError: configError } = useQuery<Config>({ queryKey: ["config", userId, month, year], queryFn: () => api.get(`/finance/config?month=${month}&year=${year}`).then((r) => r.data) })
   const { data: annual = [] } = useQuery<AnnualCard[]>({ queryKey: ["annual", userId, year], queryFn: () => api.get(`/finance/cards/annual?year=${year}`).then((r) => r.data) })
-  const { data: annualSummary = [], isLoading: annualLoading } = useQuery<{ month: number; estimated_income: string; total_fixed_bills: string; total_card_expenses: string }[]>({ queryKey: ["annualSummary", userId, year], queryFn: () => api.get(`/finance/annual?year=${year}`).then((r) => r.data) })
+  const { data: annualSummary = [], isLoading: annualLoading } = useQuery<{ month: number; estimated_income: string | null; total_fixed_bills: string; total_card_expenses: string }[]>({ queryKey: ["annualSummary", userId, year], queryFn: () => api.get(`/finance/annual?year=${year}`).then((r) => r.data) })
 
   const prevMonth = month === 1 ? 12 : month - 1
   const prevYear = month === 1 ? year - 1 : year
@@ -118,10 +118,13 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
     meses: new Map(
       annualSummary.map((l) => [
         l.month,
-        { receita: Number(l.estimated_income || 0), faturas: Number(l.total_card_expenses || 0) },
+        { receita: l.estimated_income == null ? null : Number(l.estimated_income), faturas: Number(l.total_card_expenses || 0) },
       ]),
     ),
   })
+  const patrimonioProjetadoDezembro = projecaoAno.mesesConsiderados > 0
+    ? balance + projecaoAno.somaPlanejada + investments + guardadoEmMetas
+    : undefined
 
   // O grafico passou de "ultimos 6 meses" para o ano inteiro. A serie vem do
   // annualSummary, que a tela ja buscava para a tabela do fim da pagina - nao
@@ -247,7 +250,7 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
               { label: "Contas fixas", value: totalBills, tone: "text-warning" as const },
               { label: "Faturas cartões", value: totalCards, tone: "text-expense" as const },
               { label: "Contas e faturas", value: totalBills + totalCards, tone: "text-expense" as const },
-              { label: "Sobrou no mês", value: leftover, tone: leftover >= 0 ? "text-income" as const : "text-expense" as const },
+              { label: "Sobra prevista no mês", value: leftover, tone: leftover >= 0 ? "text-income" as const : "text-expense" as const },
             ].map((item) => (
               <Card key={item.label}>
                 <CardContent className="p-4">
@@ -263,10 +266,10 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
             <Card>
               <CardContent className="p-5">
                 <div className="mb-1 flex items-center gap-2 text-xs text-muted">
-                  <TrendingUp className="h-3.5 w-3.5" aria-hidden="true" /> Saldo atual
+                  <TrendingUp className="h-3.5 w-3.5" aria-hidden="true" /> Saldo estimado ao fim do mês
                 </div>
                 <p className={cn("text-xl font-bold", balance >= 0 ? "text-primary" : "text-expense")}>{fmt(balance)}</p>
-                <p className="mt-1 text-xs text-muted">Saldo base + sobrou no mês</p>
+                <p className="mt-1 text-xs text-muted">Saldo base + sobra prevista no mês</p>
               </CardContent>
             </Card>
             <Card>
@@ -361,6 +364,9 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
                 />
               </div>
             ))}
+            <p className="text-xs leading-relaxed text-muted">
+              Informe o dinheiro que você tinha no início do mês. Não precisa mudar esse valor a cada gasto: o saldo estimado soma a receita e subtrai as contas fixas e faturas cadastradas. Ele não acompanha transações avulsas nem o saldo bancário em tempo real.
+            </p>
           </CardContent>
         </Card>
 
@@ -587,6 +593,7 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
               mesAtual={year === now.getFullYear() ? month : 0}
               cartoes={annual}
               linhas={annualSummary}
+              patrimonioProjetadoDezembro={patrimonioProjetadoDezembro}
               formata={fmt}
             />
           )}
