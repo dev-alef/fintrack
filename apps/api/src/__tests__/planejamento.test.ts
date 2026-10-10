@@ -182,7 +182,7 @@ describe('Previsão de quitação dos cartões', () => {
 })
 
 describe('Projeção de saldo na quitação', () => {
-  it('usa receitas, fixas e todas as faturas em uma conta isolada por usuário', async () => {
+  it('usa receitas, contas fixas pendentes e apenas faturas em aberto em uma conta isolada por usuário', async () => {
     const { cookie, cartaoId } = await contaComCartao()
     await request(app).post('/finance/config').set('Cookie', cookie).send({ year: ANO, month: 12, balance: 1000, estimated_income: 2000 })
     await request(app).post('/finance/bills').set('Cookie', cookie).send({ name: 'Internet', amount: 100, due_day: 10 })
@@ -192,7 +192,7 @@ describe('Projeção de saldo na quitação', () => {
     const forecast = () => request(app).get(`/finance/cards/payoff/projection?year=${ANO}&month=12`).set('Cookie', cookie)
     const response = await forecast()
     expect(response.status).toBe(200)
-    expect(response.body.projection).toMatchObject({ status: 'ready', balance: '2800.00', income: '2500.00', card_expenses: '500.00', fixed_bills: '200.00' })
+    expect(response.body.projection).toMatchObject({ status: 'ready', balance: '3100.00', income: '2500.00', card_expenses: '200.00', fixed_bills: '200.00' })
 
     const outro = await contaComCartao()
     const alheio = await request(app).get(`/finance/cards/payoff/projection?year=${ANO}&month=12`).set('Cookie', outro.cookie)

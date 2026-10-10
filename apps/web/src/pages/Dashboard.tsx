@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
+import { calculateMonthlyCashflow } from "@/lib/monthly-cashflow"
 import { PlanejamentoAnual, projecaoFimDoAno, type CartaoDoAno } from "@/components/planejamento-anual"
 
 const fmt = (v: string | number) => Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
@@ -89,9 +90,16 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
   const toggleCardExpense = useMutation({ mutationFn: (d: unknown) => api.post("/finance/cards/expenses/toggle", d), onSuccess: () => inv(["expenses", "annual", "cardPayoff"]) })
   const saveConfig = useMutation({ mutationFn: (d: unknown) => api.post("/finance/config", d), onSuccess: () => inv(["config", "annualSummary", "cardPayoff"]) })
 
-  const totalBills = bills.reduce((s, b) => s + Number(b.amount), 0)
+  const monthlyCashflow = calculateMonthlyCashflow({
+    currentBalance: config?.balance,
+    estimatedIncome: config?.estimated_income,
+    receivedIncome: chartData?.totals?.total_income,
+    fixedBills: bills,
+    cardInvoices: expenses,
+  })
+  const totalBills = monthlyCashflow.fixedBills
   const totalPaid = bills.filter((b) => b.paid).reduce((s, b) => s + Number(b.amount), 0)
-  const totalCards = expenses.reduce((s, e) => s + Number(e.amount), 0)
+  const totalCards = monthlyCashflow.cardInvoices
   // Faturas entram na mesma conta das contas fixas no cartao da IA. So conta
   // fatura com valor: cartao cadastrado sem lancamento no mes nao e um
   // compromisso em aberto, e contaria como "faltando pagar" sem nada a pagar.
@@ -99,10 +107,9 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
   const faturasPagasLista = faturasLancadas.filter((e) => e.paid)
   const faturasPagasValor = faturasPagasLista.reduce((s, e) => s + Number(e.amount), 0)
   const estimatedIncome = Number(config?.estimated_income || 0)
-  const balanceBase = Number(config?.balance || 0)
   const investments = portfolio.reduce((sum, entry) => sum + Math.round(Number(entry.total_current) * 100), 0) / 100
-  const leftover = estimatedIncome - totalBills - totalCards
-  const balance = balanceBase + leftover
+  const leftover = monthlyCashflow.plannedSurplus
+  const balance = monthlyCashflow.monthEndBalance
   // Metas são um bolso separado neste produto; cada parcela aparece no total.
   const guardadoEmMetas = goals.reduce((s, g) => s + Number(g.current_amount || 0), 0)
 
@@ -122,9 +129,6 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
       ]),
     ),
   })
-  const patrimonioProjetadoDezembro = projecaoAno.mesesConsiderados > 0
-    ? balance + projecaoAno.somaPlanejada + investments + guardadoEmMetas
-    : undefined
 
   // O grafico passou de "ultimos 6 meses" para o ano inteiro. A serie vem do
   // annualSummary, que a tela ja buscava para a tabela do fim da pagina - nao
@@ -250,12 +254,17 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
               { label: "Contas fixas", value: totalBills, tone: "text-warning" as const },
               { label: "Faturas cartões", value: totalCards, tone: "text-expense" as const },
               { label: "Contas e faturas", value: totalBills + totalCards, tone: "text-expense" as const },
-              { label: "Sobra prevista no mês", value: leftover, tone: leftover >= 0 ? "text-income" as const : "text-expense" as const },
+              { label: "Sobra prevista no mês", value: leftover, tone: leftover >= 0 ? "text-income" as const : "text-expense" as const, breakdown: true },
             ].map((item) => (
               <Card key={item.label}>
                 <CardContent className="p-4">
                   <p className="mb-1 text-xs text-muted">{item.label}</p>
                   <p className={cn("text-base font-bold", item.tone)}>{fmt(item.value)}</p>
+                  {"breakdown" in item && <dl className="mt-2 space-y-1 text-[11px] leading-tight text-muted">
+                    <div className="flex justify-between gap-1"><dt>Receita estimada</dt><dd className="shrink-0 tabular-nums">{fmt(estimatedIncome)}</dd></div>
+                    <div className="flex justify-between gap-1"><dt>− Contas fixas</dt><dd className="shrink-0 tabular-nums">{fmt(totalBills)}</dd></div>
+                    <div className="flex justify-between gap-1"><dt>− Faturas</dt><dd className="shrink-0 tabular-nums">{fmt(totalCards)}</dd></div>
+                  </dl>}
                 </CardContent>
               </Card>
             ))}
@@ -269,7 +278,13 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
                   <TrendingUp className="h-3.5 w-3.5" aria-hidden="true" /> Saldo estimado ao fim do mês
                 </div>
                 <p className={cn("text-xl font-bold", balance >= 0 ? "text-primary" : "text-expense")}>{fmt(balance)}</p>
-                <p className="mt-1 text-xs text-muted">Saldo base + sobra prevista no mês</p>
+                <p className="mt-1 text-xs text-muted">Saldo atual + receitas restantes − pagamentos pendentes</p>
+                <dl className="mt-3 space-y-1 text-xs text-muted">
+                  <div className="flex justify-between gap-2"><dt>Saldo Atual</dt><dd className="shrink-0 tabular-nums">{fmt(Number(config?.balance || 0))}</dd></div>
+                  <div className="flex justify-between gap-2"><dt>+ Receita que falta receber</dt><dd className="shrink-0 tabular-nums">{fmt(monthlyCashflow.remainingIncome)}</dd></div>
+                  <div className="flex justify-between gap-2"><dt>− Contas fixas em aberto</dt><dd className="shrink-0 tabular-nums">{fmt(monthlyCashflow.pendingFixedBills)}</dd></div>
+                  <div className="flex justify-between gap-2"><dt>− Faturas em aberto</dt><dd className="shrink-0 tabular-nums">{fmt(monthlyCashflow.pendingCardInvoices)}</dd></div>
+                </dl>
               </CardContent>
             </Card>
             <Card>
@@ -288,7 +303,7 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
                   <TrendingUp className="h-3.5 w-3.5 text-primary" aria-hidden="true" /> Patrimônio total
                 </div>
                 <p className="text-xl font-bold text-primary">{fmt(patrimonio)}</p>
-                <p className="mt-1 text-xs text-muted">Saldo + Investimentos + Metas</p>
+              <p className="mt-1 text-xs text-muted">Saldo estimado + Investimentos + Metas</p>
                 {guardadoEmMetas > 0 && (
                   <p className="mt-0.5 text-xs text-text-3">
                     {fmt(balance)} + {fmt(investments)} + {fmt(guardadoEmMetas)} em metas
@@ -312,7 +327,7 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
             dezembro={
               projecaoAno.mesesConsiderados > 0
                 ? {
-                    saldoHoje: balance,
+                    saldoProjetadoAposMesAtual: balance,
                     planejado: projecaoAno.somaPlanejada,
                     mesesConsiderados: projecaoAno.mesesConsiderados,
                     guardadoEmMetas,
@@ -351,7 +366,7 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
           <CardContent className="space-y-3">
             {[
               { label: "Receita estimada (R$)", key: "estimated_income", val: config?.estimated_income ?? "" },
-              { label: "Saldo base no início do mês (R$)", key: "balance", val: config?.balance ?? "" },
+              { label: "Saldo Atual (R$)", key: "balance", val: config?.balance ?? "" },
             ].map((f) => (
               <div key={`${f.key}-${month}-${year}`}>
                 <Label htmlFor={`dash-${f.key}`} className="mb-1.5 block text-xs">{f.label}</Label>
@@ -365,7 +380,7 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
               </div>
             ))}
             <p className="text-xs leading-relaxed text-muted">
-              Informe o dinheiro que você tinha no início do mês. Não precisa mudar esse valor a cada gasto: o saldo estimado soma a receita e subtrai as contas fixas e faturas cadastradas. Ele não acompanha transações avulsas nem o saldo bancário em tempo real.
+              Informe seu saldo bancário real e atualize quando ele mudar. Ao receber salário ou renda extra, registre a entrada em Transações e ajuste este valor para o novo saldo. A previsão soma só a receita estimada que ainda falta entrar e desconta contas fixas e faturas em aberto. Sem conexão bancária, o app não atualiza esse saldo sozinho.
             </p>
           </CardContent>
         </Card>
@@ -593,7 +608,6 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
               mesAtual={year === now.getFullYear() ? month : 0}
               cartoes={annual}
               linhas={annualSummary}
-              patrimonioProjetadoDezembro={patrimonioProjetadoDezembro}
               formata={fmt}
             />
           )}

@@ -49,7 +49,7 @@ type Props = {
    * quem confere perceber se acabou contando o mesmo dinheiro duas vezes.
    */
   dezembro?: {
-    saldoHoje: number
+    saldoProjetadoAposMesAtual: number
     planejado: number
     mesesConsiderados: number
     guardadoEmMetas: number
@@ -157,7 +157,7 @@ export function CartaoIA({
   // mesma regra do card "Patrimonio total" do painel: duas definicoes
   // diferentes de patrimonio na mesma tela seria pior que nenhuma, e quem
   // comparasse os dois numeros nao teria como saber qual acreditar.
-  const saldoDezembro = dezembro ? dezembro.saldoHoje + dezembro.planejado : 0
+  const saldoDezembro = dezembro ? dezembro.saldoProjetadoAposMesAtual + dezembro.planejado : 0
   const patrimonioDezembro = saldoDezembro + investimentos + (dezembro?.guardadoEmMetas ?? 0)
 
   // A pergunta que originou o app entra na rotacao. Fica por ultimo de
@@ -310,7 +310,7 @@ export function CartaoIA({
 
               <dl className="mt-4 space-y-1.5 text-[13px]">
                 {[
-                  { termo: "Saldo de hoje", valor: dezembro.saldoHoje, nota: "saldo base + o que sobrou neste mês" },
+                  { termo: "Saldo estimado após o mês atual", valor: dezembro.saldoProjetadoAposMesAtual, nota: "saldo atual + receitas restantes − pagamentos pendentes" },
                   {
                     termo: `Sobra de ${dezembro.mesesConsiderados} ${dezembro.mesesConsiderados === 1 ? "mês planejado" : "meses planejados"}`,
                     valor: dezembro.planejado,

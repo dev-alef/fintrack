@@ -14,17 +14,25 @@ function snapshot(): PayoffSnapshot {
       { year: 2027, month: 1, card_id: 'a', amount: '300.30', paid: false },
       { year: 2027, month: 1, card_id: 'b', amount: '0.00', paid: false },
     ],
-    fixed_total: '400.40',
+    fixed_bills: [{ id: 'rent', amount: '400.40' }],
+    bill_payments: [],
+    received_income: '1200.00',
   }
 }
 describe('Saldo no mês de quitação', () => {
-  it('cruza anos, desconta pagas uma vez, aceita receita zero e ignora saldos futuros', () => {
+  it('cruza anos, desconta apenas pagamentos pendentes e ignora saldos futuros', () => {
     const result = projectCardPayoff(snapshot(), start)
-    expect(result.projection).toEqual({ start, end: { year: 2027, month: 1 }, status: 'ready', opening_balance: '1000.10', income: '2000.20', fixed_bills: '800.80', card_expenses: '600.60', balance: '1598.90' })
+    expect(result.projection).toEqual({ start, end: { year: 2027, month: 1 }, status: 'ready', current_balance: '1000.10', income: '800.20', fixed_bills: '800.80', card_expenses: '500.50', balance: '499.00' })
     expect(result.months).toHaveLength(2)
     const data = snapshot()
     data.expenses[1].paid = true
-    expect(projectCardPayoff(data, start).projection).toEqual(result.projection)
+    const afterPayment = projectCardPayoff(data, start).projection
+    expect(afterPayment.status).toBe('ready')
+    if (afterPayment.status === 'ready') expect(afterPayment.balance).toBe('699.20')
+    data.bill_payments.push({ ...start, bill_id: 'rent', paid: true })
+    const afterBillPayment = projectCardPayoff(data, start).projection
+    expect(afterBillPayment.status).toBe('ready')
+    if (afterBillPayment.status === 'ready') expect(afterBillPayment.balance).toBe('1099.60')
   })
   it('lista meses ausentes e não calcula com renda, saldo ou faturas desconhecidas', () => {
     const data = snapshot()
@@ -52,7 +60,7 @@ describe('Saldo no mês de quitação', () => {
     data.configs[0].estimated_income = '0.00'
     const result = projectCardPayoff(data, start).projection
     expect(result.status).toBe('ready')
-    if (result.status === 'ready') expect(result.balance).toBe('-1401.40')
+    if (result.status === 'ready') expect(result.balance).toBe('-1301.30')
   })
   it('não promete data ou saldo se todas as faturas estiverem pagas', () => {
     const data = snapshot()

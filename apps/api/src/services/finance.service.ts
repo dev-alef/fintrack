@@ -108,8 +108,15 @@ export async function getCardPayoffProjection(userId: string, start: Period) {
          'card_id', ce.card_id, 'amount', ce.amount::text, 'paid', ce.paid))
          FROM card_expenses ce JOIN credit_cards cc ON cc.id = ce.card_id
          WHERE ce.user_id = $1 AND cc.user_id = $1), '[]'::jsonb) AS expenses,
-       COALESCE((SELECT SUM(amount) FROM fixed_bills WHERE user_id = $1 AND active = TRUE), 0)::text AS fixed_total`,
-    [userId],
+       COALESCE((SELECT jsonb_agg(jsonb_build_object('id', id, 'amount', amount::text))
+         FROM fixed_bills WHERE user_id = $1 AND active = TRUE), '[]'::jsonb) AS fixed_bills,
+       COALESCE((SELECT jsonb_agg(jsonb_build_object('bill_id', bp.bill_id, 'year', bp.year, 'month', bp.month, 'paid', bp.paid))
+         FROM bill_payments bp JOIN fixed_bills fb ON fb.id = bp.bill_id
+         WHERE bp.user_id = $1 AND fb.user_id = $1 AND fb.active = TRUE), '[]'::jsonb) AS bill_payments,
+       COALESCE((SELECT SUM(amount) FROM transactions WHERE user_id = $1 AND type = 'income'
+         AND EXTRACT(YEAR FROM date)::int = $2 AND EXTRACT(MONTH FROM date)::int = $3
+         AND date <= CURRENT_DATE), 0)::text AS received_income`,
+    [userId, start.year, start.month],
   )
   return projectCardPayoff(result.rows[0] as PayoffSnapshot, start)
 }
