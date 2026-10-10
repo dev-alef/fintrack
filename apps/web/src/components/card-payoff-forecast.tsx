@@ -10,7 +10,7 @@ type Projection = { start: Period; end: Period | null } & (
   | { status: 'past_due' }
   | { status: 'out_of_range' }
   | { status: 'incomplete'; missingBalance: boolean; missingMonths: (Period & { income: boolean; cards: string[] })[] }
-  | { status: 'ready'; opening_balance: string; income: string; fixed_bills: string; card_expenses: string; balance: string }
+  | { status: 'ready'; current_balance: string; income: string; fixed_bills: string; card_expenses: string; balance: string }
 )
 export interface PayoffResponse {
   months: PayoffMonth[]
@@ -30,7 +30,7 @@ function BalanceProjection({ projection: p }: { projection: Projection }) {
       : p.status === 'out_of_range' ? <p className="text-sm text-warning">Revise as faturas: há valores fora dos anos aceitos pelo planejamento (até 2100).</p>
       : p.status === 'incomplete' ? <>
         <p className="text-sm text-warning">Planejamento incompleto. Preencha os dados abaixo para calcular o saldo; informe 0 quando não houver receita ou fatura.</p>
-        {p.missingBalance && <p className="text-sm text-muted">Falta o saldo base no início de {label(p.start)}, na Configuração do mês.</p>}
+        {p.missingBalance && <p className="text-sm text-muted">Falta informar o Saldo Atual no Dashboard.</p>}
         {p.missingMonths.length > 0 && <details className="text-sm text-muted">
           <summary className="cursor-pointer font-medium">Ver {p.missingMonths.length} {p.missingMonths.length === 1 ? 'mês com dados faltantes' : 'meses com dados faltantes'}</summary>
           <ul className="mt-2 max-h-56 space-y-2 overflow-auto pl-4 list-disc">
@@ -42,15 +42,15 @@ function BalanceProjection({ projection: p }: { projection: Projection }) {
         <p className="text-xs text-muted">De {label(p.start)} até o fim de {label(p.end!)}.</p>
         <dl className="space-y-2 text-sm">
           {[
-            ['Saldo base no início do período', p.opening_balance],
-            ['+ Receitas previstas', p.income],
-            ['− Contas fixas do período', p.fixed_bills],
-            ['− Faturas do período (pagas e em aberto)', p.card_expenses],
+            ['Saldo Atual', p.current_balance],
+            ['+ Receita estimada ainda não recebida', p.income],
+            ['− Contas fixas ainda não pagas', p.fixed_bills],
+            ['− Faturas ainda não pagas', p.card_expenses],
           ].map(([title, value]) => <div key={title} className="flex flex-wrap justify-between gap-x-3"><dt className="text-muted">{title}</dt><dd className="tabular-nums text-text">{fmt(value)}</dd></div>)}
         </dl>
         {Number(p.balance) < 0 && <p className="text-sm text-expense">O planejamento termina com saldo negativo. Será necessário ajustar receitas ou despesas para quitar as faturas.</p>}
       </>}
-    <p className="text-xs text-muted">O saldo usa o planejamento desde o início do mês atual e repete as contas fixas ativas até a quitação. Investimentos, metas, empréstimos e lançamentos avulsos ficam fora desta conta.</p>
+    <p className="text-xs text-muted">O cálculo parte do Saldo Atual, soma apenas a receita estimada que ainda falta receber e desconta contas fixas e faturas ainda não pagas até a quitação. Investimentos, metas, empréstimos e lançamentos avulsos ficam fora desta conta.</p>
   </div>
 }
 

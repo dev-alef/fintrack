@@ -103,14 +103,12 @@ export function PlanejamentoAnual({
   mesAtual,
   cartoes,
   linhas,
-  patrimonioProjetadoDezembro,
   formata,
 }: {
   ano: number
   mesAtual: number
   cartoes: CartaoDoAno[]
   linhas: LinhaDoAno[]
-  patrimonioProjetadoDezembro?: number
   formata: (valor: number) => string
 }) {
   const qc = useQueryClient()
@@ -223,7 +221,7 @@ export function PlanejamentoAnual({
           repetir nos seguintes. Ajuste depois só os que fogem do padrão.
         </p>
         <p className="basis-full text-xs text-muted">
-          “Sobra no mês” é receita menos contas fixas e faturas daquele mês. O patrimônio projetado em dezembro, ao final da tabela, inclui o saldo estimado do mês selecionado, investimentos e metas.
+          “Sobra no mês” é receita menos contas fixas e faturas daquele mês. O total anual soma a sobra dos meses que têm receita planejada.
         </p>
 
         <div className="flex items-center gap-3">
@@ -377,7 +375,7 @@ export function PlanejamentoAnual({
             })}
 
             <TableRow className="border-t-2 border-border font-bold">
-              <TableCell className="text-text">Total planejado</TableCell>
+              <TableCell className="text-text">Sobra no ano</TableCell>
               <TableCell className="text-right text-income tabular-nums">{formata(totalReceita)}</TableCell>
               {cartoes.map((c) => (
                 <TableCell key={c.id} className="text-right tabular-nums" style={{ color: c.color }}>
@@ -399,13 +397,6 @@ export function PlanejamentoAnual({
               </TableCell>
               <TableCell />
             </TableRow>
-            {patrimonioProjetadoDezembro !== undefined && <TableRow className="border-t-2 border-primary/30 bg-primary/5 font-bold">
-              <TableCell colSpan={4 + cartoes.length} className="text-text">Patrimônio projetado em dezembro <span className="font-normal text-muted">(igual à Leitura da IA)</span></TableCell>
-              <TableCell className={cn("text-right tabular-nums", patrimonioProjetadoDezembro >= 0 ? "text-primary" : "text-expense")}>
-                {formata(patrimonioProjetadoDezembro)}
-              </TableCell>
-              <TableCell />
-            </TableRow>}
           </TableBody>
         </Table>
       </div>
