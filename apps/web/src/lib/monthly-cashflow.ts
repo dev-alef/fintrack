@@ -7,7 +7,7 @@ const cents = (amount: Amount) => {
 }
 const totalCents = (items: Payment[]) => items.reduce((sum, item) => sum + cents(item.amount), 0)
 
-/** Full-month plan plus a remaining-cash estimate from a manually updated current balance. */
+/** One month-end forecast: current balance + estimated income - all monthly bills/invoices. */
 export function calculateMonthlyCashflow({
   currentBalance,
   estimatedIncome,
@@ -23,16 +23,11 @@ export function calculateMonthlyCashflow({
   const estimatedIncomeCents = cents(estimatedIncome)
   const fixedBillsCents = totalCents(fixedBills)
   const cardInvoicesCents = totalCents(cardInvoices)
-  const pendingFixedBillsCents = totalCents(fixedBills.filter(item => !item.paid))
-  const pendingCardInvoicesCents = totalCents(cardInvoices.filter(item => !item.paid))
   const toAmount = (value: number) => value / 100
 
   return {
     fixedBills: toAmount(fixedBillsCents),
     cardInvoices: toAmount(cardInvoicesCents),
-    pendingFixedBills: toAmount(pendingFixedBillsCents),
-    pendingCardInvoices: toAmount(pendingCardInvoicesCents),
-    plannedSurplus: toAmount(estimatedIncomeCents - fixedBillsCents - cardInvoicesCents),
-    monthEndBalance: toAmount(currentBalanceCents - pendingFixedBillsCents - pendingCardInvoicesCents),
+    monthEndBalance: toAmount(currentBalanceCents + estimatedIncomeCents - fixedBillsCents - cardInvoicesCents),
   }
 }

@@ -30,9 +30,8 @@ export async function generateInsights(userId: string) {
   const totalCards = expenses.reduce((s: number, e: { amount: string }) => s + Number(e.amount), 0)
   const estimatedIncome = Number(config?.estimated_income || 0)
   const saldo = Number(config?.balance || 0)
-  const leftover = estimatedIncome - totalBills - totalCards
-  const pendingCards = expenses.filter((e: { paid: boolean }) => !e.paid).reduce((s: number, e: { amount: string }) => s + Number(e.amount), 0)
-  const balanceReal = saldo - (totalBills - totalPaid) - pendingCards
+  const leftover = (Math.round(saldo * 100) + Math.round(estimatedIncome * 100) - Math.round(totalBills * 100) - Math.round(totalCards * 100)) / 100
+
 
   // Totais da carteira de investimentos
   const totalInvested = portfolio.reduce((s: number, p: { total_invested: string }) => s + Number(p.total_invested), 0)
@@ -77,9 +76,8 @@ export async function generateInsights(userId: string) {
 - Despesas em transações: R$ ${Number(total_expense).toFixed(2)}
 - Total contas fixas: R$ ${totalBills.toFixed(2)} (pagas: R$ ${totalPaid.toFixed(2)}, pendentes: R$ ${(totalBills - totalPaid).toFixed(2)})
 - Total faturas cartões: R$ ${totalCards.toFixed(2)}
-- Sobrou no mês: R$ ${leftover.toFixed(2)}
+- Sobra prevista no mês (receita estimada + Saldo Atual - contas fixas - faturas): R$ ${leftover.toFixed(2)}
 - Saldo Atual informado: R$ ${saldo.toFixed(2)}
-- Saldo estimado após pagamentos pendentes: R$ ${balanceReal.toFixed(2)}
 - Guardado em metas: R$ ${goalsValue.toFixed(2)}
 - Patrimônio total (Saldo Atual + investimentos + metas): R$ ${patrimonio.toFixed(2)}
 
@@ -124,7 +122,7 @@ Seja direto, amigável, específico com os números reais do usuário. Não use 
       total_paid: totalPaid,
       total_cards: totalCards,
       leftover,
-      balance: balanceReal,
+      balance: leftover,
       investments: totalCurrent,
       goals: goalsValue,
       patrimonio,

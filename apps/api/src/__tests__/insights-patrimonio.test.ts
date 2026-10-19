@@ -19,7 +19,8 @@ describe('Patrimônio enviado à IA', () => {
   it('usa o valor atual da carteira e inclui metas uma vez, sem o campo manual antigo', async () => {
     const result = await generateInsights('alice')
     expect(result.summary.investments).toBe(1200)
-    expect(result.summary.balance).toBe(-200)
+    expect(result.summary.balance).toBe(800)
+    expect(result.summary.leftover).toBe(800)
     expect(result.summary.patrimonio).toBe(1600)
     const prompt = generateContent.mock.calls[0][0]
     expect(prompt).toContain('Patrimônio total (Saldo Atual + investimentos + metas): R$ 1600.00')
