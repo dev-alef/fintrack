@@ -182,7 +182,7 @@ describe('Previsão de quitação dos cartões', () => {
 })
 
 describe('Projeção de saldo na quitação', () => {
-  it('usa receitas, contas fixas pendentes e apenas faturas em aberto em uma conta isolada por usuário', async () => {
+  it('usa saldo atual, contas fixas pendentes e apenas faturas em aberto em uma conta isolada por usuário', async () => {
     const { cookie, cartaoId } = await contaComCartao()
     await request(app).post('/finance/config').set('Cookie', cookie).send({ year: ANO, month: 12, balance: 1000, estimated_income: 2000 })
     await request(app).post('/finance/bills').set('Cookie', cookie).send({ name: 'Internet', amount: 100, due_day: 10 })
@@ -192,7 +192,7 @@ describe('Projeção de saldo na quitação', () => {
     const forecast = () => request(app).get(`/finance/cards/payoff/projection?year=${ANO}&month=12`).set('Cookie', cookie)
     const response = await forecast()
     expect(response.status).toBe(200)
-    expect(response.body.projection).toMatchObject({ status: 'ready', balance: '3100.00', income: '2500.00', card_expenses: '200.00', fixed_bills: '200.00' })
+    expect(response.body.projection).toMatchObject({ status: 'ready', balance: '600.00', card_expenses: '200.00', fixed_bills: '200.00' })
 
     const outro = await contaComCartao()
     const alheio = await request(app).get(`/finance/cards/payoff/projection?year=${ANO}&month=12`).set('Cookie', outro.cookie)
@@ -208,16 +208,17 @@ describe('Projeção de saldo na quitação', () => {
     expect(config.body.estimated_income).toBe('2000.00')
     expect(config.body.balance).toBeNull()
   })
-  it('preserva receita vazia como ausente e aceita zero informado explicitamente', async () => {
+  it('calcula o saldo sem exigir receita estimada', async () => {
     const { cookie, cartaoId } = await contaComCartao()
     const save = (income: number | null) => request(app).post('/finance/planejamento').set('Cookie', cookie).send({ year: ANO, meses: [{ month: 12, estimated_income: income, cards: [{ cardId: cartaoId, amount: 100 }] }] })
     expect((await save(null)).status).toBe(200)
     const forecast = () => request(app).get(`/finance/cards/payoff/projection?year=${ANO}&month=12`).set('Cookie', cookie)
-    expect((await forecast()).body.projection).toMatchObject({ status: 'incomplete', missingBalance: true, missingMonths: [{ year: ANO, month: 12, income: true, cards: [] }] })
-    await save(0)
+    expect((await forecast()).body.projection).toMatchObject({ status: 'incomplete', missingBalance: true, missingMonths: [] })
     await request(app).post('/finance/config').set('Cookie', cookie).send({ year: ANO, month: 12, balance: 0 })
     expect((await forecast()).body.projection).toMatchObject({ status: 'ready', balance: '-100.00' })
+    await save(0)
+    expect((await forecast()).body.projection).toMatchObject({ status: 'ready', balance: '-100.00' })
     await save(null)
-    expect((await forecast()).body.projection.status).toBe('incomplete')
+    expect((await forecast()).body.projection).toMatchObject({ status: 'ready', balance: '-100.00' })
   })
 })

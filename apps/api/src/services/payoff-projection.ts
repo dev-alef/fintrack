@@ -1,6 +1,6 @@
 /** Monthly cash-flow forecast. Money stays in integer cents until serialization. */
 export type Period = { year: number; month: number }
-type Config = Period & { estimated_income: string | null; balance: string | null }
+type Config = Period & { balance: string | null }
 type Expense = Period & { card_id: string; amount: string; paid: boolean | null }
 export type PayoffSnapshot = {
   configs: Config[]
@@ -8,7 +8,6 @@ export type PayoffSnapshot = {
   expenses: Expense[]
   fixed_bills: { id: string; amount: string }[]
   bill_payments: (Period & { bill_id: string; paid: boolean | null })[]
-  received_income: string
 }
 const index = (p: Period) => p.year * 12 + p.month - 1
 const period = (i: number): Period => ({ year: Math.floor(i / 12), month: i % 12 + 1 })
@@ -75,16 +74,10 @@ export function projectCardPayoff(data: PayoffSnapshot, start: Period) {
   const expenses = new Map(data.expenses.map(e => [`${index(e)}:${e.card_id}`, e]))
   const currentBalance = configs.get(index(start))?.balance
   const missingBalance = currentBalance == null
-  const missingMonths: (Period & { income: boolean; cards: string[] })[] = []
-  let income = 0n, cardExpenses = 0n, fixedBills = 0n
+  const missingMonths: (Period & { cards: string[] })[] = []
+  let cardExpenses = 0n, fixedBills = 0n
   const paymentStatus = new Map(data.bill_payments.map(p => [`${index(p)}:${p.bill_id}`, Boolean(p.paid)]))
   for (let i = index(start); i <= index(end); i++) {
-    const config = configs.get(i)
-    const missingIncome = config?.estimated_income == null
-    if (!missingIncome) {
-      const plannedIncome = cents(config.estimated_income!)
-      income += i === index(start) ? (plannedIncome - cents(data.received_income) > 0n ? plannedIncome - cents(data.received_income) : 0n) : plannedIncome
-    }
     const missingCards: string[] = []
     for (const card of data.cards) {
       const expense = expenses.get(`${i}:${card.id}`)
@@ -94,14 +87,14 @@ export function projectCardPayoff(data: PayoffSnapshot, start: Period) {
     for (const bill of data.fixed_bills) {
       if (!paymentStatus.get(`${i}:${bill.id}`)) fixedBills += cents(bill.amount)
     }
-    if (missingIncome || missingCards.length) missingMonths.push({ ...period(i), income: missingIncome, cards: missingCards })
+    if (missingCards.length) missingMonths.push({ ...period(i), cards: missingCards })
   }
   if (missingBalance || missingMonths.length) return { months, timeline, projection: { ...base, status: 'incomplete' as const, missingBalance, missingMonths } }
 
   const balanceAtStart = cents(currentBalance!)
   return { months, timeline, projection: {
     ...base, status: 'ready' as const,
-    current_balance: money(balanceAtStart), income: money(income), fixed_bills: money(fixedBills), card_expenses: money(cardExpenses),
-    balance: money(balanceAtStart + income - fixedBills - cardExpenses),
+    current_balance: money(balanceAtStart), fixed_bills: money(fixedBills), card_expenses: money(cardExpenses),
+    balance: money(balanceAtStart - fixedBills - cardExpenses),
   } }
 }

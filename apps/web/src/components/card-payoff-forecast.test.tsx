@@ -47,7 +47,7 @@ describe('Previsão de quitação dos cartões', () => {
   it('mostra a conta do saldo e avisa quando o resultado é negativo', () => {
     const html = render(fixture([{ year: 2026, month: 10, amount: '100.00', invoice_count: 1 }], {
       status: 'ready', start: { year: 2026, month: 10 }, end: { year: 2026, month: 10 },
-      current_balance: '0.00', income: '0.00', fixed_bills: '50.00', card_expenses: '100.00', balance: '-150.00',
+      current_balance: '0.00', fixed_bills: '50.00', card_expenses: '100.00', balance: '-150.00',
     }))
     expect(html).toContain('-R$ 150,00')
     expect(html).toContain('saldo negativo')
@@ -56,11 +56,11 @@ describe('Previsão de quitação dos cartões', () => {
   it('explica lacunas sem inventar um saldo zero', () => {
     const html = render(fixture([{ year: 2026, month: 12, amount: '100.00', invoice_count: 1 }], {
       status: 'incomplete', start: { year: 2026, month: 10 }, end: { year: 2026, month: 12 }, missingBalance: true,
-      missingMonths: [{ year: 2026, month: 11, income: true, cards: ['Banco'] }],
+      missingMonths: [{ year: 2026, month: 11, cards: ['Banco'] }],
     }))
     expect(html).toContain('Planejamento incompleto')
     expect(html).toContain('Falta informar o Saldo Atual')
-    expect(html).toContain('novembro de 2026: receita estimada; faturas de Banco')
+    expect(html).toContain('novembro de 2026: faturas de Banco')
     expect(html).not.toContain('R$ 0,00')
   })
 

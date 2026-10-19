@@ -11,24 +11,20 @@ const totalCents = (items: Payment[]) => items.reduce((sum, item) => sum + cents
 export function calculateMonthlyCashflow({
   currentBalance,
   estimatedIncome,
-  receivedIncome,
   fixedBills,
   cardInvoices,
 }: {
   currentBalance: Amount
   estimatedIncome: Amount
-  receivedIncome: Amount
   fixedBills: Payment[]
   cardInvoices: Payment[]
 }) {
   const currentBalanceCents = cents(currentBalance)
   const estimatedIncomeCents = cents(estimatedIncome)
-  const receivedIncomeCents = cents(receivedIncome)
   const fixedBillsCents = totalCents(fixedBills)
   const cardInvoicesCents = totalCents(cardInvoices)
   const pendingFixedBillsCents = totalCents(fixedBills.filter(item => !item.paid))
   const pendingCardInvoicesCents = totalCents(cardInvoices.filter(item => !item.paid))
-  const remainingIncomeCents = Math.max(0, estimatedIncomeCents - receivedIncomeCents)
   const toAmount = (value: number) => value / 100
 
   return {
@@ -36,8 +32,7 @@ export function calculateMonthlyCashflow({
     cardInvoices: toAmount(cardInvoicesCents),
     pendingFixedBills: toAmount(pendingFixedBillsCents),
     pendingCardInvoices: toAmount(pendingCardInvoicesCents),
-    remainingIncome: toAmount(remainingIncomeCents),
     plannedSurplus: toAmount(estimatedIncomeCents - fixedBillsCents - cardInvoicesCents),
-    monthEndBalance: toAmount(currentBalanceCents + remainingIncomeCents - pendingFixedBillsCents - pendingCardInvoicesCents),
+    monthEndBalance: toAmount(currentBalanceCents - pendingFixedBillsCents - pendingCardInvoicesCents),
   }
 }
