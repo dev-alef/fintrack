@@ -1,4 +1,4 @@
-import { pgTable, unique, uuid, varchar, timestamp, index, foreignKey, check, numeric, date, text, integer, boolean } from "drizzle-orm/pg-core"
+import { pgTable, unique, uniqueIndex, uuid, varchar, timestamp, index, foreignKey, check, numeric, date, text, integer, boolean } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
 
@@ -327,4 +327,68 @@ export const verification = pgTable("verification", {
 	updatedAt: timestamp("updatedAt", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 }, (table) => [
 	index("verification_identifier_idx").using("btree", table.identifier.asc().nullsLast()),
+]);
+
+export const professionalClients = pgTable('professional_clients', {
+  id: uuid().primaryKey(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  name: varchar({ length: 120 }).notNull(),
+  contact: varchar({ length: 200 }).notNull().default(''),
+  notes: varchar({ length: 500 }).notNull().default(''),
+  archived: boolean().notNull().default(false),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+}, table => [
+  unique('professional_clients_id_user_id_key').on(table.id, table.userId),
+  index('professional_clients_user_idx').on(table.userId),
+  check('professional_clients_name_check', sql`length(trim(${table.name})) > 0`),
+]);
+
+export const serviceSubscriptions = pgTable('service_subscriptions', {
+  id: uuid().primaryKey(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  clientId: uuid('client_id').notNull(),
+  serviceName: varchar('service_name', { length: 150 }).notNull(),
+  amount: numeric({ precision: 12, scale: 2 }).notNull(),
+  intervalMonths: integer('interval_months').notNull(),
+  startDate: date('start_date').notNull(),
+  endDate: date('end_date'),
+  notes: varchar({ length: 500 }).notNull().default(''),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+}, table => [
+  foreignKey({ columns: [table.clientId, table.userId], foreignColumns: [professionalClients.id, professionalClients.userId], name: 'service_subscriptions_client_id_user_id_fkey' }),
+  index('service_subscriptions_user_idx').on(table.userId),
+  check('service_subscriptions_service_name_check', sql`length(trim(${table.serviceName})) > 0`),
+  check('service_subscriptions_amount_check', sql`${table.amount} > 0 AND ${table.amount} <= 999999999.99`),
+  check('service_subscriptions_interval_months_check', sql`${table.intervalMonths} IN (1, 3, 12)`),
+  check('service_subscriptions_start_date_check', sql`${table.startDate} BETWEEN '1900-01-01' AND '2100-12-31'`),
+  check('service_subscriptions_end_date_check', sql`${table.endDate} BETWEEN '1900-01-01' AND '2100-12-31'`),
+]);
+
+export const professionalReceipts = pgTable('professional_receipts', {
+  id: uuid().primaryKey(),
+  subscriptionId: uuid('subscription_id').notNull().references(() => serviceSubscriptions.id, { onDelete: 'cascade' }),
+  dueOn: date('due_on').notNull(), paidOn: date('paid_on').notNull(),
+  amount: numeric({ precision: 12, scale: 2 }).notNull(),
+  clientName: varchar('client_name', { length: 120 }).notNull(),
+  serviceName: varchar('service_name', { length: 150 }).notNull(),
+  notes: varchar({ length: 500 }).notNull().default(''),
+  voidedAt: timestamp('voided_at', { withTimezone: true, mode: 'string' }),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+}, table => [
+  uniqueIndex('professional_receipts_period_idx').on(table.subscriptionId, table.dueOn).where(sql`${table.voidedAt} IS NULL`),
+  check('professional_receipts_amount_check', sql`${table.amount} > 0 AND ${table.amount} <= 999999999.99`),
+]);
+
+export const professionalExpenses = pgTable('professional_expenses', {
+  id: uuid().primaryKey(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  title: varchar({ length: 150 }).notNull(), category: varchar({ length: 80 }).notNull().default(''),
+  amount: numeric({ precision: 12, scale: 2 }).notNull(), spentOn: date('spent_on').notNull(),
+  deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'string' }),
+  notes: varchar({ length: 500 }).notNull().default(''),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+}, table => [
+  index('professional_expenses_user_idx').on(table.userId, table.spentOn),
+  check('professional_expenses_title_check', sql`length(trim(${table.title})) > 0`),
+  check('professional_expenses_amount_check', sql`${table.amount} > 0 AND ${table.amount} <= 999999999.99`),
 ]);

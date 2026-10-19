@@ -153,10 +153,8 @@ export function CartaoIA({
     faturas > 0 ? `As faturas dos cartões estão em ${formata(faturas)}.` : "Nenhuma fatura lançada neste mês.",
   ]
 
-  // Saldo projetado + investido + metas = patrimonio em dezembro. Exatamente a
-  // mesma regra do card "Patrimonio total" do painel: duas definicoes
-  // diferentes de patrimonio na mesma tela seria pior que nenhuma, e quem
-  // comparasse os dois numeros nao teria como saber qual acreditar.
+  // Patrimônio de dezembro usa o saldo projetado. O patrimônio atual do
+  // Dashboard usa o Saldo Atual informado; cada indicador mostra seu período.
   const saldoDezembro = dezembro ? dezembro.saldoProjetadoAposMesAtual + dezembro.planejado : 0
   const patrimonioDezembro = saldoDezembro + investimentos + (dezembro?.guardadoEmMetas ?? 0)
 

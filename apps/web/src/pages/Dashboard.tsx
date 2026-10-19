@@ -112,7 +112,8 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
   // Metas são um bolso separado neste produto; cada parcela aparece no total.
   const guardadoEmMetas = goals.reduce((s, g) => s + Number(g.current_amount || 0), 0)
 
-  const patrimonio = balance + investments + guardadoEmMetas
+  const currentBalance = Number(config?.balance || 0)
+  const patrimonio = currentBalance + investments + guardadoEmMetas
 
   // Projecao de fim de ano para o cartao da IA. Usa o que esta SALVO - o
   // rascunho da tabela nao existe aqui. Mesma funcao que a tabela usa, para
@@ -301,10 +302,10 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
                   <TrendingUp className="h-3.5 w-3.5 text-primary" aria-hidden="true" /> Patrimônio total
                 </div>
                 <p className="text-xl font-bold text-primary">{fmt(patrimonio)}</p>
-              <p className="mt-1 text-xs text-muted">Saldo estimado + Investimentos + Metas</p>
+              <p className="mt-1 text-xs text-muted">Saldo Atual + Investimentos + Metas</p>
                 {guardadoEmMetas > 0 && (
                   <p className="mt-0.5 text-xs text-text-3">
-                    {fmt(balance)} + {fmt(investments)} + {fmt(guardadoEmMetas)} em metas
+                    {fmt(currentBalance)} + {fmt(investments)} + {fmt(guardadoEmMetas)} em metas
                   </p>
                 )}
               </CardContent>

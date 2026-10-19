@@ -19,11 +19,12 @@
 - 🔐 **Autenticação completa** — cadastro, login, **login com Google** (com vinculação de conta), verificação de e-mail e recuperação de senha
 - 🔒 **2FA por TOTP** — QR code, aplicativo autenticador, códigos de backup com regeneração
 - 🛡️ **Proteção contra roubo de sessão** — alerta por e-mail em acesso de dispositivo novo, tela de sessões ativas com opção de encerrar, sessão curta com renovação automática no uso
-- 📊 **Dashboard financeiro** — receita estimada, saldo calculado automaticamente, patrimônio com saldo + valor atual da carteira + metas, resumo de empréstimos pendentes, quitação dos cartões e saldo previsto no mês final dentro de Leitura da IA, com aviso de planejamento incompleto (inclusive entre anos) e gráfico anual de entradas e saídas
+- 📊 **Dashboard financeiro** — receita estimada, saldo calculado automaticamente, patrimônio com Saldo Atual + valor atual da carteira + metas, resumo de empréstimos pendentes, quitação dos cartões e saldo previsto no mês final dentro de Leitura da IA, com aviso de planejamento incompleto (inclusive entre anos) e gráfico anual de entradas e saídas
 - 💳 **Controle de cartões** — cartões personalizáveis com faturas mensais e totais anuais
 - 📋 **Despesas fixas** — controle de contas com status pago/pendente por mês
 - 💸 **Transações** — CRUD completo com filtros, paginação e categorias
 - 🤝 **Empréstimos** — valores a pagar e a receber por pessoa, pagamentos parciais, histórico e vencimentos; controle separado do saldo e da projeção
+- 💼 **Profissional** — clientes, serviços por assinatura mensal/trimestral/anual, vencimentos, recebimentos integrais manuais com estorno e despesas profissionais; resultado de caixa separado das finanças pessoais
 - 💎 **Carteira de investimentos** — tipos personalizados, rentabilidade, distribuição e cores personalizadas
 - 🎯 **Metas financeiras** — progresso automático com barra visual
 - 🤖 **Insights com IA** — análise financeira personalizada via Google Gemini, persistente durante a navegação
@@ -152,6 +153,16 @@ npm test
 
 A suíte de integração usa Vitest + Supertest contra PostgreSQL real em container. Cobre autenticação, login com Google, 2FA, e-mail, rate limiting, sessões, suporte, transações e planejamento anual. Em empréstimos, verifica pagamentos parciais, quitação, correção, isolamento entre contas, repetição de requisições e quitações simultâneas, sem alterar os outros dados financeiros. A previsão dos cartões verifica agregação entre anos e isolamento entre contas. O saldo no mês de quitação parte do Saldo Atual e desconta apenas contas fixas e faturas ainda não pagas; receitas futuras, investimentos, metas, empréstimos e transações avulsas não entram nessa conta. O saldo estimado no Dashboard segue a mesma fórmula, enquanto “Sobra prevista no mês” continua sendo receita estimada menos contas fixas e faturas. Testes cobrem lacunas no planejamento, zero explícito, saldo negativo e pendências anteriores. O cálculo do patrimônio enviado à IA tem teste isolado, sem chamadas ao provedor. O frontend testa a composição do patrimônio (carteira + metas + saldo), isolamento entre contas, falhas de carregamento, resumo de empréstimos e previsão de quitação dos cartões. Os demais fluxos de investimentos e metas ainda não têm suíte de integração dedicada.
 
+O controle profissional tem testes de calendário (dias 29–31, trimestre e ano bissexto), encerramento, caixa por data de recebimento, snapshots históricos, isolamento por usuário, idempotência, recebimentos concorrentes e despesas sem efeito em transações ou no saldo pessoal.
+
+### Controle profissional
+
+A área **Profissional** permite cadastrar clientes e serviços recorrentes. O primeiro vencimento define o dia âncora; meses mais curtos usam o último dia, sem alterar o dia dos meses seguintes. Valor, cliente, início e frequência ficam definidos na criação: para reajustar o contrato, encerre a assinatura anterior e cadastre outra. O último dia de vigência é inclusive; uma data anterior ao primeiro vencimento cancela o serviço antes do início.
+
+A assinatura é previsão. Só a confirmação manual de recebimento integral entra na receita recebida, pela data em que o dinheiro entrou. Estornos preservam o registro e reabrem a pendência, sem devolver dinheiro automaticamente. O resultado profissional é **recebido no mês − despesas profissionais realizadas no mês**. A receita recorrente mensal equivalente divide contratos trimestrais por 3 e anuais por 12 e é uma medida contratual, não dinheiro recebido.
+
+Recebimentos e despesas profissionais não alteram Transações nem o Saldo Atual pessoal. Não há emissão de cobranças, Pix, boleto ou integração com provedor de pagamentos nesta etapa.
+
 Na raiz, rode `npm test --workspace=apps/web` para os testes do frontend; eles não precisam de banco.
 
 ## 📡 Principais endpoints
@@ -173,6 +184,13 @@ Na raiz, rode `npm test --workspace=apps/web` para os testes do frontend; eles n
 | PUT / DELETE | `/loans/:id` | Editar ou excluir um empréstimo |
 | POST | `/loans/:id/payments` | Registrar pagamento parcial ou quitação |
 | DELETE | `/loans/:id/payments/:paymentId` | Remover um pagamento lançado por engano |
+| GET | `/business?year=2026&month=10` | Clientes, assinaturas, vencimentos, histórico e resumo profissional |
+| POST / PUT / DELETE | `/business/clients[/:id]` | Cadastrar, editar ou arquivar cliente |
+| POST / PUT | `/business/subscriptions[/:id]` | Cadastrar assinatura ou editar serviço/observações |
+| POST | `/business/subscriptions/:id/end` | Definir último dia de vigência |
+| POST | `/business/subscriptions/:id/receipts` | Confirmar recebimento integral com UUID de repetição |
+| DELETE | `/business/subscriptions/:id/receipts/:receiptId` | Estornar recebimento mantendo histórico |
+| POST / PUT / DELETE | `/business/expenses[/:id]` | Registrar, corrigir ou excluir despesa profissional |
 | GET | `/insights` | Análise financeira com IA |
 | POST | `/suporte` | Enviar mensagem de suporte |
 
