@@ -45,9 +45,21 @@ describe('Patrimônio no Dashboard', () => {
     const html = render(fixture())
     expect(cardValue(html, 'Patrimônio total')).toBe(fmt(1600))
     expect(cardValue(html, '> Investimentos')).toBe(fmt(1200))
-    expect(html).toContain('Saldo Atual − contas fixas em aberto − faturas em aberto')
+    expect(html).toContain('+ Saldo Atual')
+    expect(cardValue(html, 'Sobra prevista no mês')).toBe(fmt(800))
+    expect(html).not.toContain('Saldo estimado ao fim do mês')
     expect(html).toContain('Sobra prevista no mês')
     expect(html).not.toContain('id="dash-investments"')
+  })
+
+  it('destaca previsão negativa no único card mensal', () => {
+    const client = fixture()
+    const now = new Date()
+    client.setQueryData(['config', 'alice', now.getMonth() + 1, now.getFullYear()], { estimated_income: '100.00', balance: '100.00' })
+    const html = render(client)
+    expect(cardValue(html, 'Sobra prevista no mês')).toBe(fmt(-100))
+    expect(html).toContain('Previsão de fechar o mês no negativo.')
+    expect(html).not.toContain('Saldo estimado ao fim do mês')
   })
 
   it('carteira vazia vale zero mesmo quando existe valor manual antigo', () => {

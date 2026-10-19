@@ -107,8 +107,7 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
   const faturasPagasValor = faturasPagasLista.reduce((s, e) => s + Number(e.amount), 0)
   const estimatedIncome = Number(config?.estimated_income || 0)
   const investments = portfolio.reduce((sum, entry) => sum + Math.round(Number(entry.total_current) * 100), 0) / 100
-  const leftover = monthlyCashflow.plannedSurplus
-  const balance = monthlyCashflow.monthEndBalance
+  const leftover = monthlyCashflow.monthEndBalance
   // Metas são um bolso separado neste produto; cada parcela aparece no total.
   const guardadoEmMetas = goals.reduce((s, g) => s + Number(g.current_amount || 0), 0)
 
@@ -119,7 +118,7 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
   // rascunho da tabela nao existe aqui. Mesma funcao que a tabela usa, para
   // as duas leituras nunca discordarem.
   const projecaoAno = projecaoFimDoAno({
-    saldoAtual: balance,
+    saldoAtual: leftover,
     mesAtual: year === now.getFullYear() ? month : 0,
     fixasPorMes: Number(annualSummary[0]?.total_fixed_bills || 0),
     meses: new Map(
@@ -262,30 +261,18 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
                   <p className={cn("text-base font-bold", item.tone)}>{fmt(item.value)}</p>
                   {"breakdown" in item && <dl className="mt-2 space-y-1 text-[11px] leading-tight text-muted">
                     <div className="flex justify-between gap-1"><dt>Receita estimada</dt><dd className="shrink-0 tabular-nums">{fmt(estimatedIncome)}</dd></div>
+                    <div className="flex justify-between gap-1"><dt>+ Saldo Atual</dt><dd className="shrink-0 tabular-nums">{fmt(currentBalance)}</dd></div>
                     <div className="flex justify-between gap-1"><dt>− Contas fixas</dt><dd className="shrink-0 tabular-nums">{fmt(totalBills)}</dd></div>
                     <div className="flex justify-between gap-1"><dt>− Faturas</dt><dd className="shrink-0 tabular-nums">{fmt(totalCards)}</dd></div>
                   </dl>}
+                  {"breakdown" in item && <p className={cn("mt-2 text-xs", item.tone)}>{leftover < 0 ? "Previsão de fechar o mês no negativo." : leftover > 0 ? "Previsão de fechar o mês com saldo positivo." : "Previsão de fechar o mês sem sobra."}</p>}
                 </CardContent>
               </Card>
             ))}
           </div>
 
           {/* Patrimônio */}
-          <div className="grid gap-3 md:grid-cols-3">
-            <Card>
-              <CardContent className="p-5">
-                <div className="mb-1 flex items-center gap-2 text-xs text-muted">
-                  <TrendingUp className="h-3.5 w-3.5" aria-hidden="true" /> Saldo estimado ao fim do mês
-                </div>
-                <p className={cn("text-xl font-bold", balance >= 0 ? "text-primary" : "text-expense")}>{fmt(balance)}</p>
-                <p className="mt-1 text-xs text-muted">Saldo Atual − contas fixas em aberto − faturas em aberto</p>
-                <dl className="mt-3 space-y-1 text-xs text-muted">
-                  <div className="flex justify-between gap-2"><dt>Saldo Atual</dt><dd className="shrink-0 tabular-nums">{fmt(Number(config?.balance || 0))}</dd></div>
-                  <div className="flex justify-between gap-2"><dt>− Contas fixas em aberto</dt><dd className="shrink-0 tabular-nums">{fmt(monthlyCashflow.pendingFixedBills)}</dd></div>
-                  <div className="flex justify-between gap-2"><dt>− Faturas em aberto</dt><dd className="shrink-0 tabular-nums">{fmt(monthlyCashflow.pendingCardInvoices)}</dd></div>
-                </dl>
-              </CardContent>
-            </Card>
+          <div className="grid gap-3 md:grid-cols-2">
             <Card>
               <CardContent className="p-5">
                 <div className="mb-1 flex items-center gap-2 text-xs text-muted">
@@ -326,7 +313,7 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
             dezembro={
               projecaoAno.mesesConsiderados > 0
                 ? {
-                    saldoProjetadoAposMesAtual: balance,
+                    saldoProjetadoAposMesAtual: leftover,
                     planejado: projecaoAno.somaPlanejada,
                     mesesConsiderados: projecaoAno.mesesConsiderados,
                     guardadoEmMetas,
@@ -379,7 +366,7 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
               </div>
             ))}
             <p className="text-xs leading-relaxed text-muted">
-              Informe seu saldo bancário real e atualize quando ele mudar. O saldo estimado desconta apenas contas fixas e faturas em aberto; não inclui receitas futuras. A receita estimada é usada somente na “Sobra prevista no mês”. Sem conexão bancária, o app não atualiza o saldo sozinho.
+              A sobra prevista soma a receita estimada e o Saldo Atual, e desconta todas as contas fixas e faturas do mês, inclusive as marcadas como pagas. Atualize o Saldo Atual quando ele mudar; o app não tem conexão bancária para fazer isso sozinho.
             </p>
           </CardContent>
         </Card>
