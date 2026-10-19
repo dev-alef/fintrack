@@ -93,7 +93,6 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
   const monthlyCashflow = calculateMonthlyCashflow({
     currentBalance: config?.balance,
     estimatedIncome: config?.estimated_income,
-    receivedIncome: chartData?.totals?.total_income,
     fixedBills: bills,
     cardInvoices: expenses,
   })
@@ -278,10 +277,9 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
                   <TrendingUp className="h-3.5 w-3.5" aria-hidden="true" /> Saldo estimado ao fim do mês
                 </div>
                 <p className={cn("text-xl font-bold", balance >= 0 ? "text-primary" : "text-expense")}>{fmt(balance)}</p>
-                <p className="mt-1 text-xs text-muted">Saldo atual + receitas restantes − pagamentos pendentes</p>
+                <p className="mt-1 text-xs text-muted">Saldo Atual − contas fixas em aberto − faturas em aberto</p>
                 <dl className="mt-3 space-y-1 text-xs text-muted">
                   <div className="flex justify-between gap-2"><dt>Saldo Atual</dt><dd className="shrink-0 tabular-nums">{fmt(Number(config?.balance || 0))}</dd></div>
-                  <div className="flex justify-between gap-2"><dt>+ Receita que falta receber</dt><dd className="shrink-0 tabular-nums">{fmt(monthlyCashflow.remainingIncome)}</dd></div>
                   <div className="flex justify-between gap-2"><dt>− Contas fixas em aberto</dt><dd className="shrink-0 tabular-nums">{fmt(monthlyCashflow.pendingFixedBills)}</dd></div>
                   <div className="flex justify-between gap-2"><dt>− Faturas em aberto</dt><dd className="shrink-0 tabular-nums">{fmt(monthlyCashflow.pendingCardInvoices)}</dd></div>
                 </dl>
@@ -380,7 +378,7 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
               </div>
             ))}
             <p className="text-xs leading-relaxed text-muted">
-              Informe seu saldo bancário real e atualize quando ele mudar. Ao receber salário ou renda extra, registre a entrada em Transações e ajuste este valor para o novo saldo. A previsão soma só a receita estimada que ainda falta entrar e desconta contas fixas e faturas em aberto. Sem conexão bancária, o app não atualiza esse saldo sozinho.
+              Informe seu saldo bancário real e atualize quando ele mudar. O saldo estimado desconta apenas contas fixas e faturas em aberto; não inclui receitas futuras. A receita estimada é usada somente na “Sobra prevista no mês”. Sem conexão bancária, o app não atualiza o saldo sozinho.
             </p>
           </CardContent>
         </Card>

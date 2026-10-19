@@ -4,8 +4,8 @@ const start = { year: 2026, month: 12 }
 function snapshot(): PayoffSnapshot {
   return {
     configs: [
-      { ...start, balance: '1000.10', estimated_income: '2000.20' },
-      { year: 2027, month: 1, balance: '999999.00', estimated_income: '0.00' },
+      { ...start, balance: '1000.10' },
+      { year: 2027, month: 1, balance: '999999.00' },
     ],
     cards: [{ id: 'a', name: 'A', created_year: 2025, created_month: 1 }, { id: 'b', name: 'B', created_year: 2025, created_month: 1 }],
     expenses: [
@@ -16,30 +16,29 @@ function snapshot(): PayoffSnapshot {
     ],
     fixed_bills: [{ id: 'rent', amount: '400.40' }],
     bill_payments: [],
-    received_income: '1200.00',
   }
 }
 describe('Saldo no mês de quitação', () => {
   it('cruza anos, desconta apenas pagamentos pendentes e ignora saldos futuros', () => {
     const result = projectCardPayoff(snapshot(), start)
-    expect(result.projection).toEqual({ start, end: { year: 2027, month: 1 }, status: 'ready', current_balance: '1000.10', income: '800.20', fixed_bills: '800.80', card_expenses: '500.50', balance: '499.00' })
+    expect(result.projection).toEqual({ start, end: { year: 2027, month: 1 }, status: 'ready', current_balance: '1000.10', fixed_bills: '800.80', card_expenses: '500.50', balance: '-301.20' })
     expect(result.months).toHaveLength(2)
     const data = snapshot()
     data.expenses[1].paid = true
     const afterPayment = projectCardPayoff(data, start).projection
     expect(afterPayment.status).toBe('ready')
-    if (afterPayment.status === 'ready') expect(afterPayment.balance).toBe('699.20')
+    if (afterPayment.status === 'ready') expect(afterPayment.balance).toBe('-101.00')
     data.bill_payments.push({ ...start, bill_id: 'rent', paid: true })
     const afterBillPayment = projectCardPayoff(data, start).projection
     expect(afterBillPayment.status).toBe('ready')
-    if (afterBillPayment.status === 'ready') expect(afterBillPayment.balance).toBe('1099.60')
+    if (afterBillPayment.status === 'ready') expect(afterBillPayment.balance).toBe('299.40')
   })
-  it('lista meses ausentes e não calcula com renda, saldo ou faturas desconhecidas', () => {
+  it('lista meses com faturas ausentes e não calcula sem saldo atual', () => {
     const data = snapshot()
-    data.configs = [{ ...start, balance: null, estimated_income: null }]
+    data.configs = [{ ...start, balance: null }]
     data.expenses.splice(3, 1)
     expect(projectCardPayoff(data, start).projection).toEqual({ start, end: { year: 2027, month: 1 }, status: 'incomplete', missingBalance: true, missingMonths: [
-      { ...start, income: true, cards: [] }, { year: 2027, month: 1, income: true, cards: ['B'] },
+      { year: 2027, month: 1, cards: ['B'] },
     ] })
   })
   it('não pula meses intermediários vazios', () => {
@@ -57,7 +56,6 @@ describe('Saldo no mês de quitação', () => {
   it('retorna negativo sem zerar nem somar patrimônio', () => {
     const data = snapshot()
     data.configs[0].balance = '0.00'
-    data.configs[0].estimated_income = '0.00'
     const result = projectCardPayoff(data, start).projection
     expect(result.status).toBe('ready')
     if (result.status === 'ready') expect(result.balance).toBe('-1301.30')

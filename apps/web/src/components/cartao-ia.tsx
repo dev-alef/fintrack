@@ -310,7 +310,7 @@ export function CartaoIA({
 
               <dl className="mt-4 space-y-1.5 text-[13px]">
                 {[
-                  { termo: "Saldo estimado após o mês atual", valor: dezembro.saldoProjetadoAposMesAtual, nota: "saldo atual + receitas restantes − pagamentos pendentes" },
+                  { termo: "Saldo estimado após o mês atual", valor: dezembro.saldoProjetadoAposMesAtual, nota: "saldo atual − pagamentos pendentes" },
                   {
                     termo: `Sobra de ${dezembro.mesesConsiderados} ${dezembro.mesesConsiderados === 1 ? "mês planejado" : "meses planejados"}`,
                     valor: dezembro.planejado,
