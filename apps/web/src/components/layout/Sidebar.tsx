@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from "react-router-dom"
-import { LayoutDashboard, ArrowLeftRight, TrendingUp, Target, Sparkles, LogOut, X, Settings, LifeBuoy, HandCoins } from "lucide-react"
+import { LayoutDashboard, ArrowLeftRight, TrendingUp, Target, Sparkles, LogOut, X, Settings, LifeBuoy, HandCoins, BriefcaseBusiness } from "lucide-react"
 import { useAuthStore } from "../../store/auth.store"
 import { signOut } from "../../lib/auth-client"
 import { Logo } from "../logo"
@@ -11,6 +11,7 @@ const links = [
   { to: "/transactions", label: "Transações", icon: ArrowLeftRight },
   { to: "/investments", label: "Investimentos", icon: TrendingUp },
   { to: "/emprestimos", label: "Empréstimos", icon: HandCoins },
+  { to: "/profissional", label: "Profissional", icon: BriefcaseBusiness },
   { to: "/goals", label: "Metas", icon: Target },
   { to: "/insights", label: "Insights", icon: Sparkles },
   { to: "/configuracoes", label: "Configurações", icon: Settings },

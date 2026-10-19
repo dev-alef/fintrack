@@ -15,6 +15,7 @@ import Goals from './pages/Goals'
 import Insights from './pages/Insights'
 import Investments from './pages/Investments'
 import Loans from './pages/Loans'
+import Business from './pages/Business'
 import AppLayout from './components/layout/AppLayout'
 import PrivateRoute from './components/PrivateRoute'
 
@@ -46,6 +47,7 @@ export default function App() {
         <Route path="goals" element={<Goals />} />
         <Route path="investments" element={<Investments />} />
         <Route path="emprestimos" element={<Loans />} />
+        <Route path="profissional" element={<Business />} />
         <Route path="insights" element={<Insights />} />
         <Route path="configuracoes" element={<Settings />} />
       </Route>

@@ -41,9 +41,9 @@ function cardValue(html: string, label: string) {
 }
 
 describe('Patrimônio no Dashboard', () => {
-  it('desconta obrigações em aberto do Saldo Atual e soma carteira e metas uma única vez', () => {
+  it('soma Saldo Atual, carteira e metas sem descontar despesas futuras', () => {
     const html = render(fixture())
-    expect(cardValue(html, 'Patrimônio total')).toBe(fmt(1300))
+    expect(cardValue(html, 'Patrimônio total')).toBe(fmt(1600))
     expect(cardValue(html, '> Investimentos')).toBe(fmt(1200))
     expect(html).toContain('Saldo Atual − contas fixas em aberto − faturas em aberto')
     expect(html).toContain('Sobra prevista no mês')
@@ -53,7 +53,7 @@ describe('Patrimônio no Dashboard', () => {
   it('carteira vazia vale zero mesmo quando existe valor manual antigo', () => {
     const client = fixture()
     client.setQueryData(['portfolio', 'alice'], [])
-    expect(cardValue(render(client), 'Patrimônio total')).toBe(fmt(100))
+    expect(cardValue(render(client), 'Patrimônio total')).toBe(fmt(400))
   })
 
   it('aguarda metas e carteira para não apresentar um patrimônio incompleto', () => {
@@ -82,7 +82,7 @@ describe('Patrimônio no Dashboard', () => {
     const client = fixture()
     auth.userId = 'bob'
     const html = render(client)
-    expect(html).not.toContain(fmt(1300))
+    expect(html).not.toContain(fmt(1600))
     expect(html).not.toContain('Patrimônio total')
   })
 })
