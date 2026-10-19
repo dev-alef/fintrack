@@ -50,7 +50,7 @@ describe('Previsão de quitação dos cartões', () => {
       current_balance: '0.00', fixed_bills: '50.00', card_expenses: '100.00', balance: '-150.00',
     }))
     expect(html).toContain('-R$ 150,00')
-    expect(html).toContain('saldo negativo')
+    expect(html).toContain('os pagamentos pendentes superam o valor disponível')
     expect(html).toContain('Faturas ainda não pagas')
   })
   it('explica lacunas sem inventar um saldo zero', () => {
