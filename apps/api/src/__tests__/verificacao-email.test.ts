@@ -23,6 +23,7 @@ afterEach(() => {
 describe('Verificacao de e-mail', () => {
   it('cadastro dispara o e-mail com um link utilizavel', async () => {
     const usuario = {
+      callbackURL: 'http://localhost:5173/email-confirmado',
       name: 'Alef',
       email: `verif_${Date.now()}@teste.com`,
       password: 'senhaDeTeste123',
@@ -40,6 +41,12 @@ describe('Verificacao de e-mail', () => {
     expect(link).toBeDefined()
     expect(link).toContain('/api/auth/verify-email')
     expect(link).toContain('token=')
+    const confirmation = new URL(link!)
+    expect(confirmation.searchParams.get('callbackURL')).toBe(usuario.callbackURL)
+    const verified = await request(app).get(confirmation.pathname + confirmation.search)
+    expect(verified.status).toBe(302)
+    expect(verified.headers.location).toBe(usuario.callbackURL)
+    expect(verified.headers['set-cookie']).toBeDefined()
   })
 
   it('o e-mail sai em texto puro alem do assunto', async () => {

@@ -21,7 +21,7 @@ export default function Onboarding() {
 function Assistant({userId,name}:{userId:string;name:string}) {
   const qc = useQueryClient(), navigate = useNavigate()
   const [params]=useSearchParams()
-  const [phase,setPhase]=useState<OnboardingPhase>(params.get('welcome')==='1'?'transition':'intro')
+  const [phase,setPhase]=useState<OnboardingPhase>(params.get('conversation')==='1'?'conversation':params.get('welcome')==='1'?'transition':'intro')
   const [guided,setGuided]=useState(false)
   const inputRef=useRef<HTMLTextAreaElement>(null)
   const [saved,setSaved] = useState<SavedDraft|null>(null)
