@@ -2,7 +2,7 @@ import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai'
 import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import pool from '../db/client'
-import { draftSchema, kinds, allowed, type Draft } from './onboarding-domain'
+import { draftSchema, kinds, allowed, conversationState, type Draft } from './onboarding-domain'
 import { getDraft, saveDraft, OnboardingError } from './onboarding.service'
 
 const extraction = z.object({ items: z.array(z.object({ id: z.uuid(), kind: z.enum(kinds), fields: z.array(z.object({ key: z.string().max(40), value: z.string().max(500) }).strict()).max(12) }).strict()).max(30) }).strict()
@@ -39,7 +39,8 @@ export function mergeExtraction(draft: Draft, raw: unknown, newIds: string[]) {
   for (const i of items) for (const [field,kind] of [['card_ref','card'],['client_ref','client']]) {
     if (i.fields[field] && !items.some(p => p.id === i.fields[field] && p.kind === kind)) throw new Error('Unknown parent')
   }
-  return draftSchema.parse({ ...draft,items })
+  const touched = new Set(output.items.flatMap(i => i.kind === 'invoice' ? ['card','invoice'] : [i.kind]))
+  return draftSchema.parse({ ...draft, items, skipped: draft.skipped.filter(k => !touched.has(k)), absent: draft.absent.filter(k => !touched.has(k)) })
 }
 export async function answer(uid: string, version: number, text: string) {
   if (!process.env.GEMINI_API_KEY) throw new OnboardingError(503,'IA indisponível. Seu rascunho está salvo; use os campos guiados.')
@@ -63,5 +64,7 @@ export async function answer(uid: string, version: number, text: string) {
     const response = await model.generateContent(JSON.stringify({ reference:{month:current.data.month,year:current.data.year}, profile:current.data.profile, step:current.data.step, candidates:current.data.items.map(({id,kind,fields}) => ({id,kind,fields})), newIds, answer:text }), { timeout:20000 })
     draft = mergeExtraction(current.data,JSON.parse(response.response.text()),newIds)
   } catch { throw new OnboardingError(503,'Não foi possível interpretar com segurança. Confira os campos guiados; nenhum cadastro foi criado.') }
+  const state = conversationState(draft)
+  if (state.ready && draft.step !== 'review') draft.step = state.next_step
   return saveDraft(uid,version,draft)
 }

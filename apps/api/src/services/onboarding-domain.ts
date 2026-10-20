@@ -27,6 +27,7 @@ export const itemSchema = z.object({
 }).strict()
 export const draftSchema = z.object({
   profile: z.enum(['personal', 'professional', 'both']),
+  conversation_started: z.boolean().default(false),
   ...period,
   step: z.enum(['config', 'bill', 'card', 'loan', 'client', 'subscription', 'expense', 'review']),
   skipped: z.array(z.enum(kinds)).max(8).default([]),
@@ -46,21 +47,43 @@ export function validateItem(item: Item) {
 }
 export function emptyDraft(): Draft {
   const today = businessToday()
-  return { profile: 'both', year: Number(today.slice(0, 4)), month: Number(today.slice(5, 7)), step: 'config', skipped: [], absent: [], items: [] }
+  return { conversation_started: false, profile: 'both', year: Number(today.slice(0, 4)), month: Number(today.slice(5, 7)), step: 'config', skipped: [], absent: [], items: [] }
+}
+export function conversationSteps(profile: Draft['profile']): Draft['step'][] {
+  return [...(profile !== 'professional' ? ['config','bill','card','loan'] as const : []), ...(profile !== 'personal' ? ['client','subscription','expense'] as const : []), 'review']
+}
+export function conversationState(draft: Draft) {
+  const order = conversationSteps(draft.profile)
+  const block = (step: Draft['step']) => {
+    const items = draft.items.filter(i => i.kind === step || (step === 'card' && i.kind === 'invoice'))
+    const missing = items.flatMap(i => {
+      if (i.action === 'reuse') return []
+      const fields = validateItem(i)
+      if (i.kind === 'config' && i.fields.month === draft.month && i.fields.year === draft.year) for (const key of ['balance','estimated_income']) if (i.fields[key] === undefined) fields.push(fieldLabels[key])
+      return fields.map(field => `${titles[i.kind]} (${i.fields.name || i.fields.person || i.fields.service_name || i.fields.title || 'sem nome'}): ${field}`)
+    })
+    if (step === 'config' && items.length > 0 && !items.some(i => i.fields.month === draft.month && i.fields.year === draft.year)) missing.push(`Saldo Atual e receita de ${draft.month}/${draft.year}`)
+    if (step === 'card') for (const card of items.filter(i => i.kind === 'card')) {
+      if (!items.some(i => i.kind === 'invoice' && i.fields.card_ref === card.id && i.fields.month === draft.month && i.fields.year === draft.year)) missing.push(`Fatura de ${card.fields.name || 'cartão'} em ${draft.month}/${draft.year}; se ainda não souber, pode pular por enquanto`)
+    }
+    return { ready: draft.skipped.includes(step as Kind) || draft.absent.includes(step as Kind) || (items.length > 0 && missing.length === 0), missing: [...new Set(missing)] }
+  }
+  const state = block(draft.step)
+  const next = order.slice(Math.max(0,order.indexOf(draft.step)+1)).find(step => step === 'review' || !block(step).ready) || 'review'
+  return { ...state, next_step: next }
 }
 export function nextQuestion(draft: Draft) {
-  const incomplete = draft.items.find(i => allowed(i.kind, draft.profile) && i.action !== 'reuse' && (i.kind === draft.step || (draft.step === 'card' && i.kind === 'invoice')) && validateItem(i).length)
-  if (incomplete) return `Para ${titles[incomplete.kind]} (${incomplete.fields.name || incomplete.fields.person || incomplete.fields.service_name || incomplete.fields.title || 'sem nome'}), falta conferir: ${validateItem(incomplete).join(', ')}.`
-  const questions: Record<string, string> = {
+  const state = conversationState(draft)
+  if (state.missing.length) return `Vamos completar o que falta: ${state.missing.join('; ')}.`
+  const questions: Record<Draft['step'], string> = {
     config: 'Quanto você tem disponível hoje e qual é a receita estimada integral do mês?',
-    bill: 'Quais contas fixas você paga? Informe nome, valor e vencimento.',
-    card: 'Quais cartões você usa? Informe nome, vencimento e os valores das faturas que já conhece.',
-    loan: 'Você deve para alguém ou tem dinheiro a receber? Informe pessoa, saldo pendente e prazo, se souber.',
-    client: 'Quais clientes você atende? Informe os nomes e, se quiser, o contato.',
-    subscription: 'Quais serviços por assinatura oferece? Informe cliente, serviço, valor, periodicidade e primeiro vencimento.',
-    expense: 'Já teve alguma despesa profissional? Informe descrição, valor e data.',
-    review: 'Confira os itens abaixo e escolha o que deseja cadastrar. Nada é salvo nas finanças até confirmar.',
+    bill: 'Quais contas fixas você paga? Pode me contar nome, valor, vencimento e se repetem todo mês.',
+    card: 'Quais cartões você usa? Conte o nome, o vencimento e os valores das faturas que já conhece.',
+    loan: 'Você deve para alguém ou tem dinheiro a receber? Conte a pessoa, o saldo pendente e o prazo, se souber.',
+    client: 'Quais clientes você atende? Pode me contar os nomes e, se quiser, o contato.',
+    subscription: 'Quais serviços por assinatura oferece? Conte cliente, serviço, valor, periodicidade e primeiro vencimento.',
+    expense: 'Já teve alguma despesa profissional? Conte a descrição, o valor e a data.',
+    review: 'Vamos conferir juntos? Escolha o que deseja cadastrar. Nada entra nas finanças antes da sua confirmação.',
   }
-  if (draft.step !== 'review' && draft.items.some(i => i.kind === draft.step)) return 'Dados deste bloco preparados. Quer adicionar outro item ou continuar para a próxima etapa?'
-  return questions[draft.step]
+  return state.ready && draft.step !== 'review' ? 'Dados deste bloco preparados. Quer adicionar outro item ou continuar?' : questions[draft.step]
 }

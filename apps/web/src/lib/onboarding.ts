@@ -1,8 +1,8 @@
 export const kinds = ['config','bill','card','invoice','loan','client','subscription','expense'] as const
 export type Kind = typeof kinds[number]
 export type Item = { id:string; kind:Kind; fields:Record<string,string|number|boolean>; action:'pending'|'create'|'reuse'; existing_id?:string; duplicate_ack:boolean }
-export type Draft = { profile:'personal'|'professional'|'both'; month:number; year:number; step:Exclude<Kind,'invoice'>|'review'; skipped:Kind[]; absent:Kind[]; items:Item[] }
-export type SavedDraft = { version:number; data:Draft; question:string; ai_available:boolean; existing:Record<Kind,Record<string,string|number>[]> }
+export type Draft = { conversation_started?:boolean; profile:'personal'|'professional'|'both'; month:number; year:number; step:Exclude<Kind,'invoice'>|'review'; skipped:Kind[]; absent:Kind[]; items:Item[] }
+export type SavedDraft = { version:number; data:Draft; question:string; conversation?:{ready:boolean;missing:string[];next_step:Draft['step']}; ai_available:boolean; existing:Record<Kind,Record<string,string|number>[]> }
 export type Preview = { version:number; token:string; can_commit:boolean; pending_count:number; current_period:string; reference_period:string; rows:(Item & { issues:string[]; matches:Record<string,string|number>[] })[] }
 export type CommitRequest = { version:number; token:string; request_id:string; reference_period:string }
 export const titles:Record<Kind,string> = {config:'Saldo e receita',bill:'Contas fixas',card:'Cartões',invoice:'Faturas',loan:'Empréstimos',client:'Clientes',subscription:'Assinaturas',expense:'Despesas profissionais'}
@@ -32,4 +32,13 @@ export function fieldValue(i:Item, f:Field, all:Item[]) {
   if (f.options) return f.options.find(([v]) => v === String(value))?.[1] || String(value)
   if (f.type === 'date') return String(value).split('-').reverse().join('/')
   return String(value)
+}
+
+/** Respostas curtas inequívocas são navegação local, sem envio ao provedor. */
+export function localConversationReply(step:Draft['step'],text:string):'absent'|'skip'|null {
+  const value=text.normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase().replace(/[.!?]+$/,'')
+  if(['nao sei','ainda nao sei','pular por enquanto','pular'].includes(value))return 'skip'
+  if(step==='config'||step==='review')return null
+  const specific:Partial<Record<Draft['step'],string[]>>={bill:['nao tenho contas fixas'],card:['nao tenho cartao','nao tenho cartoes'],loan:['nao tenho emprestimos'],client:['nao tenho clientes'],subscription:['nao tenho assinaturas'],expense:['nao tive despesas','ainda nao tive despesas']}
+  return ['nao tenho','nao se aplica',...(specific[step]||[])].includes(value)?'absent':null
 }

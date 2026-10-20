@@ -100,7 +100,7 @@ export default function PoliticaDePrivacidade() {
         </li>
         <li>
           <strong>Google</strong> — provedor de login opcional (OAuth) e do modelo de IA (Gemini)
-          usado nos Insights, quando você aciona esse recurso.
+          usado nos Insights quando você aciona esse recurso e no assistente de configuração, mediante sua autorização para enviar a resposta e os itens do rascunho. O modo guiado do assistente funciona sem envio à IA.
         </li>
         <li>
           <strong>Resend</strong> — envio dos e-mails transacionais descritos acima.
@@ -135,6 +135,7 @@ export default function PoliticaDePrivacidade() {
         obrigação fiscal, caso o serviço venha a ser pago).
       </p>
 
+      <p>No assistente inicial, o histórico da conversa não é armazenado. São guardados os itens estruturados do rascunho, vinculados à sua conta. Após 30 dias sem uso, esse rascunho é reiniciado no próximo acesso; você também pode descartá-lo manualmente.</p>
       <h2>7. Como protegemos seus dados</h2>
       <p>Não é uma promessa genérica — é o que está implementado e pode ser conferido no código-fonte, que é público:</p>
       <ul>

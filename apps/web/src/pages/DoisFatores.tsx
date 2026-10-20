@@ -37,7 +37,7 @@ export default function DoisFatores() {
         setErro(mensagemDeErro(error.status, usandoApp))
         return
       }
-      navigate("/dashboard")
+      navigate("/inicio")
     } catch {
       setErro("Não foi possível falar com o servidor. Tente novamente.")
     } finally {

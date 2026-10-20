@@ -8,6 +8,7 @@ import DoisFatores from './pages/DoisFatores'
 import Conhecer from './pages/Conhecer'
 import TermosDeUso from './pages/TermosDeUso'
 import PoliticaDePrivacidade from './pages/PoliticaDePrivacidade'
+import AfterLogin from './pages/AfterLogin'
 import Onboarding from './pages/Onboarding'
 import Settings from './pages/Settings'
 import Dashboard from './pages/Dashboard'
@@ -23,6 +24,8 @@ import PrivateRoute from './components/PrivateRoute'
 export default function App() {
   return (
     <Routes>
+      <Route path="/inicio" element={<PrivateRoute><AfterLogin /></PrivateRoute>} />
+      <Route path="/assistente-inicial" element={<PrivateRoute><Onboarding /></PrivateRoute>} />
       <Route path="/login" element={<Login />} />
       {/* Mesma tela: o desenho juntou entrar e criar conta em abas. A rota
           antiga continua valendo para quem tem link ou memoria dela. */}
@@ -50,7 +53,6 @@ export default function App() {
         <Route path="emprestimos" element={<Loans />} />
         <Route path="profissional" element={<Business />} />
         <Route path="insights" element={<Insights />} />
-        <Route path="assistente-inicial" element={<Onboarding />} />
         <Route path="configuracoes" element={<Settings />} />
       </Route>
     </Routes>
