@@ -75,7 +75,7 @@ export default function EmailConfirmado() {
               </div>
 
               {session?.user ? (
-                <p className="text-sm text-muted">Levando você ao painel...</p>
+                <p className="text-sm text-muted">Preparando suas boas-vindas...</p>
               ) : (
                 <Button type="button" className="w-full" onClick={() => navigate("/login")}>
                   Entrar

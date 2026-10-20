@@ -151,7 +151,7 @@ export default function Login() {
     setCarregando(true)
     try {
       if (criando) {
-        const { error } = await signUp.email({ email, password: senha, name: nome })
+        const { error } = await signUp.email({ email, password: senha, name: nome, callbackURL: `${window.location.origin}/email-confirmado` })
         if (error) return setErro(erroDeCadastro(error.status))
         navigate(`/confirme-seu-email?email=${encodeURIComponent(email)}`)
         return
