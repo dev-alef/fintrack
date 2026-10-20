@@ -167,3 +167,10 @@ export async function salvarPlanejamento(req: Request, res: Response) {
     res.status(500).json({ error: 'Erro interno' })
   }
 }
+
+export async function getThreeMonthForecast(req: Request, res: Response) {
+  const parsed = z.object({ month: z.coerce.number().int().min(1).max(12), year: z.coerce.number().int().min(2000).max(2099) }).safeParse(req.query)
+  if (!parsed.success) { res.status(400).json({ error: 'Mês e ano inválidos' }); return }
+  try { res.json(await S.getThreeMonthForecast(uid(req), parsed.data)) }
+  catch { res.status(500).json({ error: 'Não foi possível calcular a previsão' }) }
+}

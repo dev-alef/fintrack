@@ -5,7 +5,8 @@ import { businessToday, dueInMonth, summarizeBusiness, type Subscription, type R
 export class BusinessError extends Error { constructor(public status: number, message: string) { super(message) } }
 const missing = () => new BusinessError(404, 'Registro não encontrado')
 const conflict = () => new BusinessError(409, 'Este registro já existe com outros dados. Atualize a página antes de continuar.')
-async function transaction<T>(change: (client: PoolClient) => Promise<T>): Promise<T> {
+async function transaction<T>(change: (client: PoolClient) => Promise<T>, existingClient?: PoolClient): Promise<T> {
+  if (existingClient) return change(existingClient)
   const client = await pool.connect()
   try { await client.query('BEGIN'); const result = await change(client); await client.query('COMMIT'); return result }
   catch (error) { await client.query('ROLLBACK'); throw error }
@@ -36,13 +37,13 @@ export async function overview(userId: string, year: number, month: number) {
 }
 
 export interface ClientInput { id: string; name: string; contact: string; notes: string }
-export async function createClient(userId: string, input: ClientInput) {
+export async function createClient(userId: string, input: ClientInput, existingClient?: PoolClient) {
   return transaction(async client => {
     await client.query(`INSERT INTO professional_clients (id, user_id, name, contact, notes) VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING`, [input.id, userId, input.name, input.contact, input.notes])
     const { rows } = await client.query('SELECT * FROM professional_clients WHERE id = $1 AND user_id = $2', [input.id, userId])
     if (!rows[0] || rows[0].archived || !matches(rows[0], input as unknown as Record<string, unknown>)) throw conflict()
     return rows[0]
-  })
+  }, existingClient)
 }
 export async function updateClient(userId: string, id: string, data: Omit<ClientInput, 'id'>) {
   const result = await pool.query('UPDATE professional_clients SET name=$3, contact=$4, notes=$5 WHERE id=$1 AND user_id=$2 AND NOT archived RETURNING *', [id, userId, data.name, data.contact, data.notes])
@@ -60,7 +61,7 @@ export async function archiveClient(userId: string, id: string) {
 }
 
 export interface SubscriptionInput { id: string; client_id: string; service_name: string; amount: number; interval_months: number; start_date: string; notes: string }
-export async function createSubscription(userId: string, input: SubscriptionInput) {
+export async function createSubscription(userId: string, input: SubscriptionInput, existingClient?: PoolClient) {
   return transaction(async client => {
     const owner = await client.query('SELECT id FROM professional_clients WHERE id=$1 AND user_id=$2 AND NOT archived FOR UPDATE', [input.client_id, userId])
     if (!owner.rows[0]) throw new BusinessError(404, 'Cliente ativo não encontrado')
@@ -69,7 +70,7 @@ export async function createSubscription(userId: string, input: SubscriptionInpu
     const result = await client.query('SELECT *, amount::text, start_date::text FROM service_subscriptions WHERE id=$1 AND user_id=$2', [input.id, userId])
     if (!result.rows[0] || !matches(result.rows[0], { ...input, amount: money(input.amount) })) throw conflict()
     return result.rows[0]
-  })
+  }, existingClient)
 }
 async function lockSubscription(client: PoolClient, userId: string, id: string) {
   const result = await client.query(`SELECT s.*, s.start_date::text, s.end_date::text, s.amount::text, c.name AS client_name
@@ -118,14 +119,14 @@ export async function voidReceipt(userId: string, subscriptionId: string, receip
 }
 
 export interface ExpenseInput { id: string; title: string; category: string; amount: number; spent_on: string; notes: string }
-export async function createExpense(userId: string, input: ExpenseInput) {
+export async function createExpense(userId: string, input: ExpenseInput, existingClient?: PoolClient) {
   if (input.spent_on > businessToday()) throw new BusinessError(400, 'Registre apenas despesas já realizadas.')
   return transaction(async client => {
     await client.query(`INSERT INTO professional_expenses (id,user_id,title,category,amount,spent_on,notes) VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT DO NOTHING`, [input.id,userId,input.title,input.category,money(input.amount),input.spent_on,input.notes])
     const result = await client.query('SELECT *, amount::text, spent_on::text FROM professional_expenses WHERE id=$1 AND user_id=$2', [input.id,userId])
     if (!result.rows[0] || result.rows[0].deleted_at || !matches(result.rows[0], { ...input, amount: money(input.amount) })) throw conflict()
     return result.rows[0]
-  })
+  }, existingClient)
 }
 export async function updateExpense(userId: string, id: string, input: Omit<ExpenseInput, 'id'>) {
   if (input.spent_on > businessToday()) throw new BusinessError(400, 'Registre apenas despesas já realizadas.')

@@ -32,6 +32,7 @@ r.post('/payments/toggle', C.togglePayment)
 // Config mensal
 r.get('/config', C.getConfig)
 r.post('/config', C.setConfig)
+r.get('/forecast/three-months', C.getThreeMonthForecast)
 r.get('/annual', C.getAnnual)
 
 // Planejamento do ano inteiro: grava varios meses numa transacao so.

@@ -20,6 +20,8 @@
 - 🔒 **2FA por TOTP** — QR code, aplicativo autenticador, códigos de backup com regeneração
 - 🛡️ **Proteção contra roubo de sessão** — alerta por e-mail em acesso de dispositivo novo, tela de sessões ativas com opção de encerrar, sessão curta com renovação automática no uso
 - 📊 **Dashboard financeiro** — receita estimada, saldo calculado automaticamente, patrimônio com Saldo Atual + valor atual da carteira + metas, resumo de empréstimos pendentes, quitação dos cartões e saldo previsto no mês final dentro de Leitura da IA, com aviso de planejamento incompleto (inclusive entre anos) e gráfico anual de entradas e saídas
+- 🧭 **Assistente inicial** — configuração pessoal e profissional por respostas livres com Gemini ou campos guiados; rascunho retomável, revisão editável e confirmação antes de criar cadastros, sem substituir os existentes
+- 📆 **Próximos três meses** — previsão acumulada na Leitura da IA, com Saldo Atual aplicado uma vez, receitas, contas fixas e faturas; lacunas no planejamento são indicadas
 - 💳 **Controle de cartões** — cartões personalizáveis com faturas mensais e totais anuais
 - 📋 **Despesas fixas** — controle de contas com status pago/pendente por mês
 - 💸 **Transações** — CRUD completo com filtros, paginação e categorias
@@ -144,6 +146,14 @@ npm run dev
 
 Login com Google, e-mail transacional e IA são opcionais localmente — sem as credenciais correspondentes, cada recurso desliga sozinho com uma mensagem clara, sem quebrar o resto do app (e-mail cai no log do terminal, com o link clicável).
 
+## Assistente de configuração inicial
+
+Acesse pelo convite no Dashboard ou em Configurações → Assistente de configuração inicial. O modo guiado funciona sem IA. Respostas livres exigem `GEMINI_API_KEY` na API e consentimento explícito para enviar resposta e itens do rascunho ao Google Gemini; `ONBOARDING_AI_MODEL` pode substituir o padrão `gemini-2.5-flash`. Há limite de 30 interpretações por conta/hora e timeout de 20 segundos. Não armazenamos a conversa, apenas os itens estruturados; rascunhos inativos por 30 dias são reiniciados no próximo acesso. É possível descartá-los manualmente.
+
+A migration `0008_onboarding` adiciona rascunhos e comprovantes de confirmação. A confirmação valida novamente os cadastros e grava tudo em uma transação; repetir o mesmo pedido não duplica registros. Mudanças concorrentes exigem nova revisão. Para coordenar com os cadastros já existentes, a confirmação usa breves locks de tabelas com timeout de 3 segundos; em caso de disputa, a operação pode precisar ser repetida. O caixa profissional continua separado, sem emissão de cobranças ou recebimentos automáticos.
+
+A previsão mostra os três meses seguintes ao selecionado. Parte do Saldo Atual desse mês, aplica a receita estimada integral e desconta todas as contas fixas ativas e faturas desde o mês selecionado, levando o resultado ao seguinte. Saldos informados nos meses futuros não são somados. A ausência de receita, saldo inicial ou fatura necessária bloqueia os resultados afetados; zero precisa ser explícito. Como na Sobra prevista no mês, receita já contida no Saldo Atual pode representar dupla contagem econômica — a previsão não é uma consulta bancária.
+
 ## 🧪 Testes
 
 ```bash
@@ -205,3 +215,5 @@ Na raiz, rode `npm test --workspace=apps/web` para os testes do frontend; eles n
 ---
 
 ⭐ Se este projeto te ajudou de alguma forma, considere deixar uma estrela!
+
+O assistente tem testes de confirmação atômica, rollback real, repetição concorrente, isolamento, revisão obsoleta, reutilização de cadastros e saldo restante de empréstimos. A extração por IA é testada com provedor substituído, incluindo consentimento, falha e limite de uso; esses testes não comprovam a disponibilidade do Gemini em produção. A projeção de três meses cobre mudança de ano, negativos, zero e dados ausentes.

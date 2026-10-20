@@ -1,5 +1,7 @@
+import { OnboardingInvitation } from "@/components/onboarding-invitation"
 import { Link } from "react-router-dom"
 import { ColorPicker } from "@/components/color-picker"
+import { ThreeMonthForecast } from "@/components/three-month-forecast"
 import { CardPayoffForecast } from "@/components/card-payoff-forecast"
 import { LoansSummary } from "@/components/loans-summary"
 import { usePortfolio } from "@/hooks/usePortfolio"
@@ -60,7 +62,7 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
   const [showNewBill, setShowNewBill] = useState(false)
   const qc = useQueryClient()
 
-  const inv = (keys: string[]) => keys.forEach((k) => qc.invalidateQueries({ queryKey: [k] }))
+  const inv = (keys: string[]) => [...keys, "threeMonthForecast"].forEach((k) => qc.invalidateQueries({ queryKey: [k] }))
 
   const { data: cards = [], isLoading: cardsLoading, isError: cardsError } = useQuery<Card[]>({ queryKey: ["cards", userId], queryFn: () => api.get("/finance/cards").then((r) => r.data) })
   const { data: bills = [], isLoading: billsLoading, isError: billsError } = useQuery<Bill[]>({ queryKey: ["payments", userId, month, year], queryFn: () => api.get(`/finance/payments?month=${month}&year=${year}`).then((r) => r.data) })
@@ -196,6 +198,7 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
 
   return (
     <div className="space-y-6">
+      <OnboardingInvitation userId={userId} />
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -335,6 +338,7 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
             }
             formata={fmt}
           >
+            <ThreeMonthForecast userId={userId} month={month} year={year} />
             <CardPayoffForecast userId={userId} />
             <LoansSummary userId={userId} />
           </CartaoIA>

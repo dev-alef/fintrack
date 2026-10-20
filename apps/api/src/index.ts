@@ -13,6 +13,7 @@ import financeRoutes from './routes/finance.routes'
 import suporteRoutes from './routes/suporte.routes'
 import investmentsRoutes from './routes/investments.routes'
 import loansRoutes from './routes/loans.routes'
+import onboardingRoutes from './routes/onboarding.routes'
 import businessRoutes from './routes/business.routes'
 
 // A unica condicao para o Sentry ligar e ter DSN. De proposito: gatilho extra
@@ -147,6 +148,7 @@ app.use('/finance', financeRoutes)
 app.use('/investments', investmentsRoutes)
 app.use('/loans', loansRoutes)
 app.use('/business', businessRoutes)
+app.use('/onboarding', onboardingRoutes)
 app.use('/suporte', suporteRoutes)
 
 Sentry.setupExpressErrorHandler(app)

@@ -49,22 +49,22 @@ export async function listLoans(userId: string) {
   return result.rows
 }
 
-export async function createLoan(userId: string, data: LoanInput) {
-  const client = await pool.connect()
+export async function createLoan(userId: string, data: LoanInput, existingClient?: PoolClient) {
+  const client = existingClient ?? await pool.connect()
   try {
-    await client.query('BEGIN')
+    if (!existingClient) await client.query('BEGIN')
     const result = await client.query(
       `INSERT INTO loans (user_id, direction, person, description, amount, due_date)
        VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
       [userId, data.direction, data.person, data.description, data.amount.toFixed(2), data.due_date ?? null],
     )
     const loan = await getLoan(client, userId, result.rows[0].id)
-    await client.query('COMMIT')
+    if (!existingClient) await client.query('COMMIT')
     return loan
   } catch (err) {
-    await client.query('ROLLBACK')
+    if (!existingClient) await client.query('ROLLBACK')
     throw err
-  } finally { client.release() }
+  } finally { if (!existingClient) client.release() }
 }
 
 const cents = (value: string | number) => Math.round(Number(value) * 100)
