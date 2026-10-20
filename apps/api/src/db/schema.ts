@@ -1,4 +1,4 @@
-import { pgTable, unique, uniqueIndex, uuid, varchar, timestamp, index, foreignKey, check, numeric, date, text, integer, boolean } from "drizzle-orm/pg-core"
+import { pgTable, jsonb, primaryKey, unique, uniqueIndex, uuid, varchar, timestamp, index, foreignKey, check, numeric, date, text, integer, boolean } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
 
@@ -392,3 +392,15 @@ export const professionalExpenses = pgTable('professional_expenses', {
   check('professional_expenses_title_check', sql`length(trim(${table.title})) > 0`),
   check('professional_expenses_amount_check', sql`${table.amount} > 0 AND ${table.amount} <= 999999999.99`),
 ]);
+
+export const onboardingDrafts = pgTable('onboarding_drafts', {
+  userId: uuid('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
+  version: integer().notNull().default(1), data: jsonb().notNull(), dismissed: boolean().notNull().default(false),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  aiWindow: timestamp('ai_window', { withTimezone: true }).notNull().defaultNow(), aiCalls: integer('ai_calls').notNull().default(0),
+});
+export const onboardingCommits = pgTable('onboarding_commits', {
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  requestId: uuid('request_id').notNull(), requestHash: text('request_hash').notNull(), result: jsonb().notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, table => [primaryKey({ columns: [table.userId, table.requestId] })]);

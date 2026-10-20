@@ -8,6 +8,7 @@ import DoisFatores from './pages/DoisFatores'
 import Conhecer from './pages/Conhecer'
 import TermosDeUso from './pages/TermosDeUso'
 import PoliticaDePrivacidade from './pages/PoliticaDePrivacidade'
+import Onboarding from './pages/Onboarding'
 import Settings from './pages/Settings'
 import Dashboard from './pages/Dashboard'
 import Transactions from './pages/Transactions'
@@ -49,6 +50,7 @@ export default function App() {
         <Route path="emprestimos" element={<Loans />} />
         <Route path="profissional" element={<Business />} />
         <Route path="insights" element={<Insights />} />
+        <Route path="assistente-inicial" element={<Onboarding />} />
         <Route path="configuracoes" element={<Settings />} />
       </Route>
     </Routes>

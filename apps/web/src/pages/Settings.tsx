@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom"
 import { useState } from "react"
 import { QRCodeSVG } from "qrcode.react"
 import { ShieldCheck, ShieldOff, Copy, Check, AlertTriangle, LifeBuoy, MonitorSmartphone } from "lucide-react"
@@ -147,6 +148,7 @@ export default function Settings() {
     <div className="mx-auto max-w-2xl space-y-8">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight text-text">Configurações</h1>
+        <Link className="mt-3 inline-block text-sm underline" to="/assistente-inicial">Abrir assistente de configuração inicial</Link>
         <p className="mt-2 text-sm text-muted">Segurança e acesso à sua conta.</p>
       </div>
 

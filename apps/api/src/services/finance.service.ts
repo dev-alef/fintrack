@@ -1,5 +1,7 @@
+import { projectThreeMonths, type ForecastSnapshot } from './three-month-forecast'
+import type { PoolClient } from 'pg'
 import pool, { query } from '../db/client'
-import { projectCardPayoff, type PayoffSnapshot, type Period } from './payoff-projection'
+import { projectCardPayoff, type Period } from './payoff-projection'
 
 // ── CARTÕES ──────────────────────────────────────────────
 export async function listCards(userId: string) {
@@ -10,8 +12,8 @@ export async function listCards(userId: string) {
   return result.rows
 }
 
-export async function createCard(userId: string, data: { name: string; due_day: number; color?: string }) {
-  const result = await query(
+export async function createCard(userId: string, data: { name: string; due_day: number; color?: string }, client?: PoolClient) {
+  const result = await (client ? client.query.bind(client) : query)(
     'INSERT INTO credit_cards (user_id, name, due_day, color) VALUES ($1, $2, $3, $4) RETURNING *',
     [userId, data.name, data.due_day, data.color || '#6366f1']
   )
@@ -95,11 +97,11 @@ export async function getCardPayoffMonths(userId: string) {
 }
 
 // A single statement keeps the inputs in one PostgreSQL snapshot.
-export async function getCardPayoffProjection(userId: string, start: Period) {
+async function getFinanceSnapshot(userId: string) {
   const result = await query(
     `SELECT
        COALESCE((SELECT jsonb_agg(jsonb_build_object('year', year, 'month', month,
-         'balance', balance::text))
+         'balance', balance::text, 'estimated_income', estimated_income::text))
          FROM monthly_config WHERE user_id = $1), '[]'::jsonb) AS configs,
        COALESCE((SELECT jsonb_agg(jsonb_build_object('id', id, 'name', name,
          'created_year', extract(year from created_at)::int, 'created_month', extract(month from created_at)::int))
@@ -115,7 +117,7 @@ export async function getCardPayoffProjection(userId: string, start: Period) {
          WHERE bp.user_id = $1 AND fb.user_id = $1 AND fb.active = TRUE), '[]'::jsonb) AS bill_payments`,
     [userId],
   )
-  return projectCardPayoff(result.rows[0] as PayoffSnapshot, start)
+  return result.rows[0] as ForecastSnapshot
 }
 
 // ── DESPESAS FIXAS ───────────────────────────────────────
@@ -127,8 +129,8 @@ export async function listBills(userId: string) {
   return result.rows
 }
 
-export async function createBill(userId: string, data: { name: string; amount: number; due_day?: number }) {
-  const result = await query(
+export async function createBill(userId: string, data: { name: string; amount: number; due_day?: number }, client?: PoolClient) {
+  const result = await (client ? client.query.bind(client) : query)(
     'INSERT INTO fixed_bills (user_id, name, amount, due_day) VALUES ($1, $2, $3, $4) RETURNING *',
     [userId, data.name, data.amount, data.due_day || null]
   )
@@ -340,4 +342,11 @@ export async function salvaPlanejamento(userId: string, year: number, meses: Mes
   } finally {
     cliente.release()
   }
+}
+
+export async function getCardPayoffProjection(userId: string, start: Period) {
+  return projectCardPayoff(await getFinanceSnapshot(userId), start)
+}
+export async function getThreeMonthForecast(userId: string, start: Period) {
+  return projectThreeMonths(await getFinanceSnapshot(userId), start)
 }

@@ -57,6 +57,13 @@
       "when": 1792425600000,
       "tag": "0007_professional_subscriptions",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792430000000,
+      "tag": "0008_onboarding",
+      "breakpoints": true
     }
   ]
 }
