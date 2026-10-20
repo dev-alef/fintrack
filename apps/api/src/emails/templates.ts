@@ -8,7 +8,9 @@
 // Toda mensagem sai tambem em texto puro. Nao e enfeite: cliente que bloqueia
 // HTML mostra so essa versao, e a ausencia dela e sinal classico de spam.
 
-const COR_PRIMARIA = '#4f46e5'
+const COR_PRIMARIA = '#2b3028'
+// PNG publico: SVG e imagens em base64 nao funcionam em varios leitores de e-mail.
+const LOGO_URL = 'https://provisao.space/brand/provisao-email-v1.png'
 const COR_TEXTO = '#1f2937'
 const COR_APAGADA = '#6b7280'
 
@@ -21,7 +23,9 @@ function layout(conteudo: string): string {
     <tr><td align="center">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#ffffff;border-radius:12px;padding:32px;">
         <tr><td>
-          <p style="margin:0 0 24px;font-size:18px;font-weight:600;color:${COR_PRIMARIA};">Provisão</p>
+          <p style="margin:0 0 24px;">
+            <img src="${LOGO_URL}" alt="Provisão" width="200" height="47" style="display:block;width:200px;max-width:100%;height:auto;border:0;color:${COR_PRIMARIA};font-size:22px;font-weight:600;">
+          </p>
           ${conteudo}
           <hr style="border:none;border-top:1px solid #e5e7eb;margin:32px 0 16px;">
           <p style="margin:0;font-size:12px;line-height:18px;color:${COR_APAGADA};">
