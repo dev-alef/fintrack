@@ -5,7 +5,7 @@ import { createBill, createCard } from './finance.service'
 import { createLoan } from './loans.service'
 import { createClient, createSubscription, createExpense } from './business.service'
 import { businessToday } from './business-calendar'
-import { allowed, schemas, draftSchema, emptyDraft, nextQuestion, titles, validateItem, type Draft, type Item, type Kind } from './onboarding-domain'
+import { allowed, schemas, draftSchema, emptyDraft, nextQuestion, conversationState, titles, validateItem, type Draft, type Item, type Kind } from './onboarding-domain'
 
 export class OnboardingError extends Error { constructor(public status: number, message: string) { super(message) } }
 const stale = () => new OnboardingError(409, 'O rascunho ou os cadastros mudaram. Recarregue e revise novamente.')
@@ -53,13 +53,13 @@ function similar(i: Item, row: Record<string, any>, resolve: (ref: unknown) => s
   }
 }
 export async function getDraft(uid: string) {
-  return tx(async c => { await ensure(c, uid); const row = await load(c, uid); return { ...row, question: nextQuestion(row.data), existing: await existing(c, uid), ai_available: Boolean(process.env.GEMINI_API_KEY) } })
+  return tx(async c => { await ensure(c, uid); const row = await load(c, uid); return { ...row, question: nextQuestion(row.data), conversation: conversationState(row.data), existing: await existing(c, uid), ai_available: Boolean(process.env.GEMINI_API_KEY) } })
 }
 export async function saveDraft(uid: string, version: number, data: Draft) {
   const valid = draftSchema.parse(data)
   const r = await pool.query(`UPDATE onboarding_drafts SET data=$3,version=version+1,updated_at=now() WHERE user_id=$1 AND version=$2 AND updated_at>=now()-interval '30 days' RETURNING version,data,dismissed`, [uid, version, JSON.stringify(valid)])
   if (!r.rows[0]) throw stale()
-  return { ...r.rows[0], question: nextQuestion(valid) }
+  return { ...r.rows[0], question: nextQuestion(valid), conversation: conversationState(valid) }
 }
 export async function dismiss(uid: string) {
   await ensure(pool, uid)

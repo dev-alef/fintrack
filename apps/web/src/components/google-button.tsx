@@ -51,7 +51,7 @@ export function GoogleButton({ label, disabled, onError, className }: Props) {
       // antes do redirecionamento - tipicamente provedor nao configurado.
       const { error } = await signIn.social({
         provider: "google",
-        callbackURL: `${window.location.origin}/dashboard`,
+        callbackURL: `${window.location.origin}/inicio`,
         // O Better Auth acrescenta ?error=<codigo> a esta URL quando o fluxo
         // falha do lado dele. A tela de login traduz o codigo.
         errorCallbackURL: `${window.location.origin}/login`,

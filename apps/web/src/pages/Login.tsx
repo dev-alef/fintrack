@@ -163,7 +163,7 @@ export default function Login() {
       // O ambiente se dissolve e o cartao sobe antes de navegar. Sem a pausa, a
       // transicao existiria no codigo e nao na tela.
       setSaindo(true)
-      timer.current = window.setTimeout(() => navigate("/dashboard"), 900)
+      timer.current = window.setTimeout(() => navigate("/inicio"), 900)
     } catch {
       setErro("Não foi possível falar com o servidor. Verifique sua conexão.")
     } finally {

@@ -34,7 +34,7 @@ export default function EmailConfirmado() {
     if (!deuCerto || isPending || !session?.user) return
     // Um respiro para a confirmacao ser lida antes de sair da tela. Redirecionar
     // na hora faria parecer que nada aconteceu.
-    const t = setTimeout(() => navigate("/dashboard"), 2500)
+    const t = setTimeout(() => navigate("/inicio"), 2500)
     return () => clearTimeout(t)
   }, [deuCerto, isPending, session, navigate])
 
