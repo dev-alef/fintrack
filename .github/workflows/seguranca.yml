@@ -34,7 +34,7 @@ jobs:
       # lidos por robo antes de alguem perceber. A unica correcao e rotacionar.
       # Barrar na entrada e a diferenca entre um susto e um incidente.
       - name: Procurar segredos
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
