@@ -1,3 +1,4 @@
+import { forecastCash } from "@/lib/cash-forecast"
 import { useMemo, useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { ArrowDownToLine, Check, Loader2 } from "lucide-react"
@@ -27,53 +28,6 @@ type Rascunho = {
   cartoes: Record<string, string>
 }
 
-export type MesProjetado = { receita: number | null; faturas: number }
-
-/**
- * "Seguindo assim, quanto eu tenho em dezembro?"
- *
- * A pergunta que originou a Provisão, e a única das quatro que o app não
- * respondia: havia o total do ano, mas não o acumulado — quanto sobra no bolso
- * depois de somar mês a mês o que entra e o que sai.
- *
- * Mora aqui, junto da tabela que produz os dados que ela soma, mas quem exibe
- * o resultado é o cartão da IA no painel — lá o número é fechado com
- * investimentos e metas, virando o patrimônio de dezembro.
- *
- * Esta tabela já mostrou o mesmo cálculo no rodapé, e saiu: sem investimentos
- * e metas dava um valor menor que o do painel, e a mesma pergunta respondida
- * com dois números na mesma tela não ajuda ninguém a decidir nada.
- *
- * Só conta mês PLANEJADO. Mês sem receita cadastrada entra como zero, e não
- * como "vai repetir o atual": chutar a favor infla a projeção justamente de
- * quem ainda não planejou, que é quem mais precisaria do número honesto.
- */
-export function projecaoFimDoAno({
-  saldoAtual,
-  mesAtual,
-  fixasPorMes,
-  meses,
-}: {
-  saldoAtual: number
-  mesAtual: number
-  fixasPorMes: number
-  meses: Map<number, MesProjetado>
-}): { valor: number; mesesConsiderados: number; somaPlanejada: number } {
-  let somaPlanejada = 0
-  let mesesConsiderados = 0
-
-  for (let m = mesAtual + 1; m <= 12; m++) {
-    const dados = meses.get(m)
-    if (!dados || dados.receita === null) continue
-    somaPlanejada += dados.receita - dados.faturas - fixasPorMes
-    mesesConsiderados++
-  }
-
-  // As parcelas voltam separadas, e nao so o total: quem le um numero sobre o
-  // proprio dinheiro precisa poder conferir de onde ele veio.
-  return { valor: saldoAtual + somaPlanejada, mesesConsiderados, somaPlanejada }
-}
-
 /**
  * Planejamento do ano inteiro numa tela só.
  *
@@ -100,12 +54,14 @@ export function projecaoFimDoAno({
  */
 export function PlanejamentoAnual({
   ano,
+  saldoAtual,
   mesAtual,
   cartoes,
   linhas,
   formata,
 }: {
   ano: number
+  saldoAtual: number | null
   mesAtual: number
   cartoes: CartaoDoAno[]
   linhas: LinhaDoAno[]
@@ -123,7 +79,7 @@ export function PlanejamentoAnual({
   const valorSalvo = (mes: number) => {
     const linha = linhas.find((l) => l.month === mes)
     return {
-      receita: linha?.estimated_income ? String(Number(linha.estimated_income)) : "",
+      receita: linha?.estimated_income != null ? String(Number(linha.estimated_income)) : "",
       cartoes: Object.fromEntries(
         cartoes.map((c) => {
           const b = c.monthly_breakdown?.find((x) => x.month === mes)
@@ -134,6 +90,12 @@ export function PlanejamentoAnual({
   }
 
   const valorAtual = (mes: number): Rascunho => rascunho[mes] ?? valorSalvo(mes)
+
+  const acumulado = forecastCash(saldoAtual, mesAtual, MESES.map((_,i) => {
+    const month=i+1, value=valorAtual(month)
+    return {month, income:value.receita === "" ? null : Number(value.receita), fixedBills:fixasPorMes,
+      invoices:cartoes.some(c => !value.cartoes[c.id]?.trim()) ? null : cartoes.reduce((sum,c) => sum+Number(value.cartoes[c.id]),0)}
+  }))
 
   const mexeu = useMemo(() => Object.keys(rascunho).length > 0, [rascunho])
 
@@ -221,7 +183,7 @@ export function PlanejamentoAnual({
           repetir nos seguintes. Ajuste depois só os que fogem do padrão.
         </p>
         <p className="basis-full text-xs text-muted">
-          “Sobra no mês” é receita menos contas fixas e faturas daquele mês. O total anual soma a sobra dos meses que têm receita planejada.
+          “Sobra no mês” é receita menos contas fixas e faturas daquele mês. O total anual soma a sobra dos meses que têm receita planejada. “Saldo acumulado previsto” começa no Saldo Atual do mês selecionado e leva o resultado para os seguintes; campos vazios deixam a projeção incompleta. Alterações na tabela são prévias até salvar.
         </p>
 
         <div className="flex items-center gap-3">
@@ -261,6 +223,7 @@ export function PlanejamentoAnual({
                   preciso somar de cabeca as colunas de cartao mais as fixas. */}
               <TableHead className="text-right">Gastos</TableHead>
               <TableHead className="text-right">Sobra no mês</TableHead>
+              <TableHead className="text-right">Saldo acumulado previsto</TableHead>
               <TableHead />
             </TableRow>
           </TableHeader>
@@ -357,6 +320,9 @@ export function PlanejamentoAnual({
                     {v.receita ? formata(sobra) : "—"}
                   </TableCell>
 
+                  <TableCell className="text-right tabular-nums" style={{color:(acumulado.months.find(m=>m.month===mes)?.balance ?? 0)<0?"var(--expense)":"var(--income)"}}>
+                    {mes < mesAtual ? "—" : acumulado.months.find(m=>m.month===mes)?.balance == null ? "Incompleto" : formata(acumulado.months.find(m=>m.month===mes)!.balance!)}
+                  </TableCell>
                   <TableCell className="text-right">
                     {mes < 12 && (
                       <button
@@ -395,6 +361,7 @@ export function PlanejamentoAnual({
               >
                 {formata(totalReceita - totalGastos)}
               </TableCell>
+              <TableCell />
               <TableCell />
             </TableRow>
           </TableBody>
