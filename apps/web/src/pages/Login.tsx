@@ -1,3 +1,4 @@
+import { erroDeLogin, erroDeServidor, servidorIndisponivel } from '@/lib/login-feedback'
 /** Tela de entrada com conteúdo rolável e apresentação dos recursos reais. */
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom"
@@ -47,23 +48,12 @@ const ERROS_OAUTH: Record<string, string> = {
 }
 
 /**
- * O 401 nao diz SE o errado foi o e-mail ou a senha. Dizer transformaria a tela
- * num detector de quem tem conta aqui, para qualquer um com uma lista de
- * enderecos - informacao demais num app de financas.
- */
-function erroDeLogin(status?: number): string {
-  if (status === 401 || status === 400) return "E-mail ou senha incorretos. Confira e tente de novo."
-  if (status === 429) return "Muitas tentativas seguidas. Espere um minuto antes de tentar de novo."
-  if (status === 403) return "Não foi possível entrar com esta conta. Se você usa o Google, entre por ele."
-  return "Não foi possível entrar agora. Tente novamente em instantes."
-}
-
-/**
  * No cadastro, dizer que o e-mail ja existe NAO e vazamento: quem tenta se
  * cadastrar descobre de qualquer forma, porque a duplicata precisa ser
  * recusada. Esconder so faria a pessoa repetir sem entender.
  */
 function erroDeCadastro(status?: number): string {
+  if (servidorIndisponivel(status)) return erroDeServidor
   if (status === 422) return 'Já existe uma conta com este e-mail. Tente entrar, ou use "Esqueci minha senha".'
   if (status === 400) return "Senha muito curta. Use pelo menos 8 caracteres."
   if (status === 429) return "Muitas tentativas seguidas. Espere um minuto antes de tentar de novo."
@@ -105,10 +95,17 @@ export default function Login() {
   const [verSenha, setVerSenha] = useState(false)
   const [erro, setErro] = useState("")
   const [carregando, setCarregando] = useState(false)
+  const [demorando, setDemorando] = useState(false)
   const [saindo, setSaindo] = useState(false)
   const [focado, setFocado] = useState(false)
   const [reduzido, setReduzido] = useState(false)
   const timer = useRef<number | undefined>(undefined)
+
+  useEffect(() => {
+    if (!carregando) {setDemorando(false);return}
+    const aviso = window.setTimeout(() => setDemorando(true), 8000)
+    return () => window.clearTimeout(aviso)
+  }, [carregando])
 
   const forca = useMemo(() => forcaDaSenha(senha), [senha])
   const criando = modo === "criar"
@@ -165,7 +162,7 @@ export default function Login() {
       setSaindo(true)
       timer.current = window.setTimeout(() => navigate("/inicio"), 900)
     } catch {
-      setErro("Não foi possível falar com o servidor. Verifique sua conexão.")
+      setErro(erroDeServidor)
     } finally {
       setCarregando(false)
     }
@@ -420,6 +417,7 @@ export default function Login() {
                   Senha alterada. Entre com a nova senha.
                 </div>
               )}
+              {carregando && demorando && <p role="status" className="mb-4 text-sm leading-relaxed text-muted">Está demorando um pouco. O servidor pode estar iniciando após um período sem uso; isso costuma levar cerca de 1 minuto. Aguarde nesta tela enquanto tentamos entrar.</p>}
               {erro && (
                 <div
                   role="alert"

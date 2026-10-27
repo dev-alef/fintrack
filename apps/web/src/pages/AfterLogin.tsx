@@ -12,9 +12,12 @@ export default function AfterLogin() {
   const q=useQuery<{show:boolean;resumable:boolean}>({queryKey:['onboardingInvitation',session?.user.id],enabled:!!session?.user.id,staleTime:0,queryFn:()=>api.get('/onboarding/invitation').then(r=>r.data)})
   useEffect(()=>{
     if(!q.isSuccess)return
-    const t=setTimeout(()=>setPhase('intro'),matchMedia('(prefers-reduced-motion: reduce)').matches?200:3400)
+    const t=setTimeout(()=>{
+      if(q.data.show)setPhase('intro')
+      else navigate('/dashboard',{replace:true})
+    },matchMedia('(prefers-reduced-motion: reduce)').matches?200:q.data.show?3400:5000)
     return()=>clearTimeout(t)
-  },[q.isSuccess])
+  },[q.isSuccess,q.data?.show,navigate])
   async function exit() {
     setBusy(true);setError('')
     try {
