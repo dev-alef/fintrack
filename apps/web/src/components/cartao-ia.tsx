@@ -1,3 +1,4 @@
+import type { CashForecast } from "@/lib/cash-forecast"
 import { useEffect, useState, type ReactNode } from "react"
 import { Link } from "react-router-dom"
 import { Sparkles } from "lucide-react"
@@ -36,24 +37,7 @@ type Props = {
   totalFaturas: number
   /** Valor ja pago das faturas - o mesmo papel de contasFixasPagas. */
   faturasPagasValor: number
-  /**
-   * Onde o ano termina, com as parcelas separadas.
-   *
-   * `undefined` quando nao ha mes planejado a frente - ai nao ha projecao, e
-   * inventar um numero sobre o fim do ano seria repetir o saldo de hoje com
-   * outro nome.
-   *
-   * `guardadoEmMetas` ENTRA na soma: neste produto o dinheiro de uma meta e
-   * um terceiro bolso, separado do saldo do mes e dos investimentos. Aparece
-   * como parcela propria em vez de somado em silencio - e a unica forma de
-   * quem confere perceber se acabou contando o mesmo dinheiro duas vezes.
-   */
-  dezembro?: {
-    saldoProjetadoAposMesAtual: number
-    planejado: number
-    mesesConsiderados: number
-    guardadoEmMetas: number
-  }
+  dezembro?: CashForecast
   investimentos: number
   patrimonio: number
   /** Valor ja pago das contas fixas - a contagem sozinha nao diz quanto falta em dinheiro. */
@@ -153,19 +137,11 @@ export function CartaoIA({
     faturas > 0 ? `As faturas dos cartões estão em ${formata(faturas)}.` : "Nenhuma fatura lançada neste mês.",
   ]
 
-  // Patrimônio de dezembro usa o saldo projetado. O patrimônio atual do
-  // Dashboard usa o Saldo Atual informado; cada indicador mostra seu período.
-  const saldoDezembro = dezembro ? dezembro.saldoProjetadoAposMesAtual + dezembro.planejado : 0
-  const patrimonioDezembro = saldoDezembro + investimentos + (dezembro?.guardadoEmMetas ?? 0)
-
-  // A pergunta que originou o app entra na rotacao. Fica por ultimo de
-  // proposito: as outras falam do mes, esta olha adiante.
-  if (dezembro) {
-    frases.push(
-      patrimonioDezembro >= 0
-        ? `Seu patrimônio previsto para dezembro é ${formata(patrimonioDezembro)}.`
-        : `Em dezembro você fecha ${formata(Math.abs(patrimonioDezembro))} no vermelho.`,
-    )
+  const saldoDezembro = dezembro?.balance ?? null
+  if (saldoDezembro != null) {
+    frases.push(saldoDezembro >= 0
+      ? `Seu saldo previsto para dezembro é ${formata(saldoDezembro)}.`
+      : `Em dezembro seu saldo previsto é negativo em ${formata(Math.abs(saldoDezembro))}.`)
   }
 
   useEffect(() => {
@@ -295,52 +271,15 @@ export function CartaoIA({
               se confere nao se usa para decidir nada. */}
           {dezembro && (
             <div className="mt-6 border-t border-border pt-5">
-              <p className="text-xs uppercase tracking-[0.1em] text-muted">Patrimônio previsto em dezembro</p>
-              <p
-                className="mt-1.5 text-2xl tabular-nums"
-                style={{
-                  fontFamily: "var(--font-heading)",
-                  color: patrimonioDezembro >= 0 ? "var(--income)" : "var(--expense)",
-                }}
-              >
-                {formata(patrimonioDezembro)}
+              <p className="text-xs uppercase tracking-[0.1em] text-muted">Saldo previsto em dezembro</p>
+              <p className="mt-1.5 text-2xl tabular-nums" style={{color:saldoDezembro != null && saldoDezembro < 0 ? "var(--expense)" : "var(--income)"}}>
+                {saldoDezembro == null ? "Planejamento incompleto" : formata(saldoDezembro)}
               </p>
-
-              <dl className="mt-4 space-y-1.5 text-[13px]">
-                {[
-                  { termo: "Sobra prevista no mês atual", valor: dezembro.saldoProjetadoAposMesAtual, nota: "receita estimada + saldo atual − contas fixas − faturas" },
-                  {
-                    termo: `Sobra de ${dezembro.mesesConsiderados} ${dezembro.mesesConsiderados === 1 ? "mês planejado" : "meses planejados"}`,
-                    valor: dezembro.planejado,
-                    nota: "receita menos contas fixas e faturas, mês a mês",
-                  },
-                  { termo: "Investimentos", valor: investimentos, nota: "valor aplicado, como você cadastrou" },
-                  ...(dezembro.guardadoEmMetas > 0
-                    ? [{
-                        termo: "Metas",
-                        valor: dezembro.guardadoEmMetas,
-                        nota: "já guardado, somando todas as suas metas",
-                      }]
-                    : []),
-                ].map((linha) => (
-                  <div key={linha.termo} className="flex flex-wrap items-baseline justify-between gap-x-3">
-                    <dt className="text-muted">
-                      {linha.termo} <span className="text-text-3">· {linha.nota}</span>
-                    </dt>
-                    <dd className="shrink-0 tabular-nums text-text">{formata(linha.valor)}</dd>
-                  </div>
-                ))}
-              </dl>
-
-              {/* O aviso trocou de conteudo junto com a conta. Antes explicava
-                  por que metas NAO somavam; agora somam, e o risco virou o
-                  oposto: contar o mesmo dinheiro duas vezes. */}
-              {dezembro.guardadoEmMetas > 0 && (
-                <p className="mt-3 text-[13px] leading-relaxed text-muted">
-                  As metas entram como dinheiro separado. Se o valor de uma meta já estiver
-                  dentro do seu saldo ou dos investimentos, ele está sendo contado duas vezes.
-                </p>
-              )}
+              <p className="mt-2 text-sm text-muted">Saldo Atual + receitas estimadas − contas fixas − faturas, do mês selecionado até dezembro. O saldo entra uma única vez; investimentos e metas ficam fora desta previsão.</p>
+              <details className="mt-3 text-sm text-muted"><summary className="cursor-pointer">Ver cálculo e dados faltantes</summary>
+                <p className="mt-2">Saldo Atual: {dezembro.currentBalance == null ? "Não informado" : formata(dezembro.currentBalance)}</p>
+                {dezembro.months.map(m => <p key={m.month} className="mt-1">{new Date(2026,m.month-1,1).toLocaleDateString('pt-BR',{month:'long'})}: {m.flow == null ? `Faltam ${m.missing.join(' e ')}` : `sobra ${formata(m.flow)}`}</p>)}
+              </details>
             </div>
           )}
 

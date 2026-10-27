@@ -98,3 +98,29 @@ describe('Patrimônio no Dashboard', () => {
     expect(html).not.toContain('Patrimônio total')
   })
 })
+
+describe('Saldo de dezembro e meses seguintes', () => {
+  it('exclui investimentos/metas e recalcula ao alterar Saldo Atual', () => {
+    const client=fixture(), now=new Date(), month=now.getMonth()+1, year=now.getFullYear()
+    client.setQueryData(['annualSummary','alice',year],Array.from({length:12},(_,i)=>({month:i+1,estimated_income:'1000.00',total_fixed_bills:'100.00',total_card_expenses:'200.00'})))
+    client.setQueryData(['annual','alice',year],[{id:'card',name:'Teste',color:'#000',monthly_breakdown:Array.from({length:12},(_,i)=>({month:i+1,amount:'200.00'}))}])
+    const expected=100+(13-month)*700
+    let html=render(client)
+    expect(cardValue(html,'Saldo previsto em dezembro')).toBe(fmt(expected))
+    expect(html).not.toContain('Patrimônio previsto em dezembro')
+    expect(html).toContain('Saldo acumulado previsto')
+    client.setQueryData(['config','alice',month,year],{estimated_income:'1000.00',balance:'350.00'})
+    html=render(client)
+    expect(cardValue(html,'Saldo previsto em dezembro')).toBe(fmt(expected+250))
+  })
+})
+
+it('não apresenta projeção monetária quando as faturas anuais falham ou carregam',()=>{
+  const client=fixture(),year=new Date().getFullYear()
+  client.getQueryCache().find({queryKey:['annual','alice',year]})!.setState({status:'error',error:new Error('offline')})
+  expect(render(client)).not.toContain('Saldo previsto em dezembro')
+  expect(render(client)).not.toContain('Saldo acumulado previsto')
+  client.removeQueries({queryKey:['annual','alice',year]})
+  expect(render(client)).not.toContain('Saldo previsto em dezembro')
+  expect(render(client)).not.toContain('Saldo acumulado previsto')
+})
