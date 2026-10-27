@@ -1,6 +1,11 @@
-# 💰 Provisão
+# Provisão
 
-> Gestão financeira pessoal com análise por Inteligência Artificial — login com Google, 2FA e sessões protegidas contra roubo.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="apps/web/public/brand/provisao-forte-claro.svg" />
+  <img src="apps/web/public/brand/provisao-forte.svg" alt="Logo da Provisão" width="260" />
+</picture>
+
+> Planejamento financeiro pessoal e controle profissional em um só lugar: saldo previsto, cartões, serviços por assinatura e configuração inicial com IA.
 
 **🔗 [Acesse o app ao vivo](https://provisao.space)** · **[API em produção](https://fintrack-api-oyjx.onrender.com/health)**
 
@@ -12,7 +17,30 @@
 
 ## 📸 Preview
 
-![Dashboard da Provisão](docs/dashboard.png)
+![Dashboard atual da Provisão: resumo mensal, patrimônio atual e leitura das previsões](docs/dashboard.png)
+
+As capturas usam **dados fictícios em ambiente local isolado**. Nenhum dado financeiro real foi publicado.
+
+<details>
+<summary>Previsões de saldo, cartões e empréstimos</summary>
+
+![Leitura da IA com saldo previsto em dezembro e próximos meses](docs/previsoes.png)
+
+</details>
+
+<details>
+<summary>Assistente de configuração inicial</summary>
+
+![Introdução do assistente, temas e explicação de privacidade](docs/assistente.png)
+
+</details>
+
+<details>
+<summary>Clientes e serviços por assinatura</summary>
+
+![Controle profissional de clientes, assinaturas e despesas](docs/profissional.png)
+
+</details>
 
 ## ✨ Funcionalidades
 
@@ -20,7 +48,8 @@
 - 🔒 **2FA por TOTP** — QR code, aplicativo autenticador, códigos de backup com regeneração
 - 🛡️ **Proteção contra roubo de sessão** — alerta por e-mail em acesso de dispositivo novo, tela de sessões ativas com opção de encerrar, sessão curta com renovação automática no uso
 - 📊 **Dashboard financeiro** — receita estimada, saldo calculado automaticamente, patrimônio com Saldo Atual + valor atual da carteira + metas, resumo de empréstimos pendentes, quitação dos cartões e saldo previsto no mês final dentro de Leitura da IA, com aviso de planejamento incompleto (inclusive entre anos) e gráfico anual de entradas e saídas
-- 🧭 **Assistente inicial** — configuração pessoal e profissional por respostas livres com Gemini ou campos guiados; rascunho retomável, revisão editável e confirmação antes de criar cadastros, sem substituir os existentes
+- 🧭 **Assistente inicial** — introdução visual após confirmar o e-mail, perguntas adaptativas e configuração pessoal e profissional por respostas livres com Gemini ou campos guiados; rascunho retomável, revisão editável e confirmação antes de criar cadastros, sem substituir os existentes
+- 💰 **Saldo até dezembro** — Saldo Atual aplicado uma vez + receitas estimadas − contas fixas − faturas de cada mês; tabela com saldo acumulado e recálculo automático ao alterar o saldo, sem somar investimentos ou metas
 - 📆 **Próximos três meses** — previsão acumulada na Leitura da IA, com Saldo Atual aplicado uma vez, receitas, contas fixas e faturas; lacunas no planejamento são indicadas
 - 💳 **Controle de cartões** — cartões personalizáveis com faturas mensais e totais anuais
 - 📋 **Despesas fixas** — controle de contas com status pago/pendente por mês
@@ -31,6 +60,7 @@
 - 🎯 **Metas financeiras** — progresso automático com barra visual
 - 🤖 **Insights com IA** — análise financeira personalizada via Google Gemini, persistente durante a navegação
 - 🎨 **Quatro temas** — claro, escuro, rosa e um tema "tech" inspirado em terminal
+- 🌿 **Identidade visual** — símbolo P transparente, logo Provisão e marca nos e-mails; animação curta nas entradas de quem já configurou a conta
 - 💬 **Canal de suporte** — formulário dentro do app, enviado por e-mail
 - 📱 **Design responsivo** — funciona em desktop e mobile
 
@@ -72,6 +102,24 @@
 - GitHub Actions — CI, CodeQL, gitleaks e `npm audit`, Dependabot semanal
 - Render (deploy backend) · Neon (PostgreSQL serverless) · Vercel (deploy frontend, com proxy para cookies de primeira-parte)
 
+## Como as previsões são calculadas
+
+| Indicador | Cálculo |
+|---|---|
+| Sobra prevista no mês | Saldo Atual + receita estimada − contas fixas − faturas do mês |
+| Saldo acumulado previsto | Saldo Atual uma vez + receitas − contas fixas − faturas de cada mês, a partir do mês selecionado |
+| Saldo previsto em dezembro | Acumulado até dezembro; investimentos e metas ficam fora |
+| Patrimônio total atual | Saldo Atual + valor atual dos investimentos + valores guardados em metas |
+| Saldo na quitação dos cartões | Saldo Atual menos contas fixas e faturas ainda não pagas, seguindo o contrato próprio dessa previsão |
+
+O planejamento mensal e o acumulado consideram todas as contas fixas e faturas, inclusive as marcadas como pagas. Receita estimada é a receita integral do mês: se ela já estiver no Saldo Atual, confira os valores para evitar dupla contagem. O app depende dos dados informados manualmente e não consulta o saldo bancário.
+
+Dados ausentes não são automaticamente tratados como zero nas projeções de saldo. Informe `0` quando não houver receita ou fatura. Alterar o Saldo Atual recalcula as previsões seguintes sem sobrescrever os saldos registrados em outros meses. O caixa profissional permanece separado do pessoal; recebimentos são confirmados manualmente, e não há emissão automática de cobranças.
+
+## Hospedagem e uso comercial
+
+A arquitetura atual usa Vercel no frontend, Render na API e Neon no PostgreSQL. Na Vercel, o plano Hobby é destinado a uso pessoal e não comercial; uso comercial exige Pro ou Enterprise, conforme as [regras de uso da plataforma](https://vercel.com/docs/limits/fair-use-guidelines#commercial-usage). Migrar para Railway é uma alternativa, e não um requisito para comercializar. Confira os planos e limites vigentes antes de contratar.
+
 ## 🏗️ Arquitetura
 
 ```
@@ -108,7 +156,7 @@ fintrack/
 ## 🚀 Como rodar localmente
 
 ### Pré-requisitos
-- Node.js 20+
+- Node.js 22.12+ (recomendado, compatível com as ferramentas atuais)
 - Docker e Docker Compose
 
 ### Passo a passo
@@ -175,6 +223,8 @@ Recebimentos e despesas profissionais não alteram Transações nem o Saldo Atua
 
 Na raiz, rode `npm test --workspace=apps/web` para os testes do frontend; eles não precisam de banco.
 
+O assistente tem testes de confirmação atômica, rollback real, repetição concorrente, isolamento, revisão obsoleta, reutilização de cadastros e saldo restante de empréstimos. A extração por IA é testada com provedor substituído, incluindo consentimento, falha e limite de uso; esses testes não comprovam a disponibilidade do Gemini em produção. A projeção de três meses cobre mudança de ano, negativos, zero e dados ausentes.
+
 ## 📡 Principais endpoints
 
 | Método | Rota | Descrição |
@@ -187,6 +237,13 @@ Na raiz, rode `npm test --workspace=apps/web` para os testes do frontend; eles n
 | GET | `/transactions` | Listar com filtros e paginação |
 | GET | `/transactions/summary` | Resumo com agregações SQL |
 | GET | `/finance/cards` | Cartões de crédito |
+| GET | `/finance/cards/annual?year=2026` | Faturas de cada cartão no ano |
+| GET | `/finance/annual?year=2026` | Receitas e totais mensais do planejamento |
+| POST | `/finance/config` | Saldo Atual e receita estimada do mês |
+| POST | `/finance/planejamento` | Salvar receitas e faturas de vários meses |
+| GET | `/finance/cards/payoff` | Última fatura aberta e evolução mensal dos cartões |
+| GET | `/finance/cards/payoff/projection?month=10&year=2026` | Saldo previsto na quitação |
+| GET | `/finance/forecast/three-months?month=10&year=2026` | Saldo acumulado dos próximos três meses |
 | GET | `/finance/payments` | Contas fixas com status |
 | GET | `/investments/portfolio` | Resumo da carteira |
 | GET | `/goals` | Metas financeiras |
@@ -201,6 +258,10 @@ Na raiz, rode `npm test --workspace=apps/web` para os testes do frontend; eles n
 | POST | `/business/subscriptions/:id/receipts` | Confirmar recebimento integral com UUID de repetição |
 | DELETE | `/business/subscriptions/:id/receipts/:receiptId` | Estornar recebimento mantendo histórico |
 | POST / PUT / DELETE | `/business/expenses[/:id]` | Registrar, corrigir ou excluir despesa profissional |
+| GET / PUT | `/onboarding` | Consultar ou salvar rascunho do assistente |
+| POST | `/onboarding/answer` | Interpretar resposta com consentimento para Gemini |
+| POST | `/onboarding/preview` | Revisar os cadastros propostos |
+| POST | `/onboarding/commit` | Confirmar gravação atômica e idempotente |
 | GET | `/insights` | Análise financeira com IA |
 | POST | `/suporte` | Enviar mensagem de suporte |
 
@@ -215,5 +276,3 @@ Na raiz, rode `npm test --workspace=apps/web` para os testes do frontend; eles n
 ---
 
 ⭐ Se este projeto te ajudou de alguma forma, considere deixar uma estrela!
-
-O assistente tem testes de confirmação atômica, rollback real, repetição concorrente, isolamento, revisão obsoleta, reutilização de cadastros e saldo restante de empréstimos. A extração por IA é testada com provedor substituído, incluindo consentimento, falha e limite de uso; esses testes não comprovam a disponibilidade do Gemini em produção. A projeção de três meses cobre mudança de ano, negativos, zero e dados ausentes.
