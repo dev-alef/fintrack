@@ -145,6 +145,7 @@ const planejamentoSchema = z.object({
       z.object({
         month: z.number().int().min(1).max(12),
         estimated_income: z.number().min(0).nullable().optional(),
+        balance: z.number().nullable().optional(),
         cards: z
           .array(z.object({ cardId: z.string().uuid(), amount: z.number().min(0) }))
           .optional(),

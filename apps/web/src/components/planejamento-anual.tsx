@@ -1,9 +1,9 @@
 import { forecastCash } from "@/lib/cash-forecast"
-import { useMemo, useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { ArrowDownToLine, Check, Loader2 } from "lucide-react"
+import { ArrowDownToLine } from "lucide-react"
 import api from "../services/api"
-import { Button } from "@/components/ui/button"
+import { PlanningActions } from "@/components/planning-actions"
+import type { AnnualPlanning } from "@/hooks/useAnnualPlanning"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
 
@@ -19,13 +19,9 @@ export type CartaoDoAno = {
 export type LinhaDoAno = {
   month: number
   estimated_income: string | null
+  balance?: string | null
   total_fixed_bills: string
   total_card_expenses: string
-}
-
-type Rascunho = {
-  receita: string
-  cartoes: Record<string, string>
 }
 
 /**
@@ -59,6 +55,7 @@ export function PlanejamentoAnual({
   cartoes,
   linhas,
   formata,
+  planning,
 }: {
   ano: number
   saldoAtual: number | null
@@ -66,89 +63,21 @@ export function PlanejamentoAnual({
   cartoes: CartaoDoAno[]
   linhas: LinhaDoAno[]
   formata: (valor: number) => string
+  planning: AnnualPlanning
 }) {
   const qc = useQueryClient()
-  const [rascunho, setRascunho] = useState<Record<number, Rascunho>>({})
-  const [salvo, setSalvo] = useState(false)
+  const { valorAtual, editaReceita, editaCartao, repetirParaBaixo } = planning
 
   // Contas fixas valem para todos os meses - o resumo anual as soma sem filtro
   // de mês. Por isso não há coluna editável para elas aqui: mexer numa conta
   // fixa muda o ano inteiro, e isso se faz na lista acima, não célula a célula.
   const fixasPorMes = Number(linhas[0]?.total_fixed_bills || 0)
 
-  const valorSalvo = (mes: number) => {
-    const linha = linhas.find((l) => l.month === mes)
-    return {
-      receita: linha?.estimated_income != null ? String(Number(linha.estimated_income)) : "",
-      cartoes: Object.fromEntries(
-        cartoes.map((c) => {
-          const b = c.monthly_breakdown?.find((x) => x.month === mes)
-          return [c.id, b?.amount != null ? String(Number(b.amount)) : ""]
-        }),
-      ),
-    }
-  }
-
-  const valorAtual = (mes: number): Rascunho => rascunho[mes] ?? valorSalvo(mes)
-
   const acumulado = forecastCash(saldoAtual, mesAtual, MESES.map((_,i) => {
     const month=i+1, value=valorAtual(month)
     return {month, income:value.receita === "" ? null : Number(value.receita), fixedBills:fixasPorMes,
       invoices:cartoes.some(c => !value.cartoes[c.id]?.trim()) ? null : cartoes.reduce((sum,c) => sum+Number(value.cartoes[c.id]),0)}
   }))
-
-  const mexeu = useMemo(() => Object.keys(rascunho).length > 0, [rascunho])
-
-  function editaReceita(mes: number, valor: string) {
-    setSalvo(false)
-    setRascunho((r) => ({ ...r, [mes]: { ...valorAtual(mes), receita: valor } }))
-  }
-
-  function editaCartao(mes: number, cartaoId: string, valor: string) {
-    setSalvo(false)
-    const atual = valorAtual(mes)
-    setRascunho((r) => ({
-      ...r,
-      [mes]: { ...atual, cartoes: { ...atual.cartoes, [cartaoId]: valor } },
-    }))
-  }
-
-  /**
-   * Copia a linha para todos os meses seguintes. É o atalho que torna o ano
-   * preenchível: salário e fatura costumam repetir, e os meses que fogem do
-   * padrão você ajusta depois - bem menos trabalho que digitar os doze.
-   */
-  function repetirParaBaixo(mes: number) {
-    setSalvo(false)
-    const origem = valorAtual(mes)
-    setRascunho((r) => {
-      const novo = { ...r }
-      for (let m = mes + 1; m <= 12; m++) {
-        novo[m] = { receita: origem.receita, cartoes: { ...origem.cartoes } }
-      }
-      return novo
-    })
-  }
-
-  const salvar = useMutation({
-    mutationFn: () => {
-      const meses = Object.entries(rascunho).map(([mes, dados]) => ({
-        month: Number(mes),
-        estimated_income: dados.receita === "" ? null : Number(dados.receita),
-        cards: cartoes
-          .filter((c) => dados.cartoes[c.id] !== undefined && dados.cartoes[c.id] !== "")
-          .map((c) => ({ cardId: c.id, amount: Number(dados.cartoes[c.id]) })),
-      }))
-      return api.post("/finance/planejamento", { year: ano, meses })
-    },
-    onSuccess: () => {
-      setRascunho({})
-      setSalvo(true)
-      for (const k of ["annualSummary", "annual", "config", "expenses", "cardPayoff", "threeMonthForecast"]) {
-        qc.invalidateQueries({ queryKey: [k] })
-      }
-    },
-  })
 
   const marcarFatura = useMutation({
     mutationFn: (d: { cardId: string; month: number; paid: boolean }) =>
@@ -178,33 +107,15 @@ export function PlanejamentoAnual({
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted">
-          Preencha um mês e use{" "}
-          <ArrowDownToLine className="inline h-3.5 w-3.5 align-[-2px]" aria-hidden="true" /> para
-          repetir nos seguintes. Ajuste depois só os que fogem do padrão.
+          Alterar a receita de um mês repete o valor até dezembro. As faturas continuam individuais;
+          use <ArrowDownToLine className="inline h-3.5 w-3.5 align-[-2px]" aria-hidden="true" /> para repetir também as faturas preenchidas.
         </p>
         <p className="basis-full text-xs text-muted">
-          “Sobra no mês” é receita menos contas fixas e faturas daquele mês. O total anual soma a sobra dos meses que têm receita planejada. “Saldo acumulado previsto” começa no Saldo Atual do mês selecionado e leva o resultado para os seguintes; campos vazios deixam a projeção incompleta. Alterações na tabela são prévias até salvar.
+          “Sobra no mês” é receita menos contas fixas e faturas daquele mês. “Saldo acumulado previsto” começa no Saldo Atual do mês selecionado e leva o resultado para os seguintes; campos vazios deixam a projeção incompleta. Confira a prévia e clique em Aplicar alterações para salvar o planejamento, incluindo a configuração do mês.
         </p>
 
-        <div className="flex items-center gap-3">
-          {salvo && !mexeu && (
-            <span className="flex items-center gap-1.5 text-sm text-success">
-              <Check className="h-4 w-4" aria-hidden="true" />
-              Salvo
-            </span>
-          )}
-          <Button type="button" onClick={() => salvar.mutate()} disabled={!mexeu || salvar.isPending}>
-            {salvar.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />}
-            {mexeu ? "Salvar o ano" : "Sem alterações"}
-          </Button>
-        </div>
+        <PlanningActions planning={planning} />
       </div>
-
-      {salvar.isError && (
-        <div role="alert" className="rounded-md border border-danger/20 bg-danger/10 px-3 py-2 text-sm text-danger">
-          Não foi possível salvar. Nada foi alterado — pode tentar de novo.
-        </div>
-      )}
 
       <div className="overflow-x-auto">
         <Table>
@@ -238,7 +149,7 @@ export function PlanejamentoAnual({
               // negativa" das contas fixas assustaria sem significar nada.
               const sobra = v.receita ? receita - cart - fixasPorMes : 0
               const ehAtual = mes === mesAtual
-              const editado = rascunho[mes] !== undefined
+              const editado = planning.editado(mes)
 
               return (
                 <TableRow
@@ -367,7 +278,7 @@ export function PlanejamentoAnual({
           </TableBody>
         </Table>
       </div>
-
+      <PlanningActions planning={planning} />
     </div>
   )
 }

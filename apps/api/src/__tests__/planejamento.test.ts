@@ -27,6 +27,25 @@ async function contaComCartao(nome = 'Nubank') {
 }
 
 describe('Planejamento do ano', () => {
+  it('aplica receita e saldo juntos, preserva os outros meses e persiste na releitura', async () => {
+    const { cookie, cartaoId } = await contaComCartao()
+    const config = (month: number) => request(app).get(`/finance/config?year=${ANO}&month=${month}`).set('Cookie', cookie)
+    await request(app).post('/finance/config').set('Cookie', cookie).send({ year: ANO, month: 9, estimated_income: 900, balance: 50 })
+    await request(app).post('/finance/config').set('Cookie', cookie).send({ year: ANO, month: 11, estimated_income: 1100, balance: 700 })
+    const res = await request(app).post('/finance/planejamento').set('Cookie', cookie).send({ year: ANO, meses: [
+      { month: 10, estimated_income: 2500, balance: -100.25, cards: [{ cardId: cartaoId, amount: 350 }] },
+      { month: 11, estimated_income: 2500 }, { month: 12, estimated_income: 2500 },
+    ] })
+    expect(res.status).toBe(200)
+    expect((await config(9)).body).toMatchObject({ estimated_income: '900.00', balance: '50.00' })
+    expect((await config(10)).body).toMatchObject({ estimated_income: '2500.00', balance: '-100.25' })
+    expect((await config(11)).body).toMatchObject({ estimated_income: '2500.00', balance: '700.00' })
+    expect((await config(12)).body).toMatchObject({ estimated_income: '2500.00', balance: null })
+    // Balance-only and explicit null edits must preserve the unrelated income.
+    await request(app).post('/finance/planejamento').set('Cookie', cookie).send({ year: ANO, meses: [{ month: 10, balance: null }] })
+    expect((await config(10)).body).toMatchObject({ estimated_income: '2500.00', balance: null })
+  })
+
   it('grava varios meses de uma vez e devolve os valores certos', async () => {
     const { cookie, cartaoId } = await contaComCartao()
 
@@ -66,7 +85,7 @@ describe('Planejamento do ano', () => {
       .send({
         year: ANO,
         meses: [
-          { month: 3, estimated_income: 1234, cards: [{ cardId: meu.cartaoId, amount: 100 }] },
+          { month: 3, estimated_income: 1234, balance: 500, cards: [{ cardId: meu.cartaoId, amount: 100 }] },
           { month: 4, estimated_income: 5678, cards: [{ cardId: alheio.cartaoId, amount: 999 }] },
         ],
       })
