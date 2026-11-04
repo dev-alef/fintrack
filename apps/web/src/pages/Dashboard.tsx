@@ -23,6 +23,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@/lib/utils"
 import { calculateMonthlyCashflow } from "@/lib/monthly-cashflow"
 import { PlanejamentoAnual, type CartaoDoAno } from "@/components/planejamento-anual"
+import { useAnnualPlanning } from "@/hooks/useAnnualPlanning"
+import { PlanningActions } from "@/components/planning-actions"
 
 const fmt = (v: string | number) => Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
 // Dois formatos, dois usos. Por extenso onde o mes e lido como texto - o
@@ -68,9 +70,20 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
   const { data: cards = [], isLoading: cardsLoading, isError: cardsError } = useQuery<Card[]>({ queryKey: ["cards", userId], queryFn: () => api.get("/finance/cards").then((r) => r.data) })
   const { data: bills = [], isLoading: billsLoading, isError: billsError } = useQuery<Bill[]>({ queryKey: ["payments", userId, month, year], queryFn: () => api.get(`/finance/payments?month=${month}&year=${year}`).then((r) => r.data) })
   const { data: expenses = [], isLoading: expensesLoading, isError: expensesError } = useQuery<CardExpense[]>({ queryKey: ["expenses", userId, month, year], queryFn: () => api.get(`/finance/cards/expenses?month=${month}&year=${year}`).then((r) => r.data) })
-  const { data: config, isLoading: configLoading, isError: configError } = useQuery<Config>({ queryKey: ["config", userId, month, year], queryFn: () => api.get(`/finance/config?month=${month}&year=${year}`).then((r) => r.data) })
+  const { data: savedConfig, isLoading: configLoading, isError: configError } = useQuery<Config>({ queryKey: ["config", userId, month, year], queryFn: () => api.get(`/finance/config?month=${month}&year=${year}`).then((r) => r.data) })
   const { data: annual = [], isLoading: annualCardsLoading, isError: annualCardsError } = useQuery<AnnualCard[]>({ queryKey: ["annual", userId, year], queryFn: () => api.get(`/finance/cards/annual?year=${year}`).then((r) => r.data) })
-  const { data: annualSummary = [], isLoading: annualLoading, isError: annualError } = useQuery<{ month: number; estimated_income: string | null; total_fixed_bills: string; total_card_expenses: string }[]>({ queryKey: ["annualSummary", userId, year], queryFn: () => api.get(`/finance/annual?year=${year}`).then((r) => r.data) })
+  const { data: savedAnnualSummary = [], isLoading: annualLoading, isError: annualError } = useQuery<{ month: number; estimated_income: string | null; balance?: string | null; total_fixed_bills: string; total_card_expenses: string }[]>({ queryKey: ["annualSummary", userId, year], queryFn: () => api.get(`/finance/annual?year=${year}`).then((r) => r.data) })
+
+  const planning = useAnnualPlanning({ userId, ano: year, mesAtual: month, config: savedConfig, linhas: savedAnnualSummary, cartoes: annual, fixedBills: bills.reduce((sum, bill) => sum + Number(bill.amount), 0) })
+  const currentDraft = planning.valorAtual(month)
+  const config: Config = { estimated_income: currentDraft.receita === "" ? null : currentDraft.receita, balance: currentDraft.saldo === "" ? null : currentDraft.saldo }
+  const annualSummary = Array.from({ length: 12 }, (_, i) => {
+    const m = i + 1, saved = savedAnnualSummary.find(row => row.month === m)
+    const draft = planning.valorAtual(m)
+    return { ...saved, month: m, estimated_income: draft.receita === "" ? null : draft.receita,
+      total_fixed_bills: saved?.total_fixed_bills ?? savedAnnualSummary[0]?.total_fixed_bills ?? String(bills.reduce((sum, bill) => sum + Number(bill.amount), 0)),
+      total_card_expenses: String(annual.reduce((sum, card) => sum + Number(draft.cartoes[card.id] || 0), 0)) }
+  })
 
   const prevMonth = month === 1 ? 12 : month - 1
   const prevYear = month === 1 ? year - 1 : year
@@ -84,14 +97,13 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
 
   const createCard = useMutation({ mutationFn: (d: unknown) => api.post("/finance/cards", d), onSuccess: () => { inv(["cards", "annual", "cardPayoff"]); setShowNewCard(false); setNewCard({ name: "", due_day: "", color: "#c67139" }) } })
   const updateCard = useMutation({ mutationFn: ({ id, ...d }: { id: string; name?: string; due_day?: number; color?: string }) => api.put(`/finance/cards/${id}`, d), onSuccess: () => { inv(["cards", "annual", "cardPayoff"]); setEditingCard(null) } })
-  const deleteCard = useMutation({ mutationFn: (id: string) => api.delete(`/finance/cards/${id}`), onSuccess: () => inv(["cards", "expenses", "annual", "cardPayoff"]) })
+  const deleteCard = useMutation({ mutationFn: (id: string) => api.delete(`/finance/cards/${id}`), onSuccess: (_, id) => { planning.removeCard(id); inv(["cards", "expenses", "annual", "annualSummary", "cardPayoff"]) } })
   const createBill = useMutation({ mutationFn: (d: unknown) => api.post("/finance/bills", d), onSuccess: () => { inv(["payments", "annualSummary", "cardPayoff"]); setShowNewBill(false); setNewBill({ name: "", amount: "", due_day: "" }) } })
   const updateBill = useMutation({ mutationFn: ({ id, ...d }: { id: string; name?: string; amount?: number; due_day?: number }) => api.put(`/finance/bills/${id}`, d), onSuccess: () => { inv(["payments", "annualSummary", "cardPayoff"]); setEditingBill(null) } })
   const deleteBill = useMutation({ mutationFn: (id: string) => api.delete(`/finance/bills/${id}`), onSuccess: () => inv(["payments", "annualSummary", "cardPayoff"]) })
   const togglePayment = useMutation({ mutationFn: (d: unknown) => api.post("/finance/payments/toggle", d), onSuccess: () => inv(["payments"]) })
   const setExpense = useMutation({ mutationFn: (d: unknown) => api.post("/finance/cards/expenses", d), onSuccess: () => inv(["expenses", "annual", "annualSummary", "cardPayoff"]) })
   const toggleCardExpense = useMutation({ mutationFn: (d: unknown) => api.post("/finance/cards/expenses/toggle", d), onSuccess: () => inv(["expenses", "annual", "cardPayoff"]) })
-  const saveConfig = useMutation({ mutationFn: (d: unknown) => api.post("/finance/config", d), onSuccess: () => inv(["config", "annualSummary", "cardPayoff"]) })
 
   const monthlyCashflow = calculateMonthlyCashflow({
     currentBalance: config?.balance,
@@ -120,10 +132,10 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
   const projecaoAno = forecastCash(config?.balance == null ? null : Number(config.balance), month,
     Array.from({length:12},(_,i) => {
       const m = i+1, row = annualSummary.find(r => Number(r.month) === m)
-      const invoices = annual.map(c => c.monthly_breakdown?.find(b => b.month === m)?.amount)
+      const invoices = annual.map(c => planning.valorAtual(m).cartoes[c.id])
       return {month:m, income:row?.estimated_income == null ? null : Number(row.estimated_income),
         fixedBills:Number(row?.total_fixed_bills ?? totalBills),
-        invoices:invoices.some(v => v == null) ? null : invoices.reduce<number>((sum,v) => sum+Number(v),0)}
+        invoices:invoices.some(v => v === "") ? null : invoices.reduce<number>((sum,v) => sum+Number(v),0)}
     }))
 
   // O grafico passou de "ultimos 6 meses" para o ano inteiro. A serie vem do
@@ -340,6 +352,7 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
+            {configError ? <p role="alert" className="text-sm text-danger">Não foi possível carregar a configuração do mês. Recarregue para tentar novamente.</p> : configLoading ? <p className="text-sm text-muted">Carregando a configuração…</p> : <>
             {[
               { label: "Receita estimada (R$)", key: "estimated_income", val: config?.estimated_income ?? "" },
               { label: "Saldo Atual (R$)", key: "balance", val: config?.balance ?? "" },
@@ -350,14 +363,17 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
                   id={`dash-${f.key}`}
                   type="number"
                   step="0.01"
-                  defaultValue={f.val}
-                  onBlur={(e) => saveConfig.mutate({ month, year, [f.key]: e.target.value === "" ? null : Number(e.target.value) })}
+                  min={f.key === "estimated_income" ? 0 : undefined}
+                  value={f.val}
+                  onChange={(e) => f.key === "estimated_income" ? planning.editaReceita(month, e.target.value) : planning.editaSaldo(month, e.target.value)}
                 />
               </div>
             ))}
             <p className="text-xs leading-relaxed text-muted">
-              A sobra prevista soma a receita estimada e o Saldo Atual, e desconta todas as contas fixas e faturas do mês, inclusive as marcadas como pagas. Atualize o Saldo Atual quando ele mudar; o app não tem conexão bancária para fazer isso sozinho.
+              A receita se repete deste mês até dezembro. O Saldo Atual entra uma única vez e recalcula o acumulado dos meses seguintes. Confira a prévia e clique em Aplicar alterações para salvar. O app não tem conexão bancária para atualizar o saldo sozinho.
             </p>
+            <PlanningActions planning={planning} />
+            </>}
           </CardContent>
         </Card>
 
@@ -576,12 +592,14 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {annualError || annualCardsError || configError ? (
+          {annualError || annualCardsError || configError || billsError ? (
             <p role="alert" className="text-sm text-muted">Não foi possível carregar os dados do planejamento. Recarregue a página para tentar novamente.</p>
-          ) : annualLoading || annualCardsLoading || configLoading ? (
+          ) : annualLoading || annualCardsLoading || configLoading || billsLoading ? (
             <p className="text-sm text-muted">Carregando o ano...</p>
           ) : (
             <PlanejamentoAnual
+              key={year}
+              planning={planning}
               saldoAtual={config?.balance == null ? null : Number(config.balance)}
               ano={year}
               mesAtual={month}

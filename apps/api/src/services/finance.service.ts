@@ -274,6 +274,7 @@ export async function toggleCardExpensePayment(
 export type MesPlanejado = {
   month: number
   estimated_income?: number | null
+  balance?: number | null
   cards?: { cardId: string; amount: number }[]
 }
 
@@ -309,13 +310,17 @@ export async function salvaPlanejamento(userId: string, year: number, meses: Mes
     let faturas = 0
 
     for (const mes of meses) {
-      if (mes.estimated_income !== undefined) {
+      if (mes.estimated_income !== undefined || mes.balance !== undefined) {
         await cliente.query(
           `INSERT INTO monthly_config (user_id, month, year, estimated_income, balance)
-           VALUES ($1, $2, $3, $4, NULL)
+           VALUES ($1, $2, $3, $4, $5)
            ON CONFLICT (user_id, month, year)
-           DO UPDATE SET estimated_income = $4, updated_at = now()`,
-          [userId, mes.month, year, mes.estimated_income],
+           DO UPDATE SET
+             estimated_income = CASE WHEN $6 THEN $4 ELSE monthly_config.estimated_income END,
+             balance = CASE WHEN $7 THEN $5 ELSE monthly_config.balance END,
+             updated_at = now()`,
+          [userId, mes.month, year, mes.estimated_income ?? null, mes.balance ?? null,
+            mes.estimated_income !== undefined, mes.balance !== undefined],
         )
       }
 
