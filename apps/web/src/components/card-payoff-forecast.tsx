@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { LoadingState } from '@/components/loading-state'
 import { CalendarCheck } from 'lucide-react'
 import api from '@/services/api'
 import { Button } from '@/components/ui/button'
@@ -68,7 +69,7 @@ export function CardPayoffForecast({ userId }: { userId: string }) {
   return <section className="space-y-3 min-w-0" aria-labelledby="card-payoff-title">
     <h3 id="card-payoff-title" className="flex items-center gap-2 text-sm font-semibold text-text"><CalendarCheck className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" /> Previsão de quitação dos cartões</h3>
     <p className="text-xs text-muted">Todos os cartões e anos cadastrados, independentemente do mês selecionado no Dashboard.</p>
-    {query.isPending ? <p role="status" className="text-sm text-muted">Calculando previsão…</p> : query.isError ? (
+    {query.isPending ? <LoadingState variant="inline" title="Calculando previsão…" /> : query.isError ? (
       <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-danger">
         Não foi possível carregar a previsão.
         <Button size="sm" variant="outline" onClick={() => query.refetch()}>Tentar novamente</Button>

@@ -1,9 +1,10 @@
 import { useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
+import { LoadingState } from '@/components/loading-state'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
 import {
   ArrowDownLeft, ArrowUpRight, CalendarDays, CheckCircle2, ChevronDown,
-  HandCoins, History, Info, Loader2, Pencil, Plus, Trash2,
+  HandCoins, History, Info, Pencil, Plus, Trash2,
 } from 'lucide-react'
 import api from '@/services/api'
 import { useSession } from '@/lib/auth-client'
@@ -474,7 +475,7 @@ function LoansPage({ userId }: { userId: string }) {
 
       <div id="loan-list" role="tabpanel" aria-labelledby={`loan-tab-${direction}`} tabIndex={0}>
         {query.isLoading ? (
-          <div role="status" className="flex items-center justify-center gap-2 py-16 text-sm text-muted"><Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />Carregando empréstimos…</div>
+          <LoadingState title="Carregando empréstimos…" description="Estamos conferindo os valores e o histórico de pagamentos." />
         ) : !query.data ? null : visibleLoans.length === 0 ? (
           <Card><CardContent className="px-6 py-12 text-center">
             <HandCoins className="mx-auto mb-4 h-10 w-10 text-muted" aria-hidden="true" />

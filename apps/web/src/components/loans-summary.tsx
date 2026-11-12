@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { LoadingState } from '@/components/loading-state'
 import { Link } from 'react-router-dom'
 import { ArrowDownLeft, ArrowUpRight, HandCoins } from 'lucide-react'
 import api from '@/services/api'
@@ -26,7 +27,7 @@ export function LoansSummary({ userId }: { userId: string }) {
         <Button variant="outline" size="sm" asChild><Link to="/emprestimos">Ver todos</Link></Button>
       </div>
       {query.isPending ? (
-        <p role="status" className="text-sm text-muted">Carregando empréstimos…</p>
+        <LoadingState variant="inline" title="Carregando empréstimos…" />
       ) : query.isError ? (
         <div role="alert" className="flex flex-wrap items-center gap-3 rounded-lg border border-danger/30 p-4 text-sm text-danger">
           Não foi possível carregar os empréstimos.

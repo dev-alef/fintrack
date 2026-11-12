@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { LoadingState } from '@/components/loading-state'
 import { Link } from "react-router-dom"
 import { Mail, MailCheck } from "lucide-react"
 import { authClient } from "../lib/auth-client"
@@ -115,6 +116,7 @@ export default function EsqueciSenha() {
                   </div>
                 )}
 
+                {carregando && <LoadingState variant="inline" title="Enviando seu link de recuperação…" />}
                 <Button type="submit" disabled={carregando} className="w-full">
                   {carregando ? "Enviando..." : "Enviar link"}
                 </Button>

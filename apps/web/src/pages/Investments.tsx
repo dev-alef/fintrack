@@ -1,5 +1,6 @@
 import { ColorPicker } from "@/components/color-picker"
 import { usePortfolio } from "@/hooks/usePortfolio"
+import { LoadingState } from '@/components/loading-state'
 import { useSession } from "@/lib/auth-client"
 import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
@@ -193,10 +194,13 @@ function InvestmentsPage({ userId }: { userId: string }) {
       )}
 
       {isLoading ? (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="space-y-4">
+          <LoadingState title="Carregando seus investimentos…" description="Estamos reunindo sua carteira e os valores dos seus ativos." />
+          <div aria-hidden="true" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <Card key={i} className="animate-pulse"><CardContent className="h-[84px] bg-surface-2/50" /></Card>
+            <Card key={i} className="animate-pulse motion-reduce:animate-none"><CardContent className="h-[84px] bg-surface-2/50" /></Card>
           ))}
+          </div>
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

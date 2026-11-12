@@ -6,6 +6,7 @@ import Sidebar from "./Sidebar"
 import { Logo } from "../logo"
 import { useIsMobile } from "../../hooks/useIsMobile"
 import { cn } from "@/lib/utils"
+import { LoadingActivity } from '@/components/loading-activity'
 
 export default function AppLayout() {
   const isMobile = useIsMobile()
@@ -13,6 +14,7 @@ export default function AppLayout() {
 
   return (
     <div className="flex min-h-screen bg-bg">
+      <LoadingActivity />
       {/* Sidebar - drawer no mobile */}
       <Sidebar isMobile={isMobile} isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
 

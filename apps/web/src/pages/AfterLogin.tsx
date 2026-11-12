@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useSession } from '@/lib/auth-client'
 import { OnboardingFrame, type OnboardingPhase } from '@/components/onboarding-frame'
 import api from '@/services/api'
+import { LoadingState } from '@/components/loading-state'
 export default function AfterLogin() {
   const {data:session}=useSession()
   const navigate=useNavigate(), qc=useQueryClient()
@@ -25,8 +26,9 @@ export default function AfterLogin() {
       navigate('/dashboard',{replace:true})
     } catch {setError('Não foi possível continuar. Tente novamente.')} finally {setBusy(false)}
   }
-  if(q.isPending)return <div className="grid min-h-screen place-items-center bg-bg text-muted" role="status">Preparando seu espaço…</div>
+  if(q.isPending)return <LoadingState variant="screen" title="Preparando seu espaço…" description="Só um instante para organizar suas boas-vindas." />
   if(q.isError)return <div className="grid min-h-screen place-content-center gap-4 bg-bg p-6 text-text"><p>Não foi possível conferir sua configuração.</p><button onClick={()=>q.refetch()} className="text-primary underline">Tentar novamente</button><Link to="/dashboard">Ir ao Dashboard</Link></div>
-  return <OnboardingFrame phase={phase} group={0} returning={!q.data.show} locked={busy} error={error}
+  return <><OnboardingFrame phase={phase} group={0} returning={!q.data.show} locked={busy} error={error}
     onStart={()=>navigate(q.data.show?'/assistente-inicial?conversation=1':'/dashboard',{replace:true})} onExit={()=>void exit()}>{null}</OnboardingFrame>
+    {busy && <div className="pv-loading-activity"><LoadingState variant="inline" title="Preparando seu Dashboard…" /></div>}</>
 }

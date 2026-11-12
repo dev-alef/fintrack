@@ -25,6 +25,7 @@ import { calculateMonthlyCashflow } from "@/lib/monthly-cashflow"
 import { PlanejamentoAnual, type CartaoDoAno } from "@/components/planejamento-anual"
 import { useAnnualPlanning } from "@/hooks/useAnnualPlanning"
 import { PlanningActions } from "@/components/planning-actions"
+import { LoadingState } from '@/components/loading-state'
 
 const fmt = (v: string | number) => Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
 // Dois formatos, dois usos. Por extenso onde o mes e lido como texto - o
@@ -248,10 +249,13 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
       )}
 
       {isInitialLoading ? (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Card key={i} className="animate-pulse"><CardContent className="h-[88px] bg-surface-2/50 p-4" /></Card>
-          ))}
+        <div className="space-y-4">
+          <LoadingState title="Carregando seu resumo financeiro…" description="Estamos reunindo suas receitas, contas e previsões." />
+          <div aria-hidden="true" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Card key={i} className="animate-pulse motion-reduce:animate-none"><CardContent className="h-[88px] bg-surface-2/50 p-4" /></Card>
+            ))}
+          </div>
         </div>
       ) : hasCriticalError ? null : (
         <>
@@ -352,7 +356,7 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {configError ? <p role="alert" className="text-sm text-danger">Não foi possível carregar a configuração do mês. Recarregue para tentar novamente.</p> : configLoading ? <p className="text-sm text-muted">Carregando a configuração…</p> : <>
+            {configError ? <p role="alert" className="text-sm text-danger">Não foi possível carregar a configuração do mês. Recarregue para tentar novamente.</p> : configLoading ? <LoadingState variant="inline" title="Carregando a configuração…" /> : <>
             {[
               { label: "Receita estimada (R$)", key: "estimated_income", val: config?.estimated_income ?? "" },
               { label: "Saldo Atual (R$)", key: "balance", val: config?.balance ?? "" },
@@ -397,6 +401,7 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
               </div>
             )}
             <div className="flex flex-col gap-2.5">
+              {cardsLoading || expensesLoading ? <LoadingState variant="inline" title="Carregando suas faturas…" /> : cardsError || expensesError ? <p role="alert" className="text-sm text-danger">Não foi possível carregar suas faturas.</p> : <>
               {cards.map((c: Card) => {
                 const exp = expenses.find((e: CardExpense) => e.card_id === c.id)
                 const val = exp ? Number(exp.amount) : 0
@@ -490,6 +495,7 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
                   </span>
                 </div>
               )}
+              </>}
             </div>
           </CardContent>
         </Card>
@@ -523,6 +529,7 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
             </div>
           )}
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {billsLoading ? <LoadingState variant="inline" title="Carregando suas contas fixas…" /> : billsError ? <p role="alert" className="text-sm text-danger">Não foi possível carregar suas contas fixas.</p> : <>
             {bills.map((b: Bill) =>
               editingBill?.id === b.id ? (
                 <div key={b.id} className="col-span-full flex flex-wrap items-end gap-2 rounded-lg border border-border bg-bg p-3">
@@ -566,6 +573,7 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
               )
             )}
             {bills.length === 0 && <p className="text-sm text-muted">Nenhuma conta fixa cadastrada</p>}
+            </>}
           </div>
           {bills.length > 0 && (
             <div className="flex flex-wrap justify-between gap-2 border-t border-border pt-3 text-sm">
@@ -577,10 +585,10 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
       </Card>
 
       {/* Gráficos */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+      {annualLoading || annualCardsLoading || chartLoading || billsLoading || expensesLoading ? <LoadingState title="Preparando seus gráficos…" description="Organizando as entradas e saídas antes de mostrar os valores." /> : <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <GraficoAno dados={dadosDoAno} mesAtual={month} formata={fmt} />
         <DonutCategorias fatias={fatiasPorCategoria} formata={fmt} />
-      </div>
+      </div>}
 
       {/* Planejamento do ano: a mesma tabela anual que ja existia aqui, agora
           editavel. Trocada no lugar em vez de virar tela nova - e onde a
@@ -595,7 +603,7 @@ function DashboardPage({ userId, name }: { userId: string; name: string }) {
           {annualError || annualCardsError || configError || billsError ? (
             <p role="alert" className="text-sm text-muted">Não foi possível carregar os dados do planejamento. Recarregue a página para tentar novamente.</p>
           ) : annualLoading || annualCardsLoading || configLoading || billsLoading ? (
-            <p className="text-sm text-muted">Carregando o ano...</p>
+            <LoadingState title="Carregando o planejamento do ano…" description="Reunindo os valores de cada mês para montar sua previsão." />
           ) : (
             <PlanejamentoAnual
               key={year}

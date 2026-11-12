@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { LoadingState } from '@/components/loading-state'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, ArrowRight, Plus, Trash2 } from 'lucide-react'
@@ -86,7 +87,7 @@ function Assistant({userId,name}:{userId:string;name:string}) {
       throw e
     }
   }
-  if (!draft || !saved) return <div className="space-y-3"><p>{error || 'Carregando seu assistente…'}</p>{error&&<Button onClick={()=>load()}>Tentar novamente</Button>}</div>
+  if (!draft || !saved) return error ? <div className="space-y-3"><p role="alert">{error}</p><Button onClick={()=>load()}>Tentar novamente</Button></div> : <LoadingState variant="screen" title="Carregando seu assistente…" description="Preparando sua conversa e conferindo o rascunho salvo." />
   const currentSteps = steps(draft.profile)
   const active = currentSteps.includes(draft.step) ? draft.step : currentSteps[0]
   const currentIndex = currentSteps.indexOf(active)
@@ -201,7 +202,7 @@ function Assistant({userId,name}:{userId:string;name:string}) {
       </div>}
       <details className="text-sm text-muted"><summary className="cursor-pointer">Descartar este rascunho</summary><p className="my-2">Apaga somente o rascunho. Os cadastros financeiros já confirmados são preservados.</p><Button variant="outline" onClick={()=>run(async()=>{await api.post('/onboarding/discard',{version:saved.version});await load()})}>Descartar rascunho e recomeçar</Button></details>
     </fieldset>
-    <p role="status" className="text-xs text-muted">{busy?'Salvando ou consultando…':dirty?'Há alterações ainda não salvas. Use Continuar ou Salvar rascunho e sair.':'Rascunho salvo.'}</p>
+    {busy ? <LoadingState variant="inline" title="Preparando a próxima etapa…" description="Salvando e conferindo as informações da sua configuração." /> : <p role="status" className="text-xs text-muted">{dirty?'Há alterações ainda não salvas. Use Continuar ou Salvar rascunho e sair.':'Rascunho salvo.'}</p>}
   </OnboardingFrame>
 }
 const questions:Record<string,string>={config:'Quanto você tem disponível hoje e qual é sua receita estimada?',bill:'Quais contas se repetem todo mês?',card:'Quais cartões e faturas você tem?',loan:'Você deve para alguém ou tem dinheiro a receber?',client:'Quais clientes você atende?',subscription:'Quais serviços recorrentes oferece?',expense:'Quais despesas profissionais já realizou?'}

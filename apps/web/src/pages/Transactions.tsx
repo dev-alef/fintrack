@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { LoadingState } from '@/components/loading-state'
 import { Plus, TrendingUp, TrendingDown, Trash2, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useTransactions, useCreateTransaction, useDeleteTransaction } from '../hooks/useTransactions'
 import { Button } from '@/components/ui/button'
@@ -119,7 +120,7 @@ export default function Transactions() {
             {(error as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Erro ao carregar transações'}
           </div>
         ) : isLoading ? (
-          <p className="p-6 text-muted">Carregando...</p>
+          <LoadingState title="Carregando suas transações…" description="Buscando seus lançamentos e os filtros selecionados." />
         ) : data?.data?.length === 0 ? (
           <p className="p-6 text-muted">Nenhuma transação encontrada</p>
         ) : (

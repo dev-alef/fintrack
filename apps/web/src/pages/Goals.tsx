@@ -1,4 +1,5 @@
 import { useSession } from '@/lib/auth-client'
+import { LoadingState } from '@/components/loading-state'
 import { useState } from 'react'
 import { Target, CheckCircle2, Trash2, Calendar, PiggyBank, Plus } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -133,7 +134,7 @@ function GoalsPage({ userId }: { userId: string }) {
       )}
 
       {isLoading ? (
-        <p className="text-muted">Carregando...</p>
+        <LoadingState title="Carregando suas metas…" description="Só um instante para conferir o progresso dos seus objetivos." />
       ) : goals.length === 0 ? (
         <Card>
           <CardContent className="p-10 text-center">

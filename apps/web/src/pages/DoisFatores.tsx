@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { LoadingState } from '@/components/loading-state'
 import { Link, useNavigate } from "react-router-dom"
 import { ShieldCheck, KeyRound } from "lucide-react"
 import { twoFactor } from "../lib/auth-client"
@@ -102,6 +103,7 @@ export default function DoisFatores() {
               </div>
             )}
 
+            {carregando && <LoadingState variant="inline" title="Verificando seu código de acesso…" />}
             <Button type="submit" disabled={carregando} className="w-full">
               {carregando ? "Verificando..." : "Confirmar"}
             </Button>

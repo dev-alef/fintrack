@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import api from '../services/api'
+import { LoadingState } from '@/components/loading-state'
 
 type Period = { year: number; month: number }
 export type Forecast = { start: Period; current_balance: string | null; months: (Period & {
@@ -31,7 +32,7 @@ export function ThreeMonthForecastView({ data }: { data: Forecast }) {
 }
 export function ThreeMonthForecast({ userId, month, year }: { userId: string; month: number; year: number }) {
   const q = useQuery<Forecast>({ queryKey: ['threeMonthForecast', userId, month, year], queryFn: () => api.get(`/finance/forecast/three-months?month=${month}&year=${year}`).then(r => r.data) })
-  if (q.isPending) return <p className="text-sm text-muted">Calculando os próximos três meses…</p>
+  if (q.isPending) return <LoadingState variant="inline" title="Calculando os próximos três meses…" />
   if (q.isError) return <p role="alert" className="text-sm text-muted">Não foi possível carregar a previsão. <button onClick={() => q.refetch()} className="underline">Tentar novamente</button></p>
   return <ThreeMonthForecastView data={q.data} />
 }
