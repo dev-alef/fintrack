@@ -1,5 +1,25 @@
 @import "tailwindcss";
 
+.pv-loading { color:var(--text); }
+.pv-loading-panel { display:flex; flex-direction:column; align-items:center; gap:20px; border:1px solid var(--border); border-radius:24px; background:var(--surface); padding:32px 24px; text-align:center; box-shadow:var(--shadow); }
+.pv-loading-mark { position:relative; display:grid; place-items:center; flex-shrink:0; width:76px; height:76px; }
+.pv-loading-logo { display:grid; place-items:center; width:58px; height:58px; border:1px solid var(--border); border-radius:50%; background:var(--bg); animation:pv-loading-breathe 2.8s ease-in-out infinite; }
+.pv-loading-orbit { position:absolute; inset:0; border:1.5px solid var(--border); border-top-color:var(--primary); border-right-color:var(--primary); border-radius:50%; animation:pv-loading-orbit 1.8s linear infinite; }
+.pv-loading-title { margin:0; font-size:15px; font-weight:600; line-height:1.5; }
+.pv-loading-description { max-width:36ch; margin:6px 0 0; font-size:13px; line-height:1.7; color:var(--text-2); }
+.pv-loading-track { display:block; width:104px; height:3px; overflow:hidden; border-radius:99px; background:var(--track); }
+.pv-loading-track > span { display:block; width:40%; height:100%; border-radius:inherit; background:var(--primary); animation:pv-loading-travel 1.8s ease-in-out infinite; }
+.pv-loading-inline { display:flex; align-items:center; gap:12px; text-align:left; }
+.pv-loading-inline .pv-loading-mark { width:38px; height:38px; }
+.pv-loading-inline .pv-loading-logo { width:28px; height:28px; border:0; background:transparent; }
+.pv-loading-inline .pv-loading-title { font-size:13px; }
+.pv-loading-inline .pv-loading-description { max-width:44ch; font-size:12px; margin-top:3px; }
+.pv-loading-activity { position:fixed; z-index:150; left:50%; bottom:max(20px,env(safe-area-inset-bottom)); transform:translateX(-50%); width:max-content; max-width:calc(100vw - 32px); border:1px solid var(--border); border-radius:18px; padding:12px 18px; background:var(--surface); box-shadow:var(--shadow); pointer-events:none; }
+@keyframes pv-loading-orbit { to { transform:rotate(360deg); } }
+@keyframes pv-loading-breathe { 0%,100% { transform:scale(.96); } 50% { transform:scale(1); } }
+@keyframes pv-loading-travel { 0% { transform:translateX(-110%); } 100% { transform:translateX(360%); } }
+@media(prefers-reduced-motion:reduce) { .pv-loading-orbit,.pv-loading-logo,.pv-loading-track > span { animation:none!important; } .pv-loading-track > span { width:100%; opacity:.5; } }
+
 /* Paleta Organic: creme, terracota e salvia.
  *
  * EXCECAO deliberada: dinheiro. --income e --expense continuam verde e vermelho

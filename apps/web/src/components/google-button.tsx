@@ -1,6 +1,7 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { signIn } from "../lib/auth-client"
 import { Button } from "@/components/ui/button"
+import { erroDeServidor } from '@/lib/login-feedback'
 
 function GoogleIcon() {
   return (
@@ -29,6 +30,7 @@ type Props = {
   label: string
   disabled?: boolean
   onError: (message: string) => void
+  onLoadingChange?: (loading: boolean) => void
   /** Permite ao login novo trocar o formato do botao sem duplicar a logica do OAuth. */
   className?: string
 }
@@ -39,16 +41,27 @@ type Props = {
  * que ja tem conta cai no mesmo usuario, entao nao existe "cadastrar" separado
  * de "entrar" - so o texto do botao muda.
  */
-export function GoogleButton({ label, disabled, onError, className }: Props) {
+export function GoogleButton({ label, disabled, onError, onLoadingChange, className }: Props) {
   const [loading, setLoading] = useState(false)
+  useEffect(() => {
+    // Back from Google's page may restore the pending document from bfcache.
+    const restore = (event: PageTransitionEvent) => {
+      if (!event.persisted) return
+      setLoading(false)
+      onLoadingChange?.(false)
+    }
+    window.addEventListener('pageshow', restore)
+    return () => window.removeEventListener('pageshow', restore)
+  }, [onLoadingChange])
 
   async function handleClick() {
+    if (loading || disabled) return
     onError("")
     setLoading(true)
+    onLoadingChange?.(true)
     try {
-      // Em caso de sucesso o navegador sai desta pagina rumo ao Google, entao
-      // este await normalmente nao retorna. So voltamos aqui quando algo falha
-      // antes do redirecionamento - tipicamente provedor nao configurado.
+      // O Better Auth inicia a navegação para o Google. Preserve o estado
+      // ocupado até sair da página; pageshow recupera a volta pelo histórico.
       const { error } = await signIn.social({
         provider: "google",
         callbackURL: `${window.location.origin}/inicio`,
@@ -59,16 +72,13 @@ export function GoogleButton({ label, disabled, onError, className }: Props) {
       if (error) {
         onError("Login com Google indisponível no momento. Entre com e-mail e senha.")
         setLoading(false)
+        onLoadingChange?.(false)
       }
     } catch {
-      // Erro de rede: a requisicao nem chegou a uma resposta. Em
-      // desenvolvimento a causa quase sempre e o front apontando para outra API
-      // (VITE_API_URL) ou a origem fora de CORS_ORIGINS, entao vale dizer isso
-      // em vez de um "tente novamente" que manda repetir o que nao funciona.
-      onError(
-        "Não foi possível falar com o servidor. Verifique se a API está no ar e se esta origem está em CORS_ORIGINS.",
-      )
+      // Uma falha de rede não confirma o motivo; mostre uma orientação de espera.
+      onError(erroDeServidor)
       setLoading(false)
+      onLoadingChange?.(false)
     }
   }
 

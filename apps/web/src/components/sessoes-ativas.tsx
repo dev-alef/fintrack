@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react"
-import { Monitor, Smartphone, LogOut, Loader2 } from "lucide-react"
+import { Monitor, Smartphone, LogOut } from "lucide-react"
+import { LoadingState } from '@/components/loading-state'
 import { authClient, useSession } from "../lib/auth-client"
 import { Button } from "@/components/ui/button"
 
@@ -73,6 +74,7 @@ export function SessoesAtivas() {
   const tokenAtual = sessaoAtual?.session?.token
 
   const carrega = useCallback(async () => {
+    setErro('')
     try {
       const { data, error } = await authClient.listSessions()
       if (error) {
@@ -124,12 +126,8 @@ export function SessoesAtivas() {
   }
 
   if (sessoes === null) {
-    return (
-      <p className="flex items-center gap-2 text-sm text-muted">
-        <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-        Carregando sessões...
-      </p>
-    )
+    return erro ? <div className="space-y-3"><p role="alert" className="text-sm text-danger">{erro}</p><Button variant="outline" onClick={() => void carrega()}>Tentar novamente</Button></div>
+      : <LoadingState variant="inline" title="Carregando suas sessões…" />
   }
 
   // A sessão atual vai primeiro: é a âncora para ler a lista — a pessoa
@@ -144,6 +142,7 @@ export function SessoesAtivas() {
 
   return (
     <div className="space-y-4">
+      {encerrando && <LoadingState variant="inline" title="Atualizando suas sessões…" />}
       {erro && (
         <div role="alert" className="rounded-md border border-danger/20 bg-danger/10 px-3 py-2 text-sm text-danger">
           {erro}

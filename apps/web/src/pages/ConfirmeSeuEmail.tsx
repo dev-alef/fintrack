@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { LoadingState } from '@/components/loading-state'
 import { Link, useSearchParams } from "react-router-dom"
 import { MailCheck } from "lucide-react"
 import { authClient } from "../lib/auth-client"
@@ -96,6 +97,7 @@ export default function ConfirmeSeuEmail() {
           )}
 
           <div className="space-y-3">
+            {estado === 'enviando' && <LoadingState variant="inline" title="Reenviando seu e-mail…" />}
             <Button
               type="button"
               variant="outline"

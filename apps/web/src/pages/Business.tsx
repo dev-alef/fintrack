@@ -4,6 +4,7 @@ import { isAxiosError } from 'axios'
 import { BriefcaseBusiness, Plus, Pencil, Archive, Check, Undo2, Trash2 } from 'lucide-react'
 import api from '@/services/api'
 import { useSession } from '@/lib/auth-client'
+import { LoadingState } from '@/components/loading-state'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -105,7 +106,7 @@ function BusinessPage({ userId }: { userId: string }) {
   return <div className="min-w-0 space-y-6">
     <header className="flex flex-wrap items-start justify-between gap-4"><div><h1 className="flex items-center gap-2 text-2xl font-bold text-text"><BriefcaseBusiness className="h-6 w-6 text-primary" />Profissional</h1><p className="mt-1 text-sm text-muted">Clientes, serviços por assinatura e resultado do seu trabalho.</p></div><Field id="business-period" label="Mês do controle"><Input id="business-period" type="month" min="1900-01" max="2100-12" value={period} onChange={e => { if (/^(19\d{2}|20\d{2}|2100)-(0[1-9]|1[0-2])$/.test(e.target.value)) setPeriod(e.target.value) }} /></Field></header>
     <p className="rounded-xl border border-border bg-surface p-4 text-sm text-muted">Os valores desta área ficam separados das finanças pessoais. Recebimentos são confirmados manualmente após você verificar o pagamento. Eles não alteram seu Saldo Atual pessoal.</p>
-    {query.isPending ? <p role="status" className="text-muted">Carregando controle profissional…</p> : query.isError ? <div role="alert" className="space-y-3 rounded-xl border border-danger/30 p-4 text-danger"><p>Não foi possível carregar os dados profissionais.</p><Button variant="outline" onClick={() => query.refetch()}>Tentar novamente</Button></div> : data && <>
+    {query.isPending ? <LoadingState title="Carregando controle profissional…" description="Preparando seus clientes, serviços e fluxo de caixa." /> : query.isError ? <div role="alert" className="space-y-3 rounded-xl border border-danger/30 p-4 text-danger"><p>Não foi possível carregar os dados profissionais.</p><Button variant="outline" onClick={() => query.refetch()}>Tentar novamente</Button></div> : data && <>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{[
         ['Recebido no mês', data.totals.received, 'Entradas confirmadas pela data do recebimento.'],
         ['Despesas realizadas', data.totals.expenses, 'Gastos profissionais registrados neste mês.'],
@@ -130,5 +131,5 @@ function BusinessPage({ userId }: { userId: string }) {
 }
 export default function Business() {
   const { data: session } = useSession()
-  return session?.user.id ? <BusinessPage key={session.user.id} userId={session.user.id} /> : <p role="status">Carregando sessão…</p>
+  return session?.user.id ? <BusinessPage key={session.user.id} userId={session.user.id} /> : <LoadingState title="Carregando sessão…" />
 }

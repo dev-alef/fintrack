@@ -6,6 +6,7 @@ import { signIn, signUp } from "../lib/auth-client"
 import { GoogleButton } from "@/components/google-button"
 import { Logo } from "@/components/logo"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { LoadingState } from '@/components/loading-state'
 
 const FRASES = [
   "Organize suas faturas e contas fixas.",
@@ -95,17 +96,11 @@ export default function Login() {
   const [verSenha, setVerSenha] = useState(false)
   const [erro, setErro] = useState("")
   const [carregando, setCarregando] = useState(false)
-  const [demorando, setDemorando] = useState(false)
+  const [googleLoading, setGoogleLoading] = useState(false)
   const [saindo, setSaindo] = useState(false)
   const [focado, setFocado] = useState(false)
   const [reduzido, setReduzido] = useState(false)
   const timer = useRef<number | undefined>(undefined)
-
-  useEffect(() => {
-    if (!carregando) {setDemorando(false);return}
-    const aviso = window.setTimeout(() => setDemorando(true), 8000)
-    return () => window.clearTimeout(aviso)
-  }, [carregando])
 
   const forca = useMemo(() => forcaDaSenha(senha), [senha])
   const criando = modo === "criar"
@@ -138,6 +133,7 @@ export default function Login() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (carregando || googleLoading || saindo) return
     setErro("")
 
     if (!email.includes("@")) return setErro("Informe um e-mail válido.")
@@ -377,6 +373,7 @@ export default function Login() {
                 <button
                   key={m}
                   type="button"
+                  disabled={carregando || googleLoading || saindo}
                   role="tab"
                   aria-selected={modo === m}
                   onClick={() => {
@@ -417,7 +414,6 @@ export default function Login() {
                   Senha alterada. Entre com a nova senha.
                 </div>
               )}
-              {carregando && demorando && <p role="status" className="mb-4 text-sm leading-relaxed text-muted">Está demorando um pouco. O servidor pode estar iniciando após um período sem uso; isso costuma levar cerca de 1 minuto. Aguarde nesta tela enquanto tentamos entrar.</p>}
               {erro && (
                 <div
                   role="alert"
@@ -427,6 +423,11 @@ export default function Login() {
                 </div>
               )}
             </div>
+
+            {(carregando || googleLoading) && <LoadingState key={googleLoading ? 'google' : modo} className="mb-5"
+              title={googleLoading ? 'Conectando com o Google…' : criando ? 'Criando sua conta…' : 'Entrando na sua Provisão…'}
+              description="Carregando. Estamos preparando seu acesso."
+              slowMessage="O servidor pode estar iniciando após um período sem uso. Isso pode levar cerca de 1 minuto. Aguarde nesta tela enquanto preparamos seu acesso." />}
 
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               {criando && (
@@ -549,7 +550,7 @@ export default function Login() {
               <button
                 type="submit"
                 className="pv-primary"
-                disabled={carregando || saindo}
+                disabled={carregando || googleLoading || saindo}
                 style={{
                   marginTop: 4,
                   fontSize: 15,
@@ -557,7 +558,7 @@ export default function Login() {
                   padding: "14px 20px",
                   borderRadius: 999,
                   border: "none",
-                  cursor: carregando || saindo ? "default" : "pointer",
+                  cursor: carregando || googleLoading || saindo ? "default" : "pointer",
                   background: "var(--primary)",
                   color: "var(--primary-fg)",
                   display: "flex",
@@ -600,6 +601,7 @@ export default function Login() {
                 label="Continuar com Google"
                 disabled={carregando || saindo}
                 onError={setErro}
+                onLoadingChange={setGoogleLoading}
                 className="w-full gap-2 rounded-full py-3"
               />
             </div>

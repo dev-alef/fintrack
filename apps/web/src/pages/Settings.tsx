@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom"
 import { useState } from "react"
+import { LoadingState } from '@/components/loading-state'
 import { QRCodeSVG } from "qrcode.react"
 import { ShieldCheck, ShieldOff, Copy, Check, AlertTriangle, LifeBuoy, MonitorSmartphone } from "lucide-react"
 import { FormularioSuporte } from "@/components/formulario-suporte"
@@ -152,6 +153,7 @@ export default function Settings() {
         <p className="mt-2 text-sm text-muted">Segurança e acesso à sua conta.</p>
       </div>
 
+      {carregando && <LoadingState variant="inline" title="Atualizando a segurança da sua conta…" />}
       <section className="rounded-lg border border-border bg-surface p-6">
         <div className="flex items-start gap-4">
           <span

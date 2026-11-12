@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { LoadingState } from '@/components/loading-state'
 import { useLocation } from "react-router-dom"
 import { LifeBuoy, CheckCircle2 } from "lucide-react"
 import api from "../services/api"
@@ -94,6 +95,7 @@ export function FormularioSuporte() {
         </div>
       )}
 
+      {estado === 'enviando' && <LoadingState variant="inline" title="Enviando sua mensagem…" />}
       <Button type="submit" disabled={estado === "enviando"} className="gap-2">
         <LifeBuoy className="h-4 w-4" aria-hidden="true" />
         {estado === "enviando" ? "Enviando..." : "Enviar mensagem"}

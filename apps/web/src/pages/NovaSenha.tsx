@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { LoadingState } from '@/components/loading-state'
 import { Link, useNavigate, useSearchParams } from "react-router-dom"
 import { Lock, Eye, EyeOff } from "lucide-react"
 import { authClient } from "../lib/auth-client"
@@ -150,6 +151,7 @@ export default function NovaSenha() {
                   </div>
                 )}
 
+                {carregando && <LoadingState variant="inline" title="Salvando sua nova senha…" />}
                 <Button type="submit" disabled={carregando} className="w-full">
                   {carregando ? "Salvando..." : "Salvar nova senha"}
                 </Button>

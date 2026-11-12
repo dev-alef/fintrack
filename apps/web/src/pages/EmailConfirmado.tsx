@@ -1,4 +1,5 @@
 import { useEffect } from "react"
+import { LoadingState } from '@/components/loading-state'
 import { useNavigate, useSearchParams, Link } from "react-router-dom"
 import { CheckCircle2, XCircle } from "lucide-react"
 import { useSession } from "../lib/auth-client"
@@ -74,8 +75,8 @@ export default function EmailConfirmado() {
                 </p>
               </div>
 
-              {session?.user ? (
-                <p className="text-sm text-muted">Preparando suas boas-vindas...</p>
+              {isPending || session?.user ? (
+                <LoadingState variant="inline" title="Preparando suas boas-vindas…" />
               ) : (
                 <Button type="button" className="w-full" onClick={() => navigate("/login")}>
                   Entrar

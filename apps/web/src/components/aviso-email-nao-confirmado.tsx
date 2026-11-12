@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { LoadingState } from '@/components/loading-state'
 import { MailWarning, X } from "lucide-react"
 import { authClient, useSession } from "../lib/auth-client"
 
@@ -25,11 +26,13 @@ export function AvisoEmailNaoConfirmado() {
   async function reenviar() {
     if (!usuario) return
     setEstado("enviando")
-    const { error } = await authClient.sendVerificationEmail({
-      email: usuario.email,
-      callbackURL: `${window.location.origin}/email-confirmado`,
-    })
-    setEstado(error ? "erro" : "enviado")
+    try {
+      const { error } = await authClient.sendVerificationEmail({
+        email: usuario.email,
+        callbackURL: `${window.location.origin}/email-confirmado`,
+      })
+      setEstado(error ? "erro" : "enviado")
+    } catch { setEstado('erro') }
   }
 
   return (
@@ -59,6 +62,7 @@ export function AvisoEmailNaoConfirmado() {
             {estado === "enviando" ? "Reenviando..." : "Reenviar e-mail de confirmação"}
           </button>
         )}
+        {estado === 'enviando' && <LoadingState variant="inline" title="Reenviando seu e-mail…" className="mt-2" />}
       </div>
 
       <button

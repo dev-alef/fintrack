@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { LoadingState } from '@/components/loading-state'
 import { Sparkles, Loader2, Bot, AlertCircle, RotateCw } from 'lucide-react'
 import api from '../services/api'
 import { useSession } from '../lib/auth-client'
@@ -105,6 +106,8 @@ export default function Insights() {
         )}
       </div>
 
+      {loading && <LoadingState title="Preparando sua análise…" description="A IA está analisando os dados para organizar suas sugestões."
+        slowMessage="A análise está levando um pouco mais de tempo. Aguarde nesta tela enquanto ela é preparada." />}
       {error && (
         <Card className="border-danger/20 bg-danger/10">
           <CardContent className="p-5">
