@@ -52,6 +52,39 @@ export function emptyDraft(): Draft {
 export function conversationSteps(profile: Draft['profile']): Draft['step'][] {
   return [...(profile !== 'professional' ? ['config','bill','card','loan'] as const : []), ...(profile !== 'personal' ? ['client','subscription','expense'] as const : []), 'review']
 }
+export type ConversationFocus = { item_id?:string; kind:Kind; field:string; question:string }
+function fieldQuestion(i:Item, field:string) {
+  const label=String(i.fields.name || i.fields.person || i.fields.service_name || i.fields.title || titles[i.kind])
+  if(field==='recurring')return i.fields.recurring===false
+    ? `${label} não é mensal e não pode entrar como conta fixa mensal. Você pode pular este bloco e manter a conta no rascunho.`
+    : `${label} se repete todo mês?`
+  if(field==='due_day')return `Em que dia do mês vence ${label}?`
+  if(field==='balance')return 'Qual é o seu Saldo Atual, ou seja, o dinheiro disponível hoje?'
+  if(field==='estimated_income')return 'Qual é a sua receita estimada integral do mês?'
+  if(field==='amount')return i.kind==='loan' ? `Quanto ainda está pendente com ${label}?` : `Qual é o valor de ${label}?`
+  if(field==='name')return `Qual é o nome deste ${titles[i.kind].toLocaleLowerCase('pt-BR')}?`
+  if(field==='direction')return `Você deve para ${label} ou ${label} deve para você?`
+  return `Sobre ${label}, pode informar ${fieldLabels[field] || field}?`
+}
+/** One explicit target makes short replies ("sim", "dia 10") unambiguous. */
+export function conversationFocus(draft:Draft):ConversationFocus|null {
+  if(draft.step==='review'||draft.skipped.includes(draft.step)||draft.absent.includes(draft.step))return null
+  const items=draft.items.filter(i=>i.kind===draft.step||(draft.step==='card'&&i.kind==='invoice'))
+  for(const i of items){
+    if(i.action==='reuse')continue
+    const result=schemas[i.kind].safeParse(i.fields)
+    const fields=result.success?[]:result.error.issues.map(issue=>String(issue.path[0] || 'campos'))
+    if(i.kind==='config'&&i.fields.month===draft.month&&i.fields.year===draft.year){
+      for(const key of ['balance','estimated_income'])if(i.fields[key]===undefined&&!fields.includes(key))fields.push(key)
+    }
+    if(fields.length)return {item_id:i.id,kind:i.kind,field:fields[0],question:fieldQuestion(i,fields[0])}
+  }
+  if(draft.step==='config'&&items.length&&!items.some(i=>i.fields.month===draft.month&&i.fields.year===draft.year))return {kind:'config',field:'period',question:`Qual é o Saldo Atual e a receita de ${draft.month}/${draft.year}?`}
+  if(draft.step==='card')for(const card of items.filter(i=>i.kind==='card')){
+    if(!items.some(i=>i.kind==='invoice'&&i.fields.card_ref===card.id&&i.fields.month===draft.month&&i.fields.year===draft.year))return {item_id:card.id,kind:'invoice',field:'amount',question:`Qual é o valor da Fatura de ${card.fields.name || 'cartão'} em ${draft.month}/${draft.year}? Se ainda não souber, pode pular por enquanto.`}
+  }
+  return null
+}
 export function conversationState(draft: Draft) {
   const order = conversationSteps(draft.profile)
   const block = (step: Draft['step']) => {
@@ -74,7 +107,8 @@ export function conversationState(draft: Draft) {
 }
 export function nextQuestion(draft: Draft) {
   const state = conversationState(draft)
-  if (state.missing.length) return `Vamos completar o que falta: ${state.missing.join('; ')}.`
+  const focus=conversationFocus(draft)
+  if (!state.ready&&focus) return focus.question
   const questions: Record<Draft['step'], string> = {
     config: 'Quanto você tem disponível hoje e qual é a receita estimada integral do mês?',
     bill: 'Quais contas fixas você paga? Pode me contar nome, valor, vencimento e se repetem todo mês.',

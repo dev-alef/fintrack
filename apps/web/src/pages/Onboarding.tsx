@@ -25,6 +25,8 @@ function Assistant({userId,name}:{userId:string;name:string}) {
   const [phase,setPhase]=useState<OnboardingPhase>(params.get('conversation')==='1'?'conversation':params.get('welcome')==='1'?'transition':'intro')
   const [guided,setGuided]=useState(false)
   const inputRef=useRef<HTMLTextAreaElement>(null)
+  const feedbackRef=useRef<HTMLDivElement>(null)
+  const running=useRef(false)
   const [saved,setSaved] = useState<SavedDraft|null>(null)
   const [draft,setDraft] = useState<Draft|null>(null)
   const [dirty,setDirty] = useState(false)
@@ -37,7 +39,11 @@ function Assistant({userId,name}:{userId:string;name:string}) {
   })
   async function load(initial=false) {
     setBusy(true);setError('')
-    try { const {data} = await api.get<SavedDraft>('/onboarding');setSaved(data);setDraft(data.data);setDirty(false);setPreview(null);if(initial&&(pending||((data.data.items.length||data.data.conversation_started)&&params.get('welcome')!=='1')))setPhase('conversation') }
+    try {
+      const {data} = await api.get<SavedDraft>('/onboarding');setSaved(data);setDraft(data.data);setDirty(false);setPreview(null);setConfirmed(false)
+      if(initial&&(pending||((data.data.items.length||data.data.conversation_started)&&params.get('welcome')!=='1')))setPhase('conversation')
+      if(data.data.step==='review'&&!pending){const p=await api.post<Preview>('/onboarding/preview',{version:data.version});setPreview(p.data)}
+    }
     catch(e) {setError(errorText(e))} finally {setBusy(false)}
   }
   useEffect(() => { void load(true) }, [])
@@ -47,6 +53,8 @@ function Assistant({userId,name}:{userId:string;name:string}) {
     return()=>clearTimeout(t)
   },[phase])
   useEffect(()=>{if(phase==='conversation')inputRef.current?.focus()},[phase,draft?.step])
+  useEffect(()=>{if(error){feedbackRef.current?.focus();feedbackRef.current?.scrollIntoView?.({block:'nearest'})}},[error])
+  useEffect(()=>{if(phase==='done')window.scrollTo({top:0,behavior:'instant'})},[phase])
   useEffect(() => {
     const warn = (e:BeforeUnloadEvent) => { if (dirty||text.trim()) {e.preventDefault();e.returnValue=''} }
     window.addEventListener('beforeunload',warn);return () => window.removeEventListener('beforeunload',warn)
@@ -59,7 +67,7 @@ function Assistant({userId,name}:{userId:string;name:string}) {
     if(consumesAnswer)setText('')
     const next = {...saved,...r.data};setSaved(next);setDraft(next.data);setDirty(false);void qc.invalidateQueries({queryKey:['onboardingInvitation',userId]});return next as SavedDraft
   }
-  async function run(fn:()=>Promise<void>) {setBusy(true);setError('');try {await fn()} catch(e) {setError(errorText(e))} finally {setBusy(false)}}
+  async function run(fn:()=>Promise<void>) {if(running.current)return;running.current=true;setBusy(true);setError('');setNotice('');try {await fn()} catch(e) {setError(errorText(e))} finally {running.current=false;setBusy(false)}}
   function add(kind:Kind) {
     if (!draft) return
     const item:Item = {id:crypto.randomUUID(),kind,fields:kind==='config'||kind==='invoice'?{month:draft.month,year:draft.year}:{},action:'create',duplicate_ack:false}
@@ -68,10 +76,14 @@ function Assistant({userId,name}:{userId:string;name:string}) {
   function edit(id:string, patch:Partial<Item>) {if(draft) change({...draft,items:draft.items.map(i=>i.id===id?{...i,...patch}:i)})}
   async function review(data = draft, consumesAnswer=false) {
     setPhase('conversation')
+    setGuided(false)
+    setPreview(null);setConfirmed(false)
     const next = await persist({...data!,step:'review'},consumesAnswer)
     const response = await api.post<Preview>('/onboarding/preview',{version:next.version})
     setPreview(response.data);setConfirmed(false)
   }
+  async function selectReview(data:Draft) { change(data);await review(data) }
+  function reviewEdit(id:string,patch:Partial<Item>){void run(()=>selectReview({...draft!,items:draft!.items.map(i=>i.id===id?{...i,...patch}:i)}))}
   async function commit() {
     const request = pending || {version:preview!.version,token:preview!.token,reference_period:preview!.reference_period,request_id:crypto.randomUUID()}
     // Persist the same id before sending, including across a reload after a lost response.
@@ -79,8 +91,9 @@ function Assistant({userId,name}:{userId:string;name:string}) {
     try {
       const {data} = await api.post('/onboarding/commit',request)
       sessionStorage.removeItem(storageKey);setPending(null)
-      await qc.invalidateQueries();await load()
       setPhase('done');setText('');setNotice(`${data.created} cadastro(s) criado(s), ${data.reused} existente(s) utilizado(s). ${data.pending} item(ns) ficaram pendentes no rascunho.`)
+      // A successful commit must not wait for unrelated background requests.
+      void qc.invalidateQueries()
     } catch(e) {
       const status = (e as {response?:{status?:number}}).response?.status
       if (status===400 || status===409) {sessionStorage.removeItem(storageKey);setPending(null);setPreview(null);setConfirmed(false)}
@@ -94,7 +107,7 @@ function Assistant({userId,name}:{userId:string;name:string}) {
   const visibleKinds:Kind[] = active==='review' ? [] : active==='card' ? ['card','invoice'] : [active]
   const locked = busy || Boolean(pending)
   const started=Boolean(draft.conversation_started||draft.items.length||active==='review')
-  async function exit() { if(text.trim()){setError('Sua resposta ainda não foi enviada. Envie-a ou apague o texto antes de sair; só itens já interpretados ficam no rascunho.');return} await persist();await api.post('/onboarding/dismiss');await qc.invalidateQueries({queryKey:['onboardingInvitation',userId]});navigate('/dashboard') }
+  async function exit() { if(phase==='done'){navigate('/dashboard');return} if(text.trim()){setError('Sua resposta ainda não foi enviada. Envie-a ou apague o texto antes de sair; só itens já interpretados ficam no rascunho.');return} await persist();await api.post('/onboarding/dismiss');await qc.invalidateQueries({queryKey:['onboardingInvitation',userId]});navigate('/dashboard') }
   async function chooseProfile(profile:Draft['profile']) {await persist({...draft!,profile,conversation_started:true,step:steps(profile)[0]},true);setText('')}
   async function advanceBlock(mode:'absent'|'skip',consumesAnswer=false) {
     if(mode==='absent'&&draft!.items.some(i=>visibleKinds.includes(i.kind)))throw new UserNotice('Já há itens neste bloco. Confira os campos guiados ou pule por enquanto para deixá-los pendentes.')
@@ -104,6 +117,7 @@ function Assistant({userId,name}:{userId:string;name:string}) {
     if(consumesAnswer)setText('')
   }
   async function answer() {
+    if(dirty)throw new UserNotice('Salve os campos guiados para atualizar a pergunta antes de responder.')
     if(!started){
       const v=text.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()
       const answer=v.trim().replace(/[.!?]+$/,'')
@@ -116,14 +130,16 @@ function Assistant({userId,name}:{userId:string;name:string}) {
     const local=localConversationReply(active,text)
     if(local){await advanceBlock(local,true);return}
     const next=await persist()
-    const {data}=await api.post('/onboarding/answer',{version:next.version,text,consent:true})
-    setSaved({...next,...data});setDraft(data.data);setDirty(false);setText('');setGuided(false);setPreview(null);setConfirmed(false)
+    const {data}=await api.post<SavedDraft>('/onboarding/answer',{version:next.version,text,consent:true})
+    setSaved({...next,...data});setDraft(data.data);setDirty(false);setPreview(null);setConfirmed(false)
+    if(data.answer_applied===false){setNotice(data.answer_notice||'Não consegui entender. Você pode ajustar a resposta ou usar os campos guiados.');setGuided(true);return}
+    setText('');setGuided(false)
     if(data.data.step==='review'){const p=await api.post('/onboarding/preview',{version:data.version});setPreview(p.data)}
   }
-  return <OnboardingFrame phase={phase} group={phase==='intro'?0:active==='review'||phase==='done'?3:active==='config'||!started?1:2} onStart={()=>setPhase('conversation')} onExit={()=>run(exit)} locked={locked} error={phase==='intro'||phase==='transition'?error:undefined}>
+  return <OnboardingFrame phase={phase} returning={phase==='done'} group={phase==='intro'?0:active==='review'||phase==='done'?3:active==='config'||!started?1:2} onStart={()=>setPhase('conversation')} onExit={()=>run(exit)} locked={locked} error={phase==='intro'||phase==='transition'?error:undefined}>
     {phase==='done'&&<section className="oc-arrive"><h1>Seu espaço está pronto.</h1><p className="oc-description">Os cadastros escolhidos foram confirmados. Você pode ajustar seus dados a qualquer momento.</p><Link to="/dashboard" className="oc-primary">Ir ao Dashboard ↗</Link></section>}
-    {error&&<div role="alert" className="rounded-lg border border-border p-3 text-sm text-expense">{error} {!pending&&<button className="ml-2 underline" onClick={()=>load()}>Recarregar versão salva</button>}</div>}
-    {notice&&<div role="status" className="rounded-lg border border-border p-3 text-sm text-text">{notice} <Link className="inline-block underline" to="/dashboard">Abrir Dashboard</Link></div>}
+    {error&&<div ref={feedbackRef} tabIndex={-1} role="alert" className="rounded-lg border border-border p-3 text-sm text-expense">{error} {!pending&&<button disabled={busy} className="ml-2 underline" onClick={()=>load()}>Recarregar versão salva</button>}</div>}
+    {notice&&<div role="status" className="rounded-lg border border-border p-3 text-sm text-text">{notice} {phase==='done'&&<Link className="inline-block underline" to="/dashboard">Abrir Dashboard</Link>}</div>}
     {pending&&<div role="alert" className="rounded-lg border border-border p-4 text-sm text-text">A confirmação ainda precisa ser conferida. Use o mesmo pedido para consultar/concluir sem duplicar cadastros.<Button disabled={busy} className="mt-2" onClick={()=>run(commit)}>Conferir confirmação</Button></div>}
     {phase==='conversation'&&active!=='review'&&<section className="oc-chat">
       <div className="oc-eyebrow">{started?titles[active]:`Prazer, ${name.split(' ')[0]}`}</div>
@@ -131,8 +147,9 @@ function Assistant({userId,name}:{userId:string;name:string}) {
       {!started&&<div className="oc-options oc-profile-options">{([['personal','Minha vida pessoal'],['professional','Meu trabalho'],['both','Os dois']] as const).map(([v,label])=><button disabled={locked} key={v} onClick={()=>run(()=>chooseProfile(v))}>{label}</button>)}</div>}
       {active==='config'&&started&&<p className="oc-description">Saldo Atual é o disponível hoje; receita estimada é a receita integral do mês. A previsão soma os dois e desconta contas fixas e faturas. Renda já incluída no saldo pode ser contada novamente.</p>}
       {['client','subscription','expense'].includes(active)&&started&&<p className="oc-description">Seu caixa profissional fica separado do pessoal. Recebimentos não são marcados automaticamente.</p>}
-      <form className="oc-chat-form" onSubmit={e=>{e.preventDefault();if(!locked&&text.trim()&&(!started||localConversationReply(active,text)||(consent&&saved.ai_available)))void run(answer)}}>
-        <div className="oc-composer"><textarea ref={inputRef} aria-label="Sua resposta" maxLength={3000} rows={2} value={text} disabled={locked} placeholder={started?'Pode responder do seu jeito…':'Pessoal, profissional ou os dois…'} onChange={e=>setText(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();e.currentTarget.form?.requestSubmit()}}}/><button aria-label="Enviar resposta" disabled={locked||!text.trim()||(started&&!localConversationReply(active,text)&&(!consent||!saved.ai_available))}>↑</button></div>
+      {dirty&&<div role="status" className="space-y-2 rounded-xl border border-border bg-surface p-4 text-sm"><p>Você alterou os campos guiados. Salve para atualizar a pergunta antes de responder.</p><Button disabled={locked} variant="outline" onClick={()=>run(async()=>{await persist();setNotice('Campos salvos. Confira a pergunta atualizada antes de enviar sua resposta.')})}>Salvar campos e atualizar pergunta</Button></div>}
+      <form className="oc-chat-form" onSubmit={e=>{e.preventDefault();if(!locked&&!dirty&&text.trim()&&(!started||localConversationReply(active,text)||(consent&&saved.ai_available)))void run(answer)}}>
+        <div className="oc-composer"><textarea ref={inputRef} aria-label="Sua resposta" maxLength={3000} rows={2} value={text} disabled={locked} placeholder={started?'Pode responder do seu jeito…':'Pessoal, profissional ou os dois…'} onChange={e=>setText(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();e.currentTarget.form?.requestSubmit()}}}/><button aria-label="Enviar resposta" disabled={locked||dirty||!text.trim()||(started&&!localConversationReply(active,text)&&(!consent||!saved.ai_available))}>↑</button></div>
         <div className="oc-composer-footer"><span>Enter para enviar · Shift + Enter para nova linha</span><span role="status">{busy?'Preparando sua próxima pergunta…':''}</span></div>
         {started&&<label className="oc-consent"><input disabled={locked} type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)}/>Autorizo enviar minha resposta e os itens do rascunho ao Google Gemini para interpretar os dados. Posso usar os campos guiados sem envio à IA.</label>}
       </form>
@@ -142,8 +159,8 @@ function Assistant({userId,name}:{userId:string;name:string}) {
       <button className="oc-link" disabled={locked} onClick={()=>setGuided(v=>!v)}>{guided?'Fechar campos guiados':'Prefiro preencher os campos'}</button>
       {draft.items.length>0&&<button disabled={locked} className="oc-link" style={{marginLeft:20}} onClick={()=>run(()=>review())}>Revisar {draft.items.length} item(ns)</button>}
     </section>}
-    <fieldset disabled={locked} className="space-y-5">
-      {phase==='conversation'&&<details className="oc-guided" open={guided||active==='review'} onToggle={e=>{if(active!=='review')setGuided(e.currentTarget.open)}}><summary>Configuração, etapas e campos guiados</summary>
+    {phase==='conversation'&&<fieldset disabled={locked} className="space-y-5">
+      {phase==='conversation'&&<details className="oc-guided" open={guided} onToggle={e=>setGuided(e.currentTarget.open)}><summary>Configuração, etapas e campos guiados</summary>
       <div className="grid gap-3 rounded-xl border border-border bg-surface p-4 sm:grid-cols-3">
         <label className="space-y-1 text-sm">Quero organizar<select aria-label="Perfil" className={selectClass} value={draft.profile} onChange={e=>{const profile=e.target.value as Draft['profile'];change({...draft,profile,conversation_started:true,step:steps(profile)[0]})}}><option value="both">Pessoal e profissional</option><option value="personal">Pessoal</option><option value="professional">Profissional</option></select></label>
         <label className="space-y-1 text-sm">Mês de referência<Input aria-label="Mês de referência" type="number" min={1} max={12} value={draft.month} onChange={e=>change({...draft,month:Number(e.target.value)})}/></label>
@@ -169,17 +186,23 @@ function Assistant({userId,name}:{userId:string;name:string}) {
       {phase==='conversation'&&active==='review'&&<section className="space-y-4" aria-labelledby="onboarding-review-title">
         <h2 id="onboarding-review-title" className="text-xl font-semibold">Confira antes de salvar</h2>
         <p className="text-sm text-muted">Somente os itens incluídos serão cadastrados. Os demais permanecem no rascunho. Nenhum pagamento, recebimento ou transferência será realizado.</p>
+        {draft.items.every(i=>i.action==='pending')&&<div className="rounded-xl border border-border bg-surface p-4 space-y-3" role="status">
+          <h3 className="font-semibold">Nenhum cadastro selecionado</h3>
+          <p className="text-sm text-muted">Marque os itens que quer salvar ou selecione os que já estão prontos. Itens incompletos e etapas puladas continuam no rascunho.</p>
+          <Button disabled={!preview?.ready_ids?.length} onClick={()=>run(()=>selectReview({...draft,items:draft.items.map(i=>preview?.ready_ids?.includes(i.id)?{...i,action:i.existing_id?'reuse':'create'}:i)}))}>Selecionar itens prontos</Button>
+          <Button variant="outline" onClick={()=>run(exit)}>Continuar sem cadastrar</Button>
+        </div>}
         {draft.items.length===0&&<p className="text-sm">Nenhum item no rascunho. Volte a uma etapa para adicionar.</p>}
         {draft.items.map(i=>{
           const result=preview?.rows.find(r=>r.id===i.id)
           const display = result && i.action==='reuse' ? {...i,fields:result.fields} : i
           return <article key={i.id} className="rounded-xl border border-border bg-surface p-4 space-y-3">
-            <div className="flex flex-wrap justify-between gap-2"><h3 className="font-semibold">{titles[i.kind]}: {itemTitle(display)}</h3><button className="text-sm underline" onClick={()=>run(async()=>{await persist({...draft,step:i.kind==='invoice'?'card':i.kind})})}>Editar</button></div>
+            <div className="flex flex-wrap justify-between gap-2"><h3 className="font-semibold">{titles[i.kind]}: {itemTitle(display)}</h3><button className="text-sm underline" onClick={()=>run(async()=>{await persist({...draft,step:i.kind==='invoice'?'card':i.kind});setGuided(true);inputRef.current?.scrollIntoView?.({block:'start'})})}>Editar</button></div>
             <dl className="grid gap-1 text-sm sm:grid-cols-2">{fields[i.kind].map(f=><div key={f.key}><dt className="text-muted">{f.label}</dt><dd className="break-words text-text">{fieldValue(display,f,draft.items)}</dd></div>)}</dl>
-            <label className="flex gap-2 text-sm"><input type="checkbox" checked={i.action!=='pending'} onChange={e=>edit(i.id,{action:e.target.checked?(i.existing_id?'reuse':'create'):'pending'})}/>{i.action==='reuse'?'Usar existente, sem alterar':'Incluir este cadastro'}</label>
-            {result?.matches.length ? <div className="text-sm space-y-2"><p>Encontramos cadastros semelhantes:</p>{result.matches.map(row=><button key={row.id} className="block underline" onClick={()=>edit(i.id,{action:'reuse',existing_id:String(row.id),fields:Object.fromEntries(Object.entries(row).filter(([key])=>key!=='id'&&row[key]!=null)) as Item['fields']})}>Usar {String(row.name||row.person||row.service_name||row.title||`${row.month}/${row.year}`)} já cadastrado</button>)}{!['config','invoice'].includes(i.kind)&&i.action!=='reuse'&&<label className="flex gap-2"><input type="checkbox" checked={i.duplicate_ack} onChange={e=>edit(i.id,{duplicate_ack:e.target.checked})}/>Conferi: este é um cadastro distinto.</label>}</div>:null}
-            {result?.issues.some(issue=>issue.includes('neste rascunho'))&&<label className="flex gap-2 text-sm"><input type="checkbox" checked={i.duplicate_ack} onChange={e=>edit(i.id,{duplicate_ack:e.target.checked})}/>Conferi: este item é distinto dos outros do rascunho.</label>}
-            {result?.issues.map(issue=><p key={issue} className="text-sm text-expense">{issue}</p>)}
+            <label className="flex gap-2 text-sm"><input type="checkbox" checked={i.action!=='pending'} onChange={e=>reviewEdit(i.id,{action:e.target.checked?(i.existing_id?'reuse':'create'):'pending'})}/>{i.action==='reuse'?'Usar existente, sem alterar':'Incluir este cadastro'}</label>
+            {result?.matches.length ? <div className="text-sm space-y-2"><p>Encontramos cadastros semelhantes:</p>{result.matches.map(row=><button key={row.id} className="block underline" onClick={()=>reviewEdit(i.id,{action:'reuse',existing_id:String(row.id),fields:Object.fromEntries(Object.entries(row).filter(([key])=>key!=='id'&&row[key]!=null)) as Item['fields']})}>Usar {String(row.name||row.person||row.service_name||row.title||`${row.month}/${row.year}`)} já cadastrado</button>)}{!['config','invoice'].includes(i.kind)&&i.action!=='reuse'&&<label className="flex gap-2"><input type="checkbox" checked={i.duplicate_ack} onChange={e=>reviewEdit(i.id,{duplicate_ack:e.target.checked})}/>Conferi: este é um cadastro distinto.</label>}</div>:null}
+            {[...(result?.issues||[]),...(result?.selection_issues||[])].some(issue=>issue.includes('neste rascunho'))&&<label className="flex gap-2 text-sm"><input type="checkbox" checked={i.duplicate_ack} onChange={e=>reviewEdit(i.id,{duplicate_ack:e.target.checked})}/>Conferi: este item é distinto dos outros do rascunho.</label>}
+            {(i.action==='pending'?result?.selection_issues:result?.issues)?.map(issue=><p key={issue} className="text-sm text-expense">{issue}</p>)}
           </article>
         })}
         <p className="text-xs text-muted">Sem itens informados: {[...draft.absent].map(k=>titles[k]).join(', ')||'nenhum bloco marcado'}. Etapas puladas: {draft.skipped.map(k=>titles[k]).join(', ')||'nenhuma'}.</p>
@@ -187,10 +210,12 @@ function Assistant({userId,name}:{userId:string;name:string}) {
         {preview&&<div className="rounded-xl border border-border p-4 space-y-3">
           <p className="text-sm">{preview.rows.filter(i=>i.action==='create').length} novos · {preview.rows.filter(i=>i.action==='reuse').length} existentes · {preview.pending_count} pendentes.</p>
           {preview.current_period!==preview.reference_period&&<p className="text-sm text-warning">O período de referência {preview.reference_period} é diferente do mês atual {preview.current_period}. Confira mês/ano de cada item.</p>}
-          <label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={confirmed} onChange={e=>setConfirmed(e.target.checked)}/>Conferi os valores e períodos acima, com referência {preview.reference_period}, e quero salvar somente os itens incluídos.</label>
+          {preview.rows.some(i=>i.action!=='pending')&&<><label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={confirmed} onChange={e=>setConfirmed(e.target.checked)}/>Conferi os valores e períodos acima, com referência {preview.reference_period}, e quero salvar somente os itens incluídos.</label>
           <Button disabled={!preview.can_commit||!confirmed||dirty} onClick={()=>run(commit)}>Confirmar e cadastrar</Button>
           {!preview.can_commit&&<p className="text-sm text-muted">Corrija os avisos ou deixe os itens incompletos pendentes. Depois atualize a revisão.</p>}
+          </>}
         </div>}
+        {busy&&<LoadingState variant="inline" title={pending?'Confirmando seus cadastros…':'Atualizando sua revisão…'} description="Aguarde enquanto conferimos os itens selecionados." />}
       </section>}
       {phase==='conversation'&&started&&<div className="flex flex-wrap gap-2 border-t border-border pt-4">
         <Button variant="outline" disabled={currentIndex===0} onClick={()=>run(async()=>{await persist({...draft,step:currentSteps[currentIndex-1]})})}><ArrowLeft size={16}/> Voltar</Button>
@@ -201,8 +226,8 @@ function Assistant({userId,name}:{userId:string;name:string}) {
         </>}
       </div>}
       <details className="text-sm text-muted"><summary className="cursor-pointer">Descartar este rascunho</summary><p className="my-2">Apaga somente o rascunho. Os cadastros financeiros já confirmados são preservados.</p><Button variant="outline" onClick={()=>run(async()=>{await api.post('/onboarding/discard',{version:saved.version});await load()})}>Descartar rascunho e recomeçar</Button></details>
-    </fieldset>
-    {busy ? <LoadingState variant="inline" title="Preparando a próxima etapa…" description="Salvando e conferindo as informações da sua configuração." /> : <p role="status" className="text-xs text-muted">{dirty?'Há alterações ainda não salvas. Use Continuar ou Salvar rascunho e sair.':'Rascunho salvo.'}</p>}
+    </fieldset>}
+    {phase==='conversation'&&(busy ? active!=='review'&&<LoadingState variant="inline" title="Preparando a próxima etapa…" description="Salvando e conferindo as informações da sua configuração." /> : <p role="status" className="text-xs text-muted">{dirty?'Há alterações ainda não salvas. Use Continuar ou Salvar rascunho e sair.':'Rascunho salvo.'}</p>)}
   </OnboardingFrame>
 }
 const questions:Record<string,string>={config:'Quanto você tem disponível hoje e qual é sua receita estimada?',bill:'Quais contas se repetem todo mês?',card:'Quais cartões e faturas você tem?',loan:'Você deve para alguém ou tem dinheiro a receber?',client:'Quais clientes você atende?',subscription:'Quais serviços recorrentes oferece?',expense:'Quais despesas profissionais já realizou?'}

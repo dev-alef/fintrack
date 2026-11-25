@@ -12,4 +12,10 @@ describe('Respostas locais na conversa',()=>{
     expect(localConversationReply('bill','não tenho cartões')).toBeNull()
     expect(localConversationReply('loan','não devo')).toBeNull()
   })
+  it('entende respostas informais inequívocas sem descartar informação adicional',()=>{
+    expect(localConversationReply('card','não tenho não kkk')).toBe('absent')
+    expect(localConversationReply('bill','nn sei ainda mano')).toBe('skip')
+    expect(localConversationReply('card','não tenho não, mas devo 300 pra Ana')).toBeNull()
+    expect(localConversationReply('bill','não tenho cartão não kkk')).toBeNull()
+  })
 })

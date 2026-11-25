@@ -5,7 +5,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 import app from '../index'
 import pool from '../db/client'
 import { type Draft, type Item, emptyDraft } from '../services/onboarding-domain'
-import { mergeExtraction } from '../services/onboarding-ai'
+import { mergeExtraction, focusedReply } from '../services/onboarding-ai'
 const ORIGIN='http://localhost:5173'
 async function account() {
   const r=await request(app).post('/api/auth/sign-up/email').set('Origin',ORIGIN).send({name:'Configuração',email:`onboarding_${randomUUID()}@example.test`,password:'TestOnlyPassword123!'})
@@ -27,6 +27,84 @@ async function counts(uid:string) {
   const r=await pool.query(`SELECT (SELECT count(*)::int FROM credit_cards WHERE user_id=$1) cards,(SELECT count(*)::int FROM monthly_config WHERE user_id=$1) configs,(SELECT count(*)::int FROM professional_clients WHERE user_id=$1) clients,(SELECT count(*)::int FROM service_subscriptions WHERE user_id=$1) subscriptions,(SELECT count(*)::int FROM professional_expenses WHERE user_id=$1) expenses,(SELECT count(*)::int FROM professional_receipts r JOIN service_subscriptions s ON s.id=r.subscription_id WHERE s.user_id=$1) receipts`,[uid]);return r.rows[0]
 }
 describe('Assistente inicial',()=>{
+  it('completa respostas curtas informais sem repetir a pergunta nem criar cadastros',async()=>{
+    const a=await account()
+    const bills=[item('bill',{name:'Registro.br',amount:40,due_day:10},'pending'),item('bill',{name:'E-mail',amount:30,recurring:true},'pending')]
+    await save(a,bills,{conversation_started:true,step:'bill',profile:'personal'})
+    const spy=vi.spyOn(GoogleGenerativeAI.prototype,'getGenerativeModel')
+    try{
+      const first=await request(app).post('/onboarding/answer').set('Cookie',a.cookie).send({version:a.version,text:'sim mano, todo mês',consent:true})
+      expect(first.status).toBe(200)
+      expect(first.body.data.items[0].fields.recurring).toBe(true)
+      expect(first.body.question).toContain('E-mail');expect(first.body.question).not.toContain('Registro.br')
+      const second=await request(app).post('/onboarding/answer').set('Cookie',a.cookie).send({version:first.body.version,text:'dia 5 kkk',consent:true})
+      expect(second.status).toBe(200)
+      expect(second.body.data).toMatchObject({step:'card',items:[{id:bills[0].id,action:'pending'},{id:bills[1].id,fields:{due_day:5},action:'pending'}]})
+      expect(spy).not.toHaveBeenCalled()
+      expect((await pool.query('SELECT count(*)::int AS n FROM fixed_bills WHERE user_id=$1',[a.uid])).rows[0].n).toBe(0)
+    }finally{spy.mockRestore()}
+  })
+  it('envia a pergunta e o alvo à IA e avisa quando a resposta não altera o rascunho',async()=>{
+    const a=await account(),bill=item('bill',{name:'Registro.br',amount:40,due_day:10},'pending')
+    const before=await save(a,[bill],{conversation_started:true,step:'bill',profile:'personal'})
+    vi.stubEnv('GEMINI_API_KEY','fake-key-never-sent')
+    const generateContent=vi.fn(async()=>({response:{text:()=>JSON.stringify({items:[]})}}))
+    const spy=vi.spyOn(GoogleGenerativeAI.prototype,'getGenerativeModel').mockReturnValue({generateContent} as any)
+    try{
+      const response=await request(app).post('/onboarding/answer').set('Cookie',a.cookie).send({version:a.version,text:'essa aí, tipo, acho q depende',consent:true})
+      expect(response.status).toBe(200);expect(response.body.answer_applied).toBe(false)
+      expect(response.body.answer_notice).toContain('Não consegui identificar')
+      expect(response.body.version).toBe(a.version);expect(response.body.data).toEqual(before.data)
+      const input=JSON.parse((generateContent.mock.calls[0] as unknown as [string])[0])
+      expect(input.question).toBe('Registro.br se repete todo mês?')
+      expect(input.focus).toMatchObject({item_id:bill.id,kind:'bill',field:'recurring'})
+      expect(input.candidates).toHaveLength(1)
+    }finally{spy.mockRestore();vi.unstubAllEnvs()}
+  })
+  it('oferece só itens completos e inequívocos para seleção explícita e permite concluir com pendências',async()=>{
+    const a=await account(),card=item('card',{name:'Cartão',due_day:10},'pending')
+    const invoice=item('invoice',{card_ref:card.id,month:1,year:2031,amount:100},'pending')
+    const loan=item('loan',{person:'Ana',direction:'payable',amount:300},'pending')
+    const bill=item('bill',{name:'E-mail',amount:50},'pending')
+    const skipped=item('bill',{name:'Internet',amount:120,due_day:5,recurring:true},'pending')
+    await save(a,[card,invoice,loan,bill,skipped],{step:'review',skipped:['bill']})
+    const p=await preview(a)
+    expect(p.can_commit).toBe(false);expect(p.pending_count).toBe(5)
+    expect(p.ready_ids.sort()).toEqual([card.id,invoice.id,loan.id].sort())
+    expect(p.rows.find((r:Item)=>r.id===bill.id).selection_issues).toContain('Confira dia de vencimento.')
+    await save(a,[card,invoice,loan,bill,skipped].map(i=>p.ready_ids.includes(i.id)?{...i,action:'create'}:i),{step:'review',skipped:['bill']})
+    const selected=await preview(a);expect(selected.can_commit).toBe(true)
+    const result=await request(app).post('/onboarding/commit').set('Cookie',a.cookie).send(payload(selected))
+    expect(result.status).toBe(200);expect(result.body).toMatchObject({created:3,pending:2})
+    expect((await request(app).get('/onboarding').set('Cookie',a.cookie)).body.data.items.map((i:Item)=>i.id).sort()).toEqual([bill.id,skipped.id].sort())
+  })
+  it('não seleciona em lote duplicatas nem dependentes com pai incompleto',async()=>{
+    const a=await account(),card=item('card',{name:'Cartão'},'pending')
+    const invoice=item('invoice',{card_ref:card.id,month:1,year:2031,amount:100},'pending')
+    await save(a,[card,invoice,item('loan',{person:'Ana',direction:'payable',amount:300},'pending'),item('loan',{person:'Ana',direction:'payable',amount:300},'pending'),item('config',{month:1,year:2031,balance:0},'pending'),item('config',{month:1,year:2031,balance:100},'pending')])
+    const p=await preview(a);expect(p.ready_ids).toEqual([]);expect(p.can_commit).toBe(false)
+  })
+  it('considera pais pendentes que serão reutilizados ao identificar duplicatas',async()=>{
+    const a=await account()
+    const existingCard=await request(app).post('/finance/cards').set('Cookie',a.cookie).send({name:'Existente',due_day:10})
+    await request(app).post('/finance/cards/expenses').set('Cookie',a.cookie).send({cardId:existingCard.body.id,month:1,year:2031,amount:100}).expect(200)
+    const card={...item('card',{name:'Existente',due_day:10},'pending'),existing_id:existingCard.body.id}
+    const alias={...card,id:randomUUID()}
+    const invoice=item('invoice',{card_ref:card.id,month:1,year:2031,amount:100},'pending')
+    const next=item('invoice',{card_ref:card.id,month:2,year:2031,amount:100},'pending')
+    const duplicate=item('invoice',{card_ref:alias.id,month:2,year:2031,amount:100},'pending')
+    const clientId=randomUUID()
+    await request(app).post('/business/clients').set('Cookie',a.cookie).send({id:clientId,name:'Cliente'})
+    await request(app).post('/business/subscriptions').set('Cookie',a.cookie).send({id:randomUUID(),client_id:clientId,service_name:'Site',amount:100,interval_months:1,start_date:'2031-01-01'})
+    const client={...item('client',{name:'Cliente'},'pending'),existing_id:clientId}
+    const sub=item('subscription',{client_ref:client.id,service_name:'Site',amount:100,interval_months:1,start_date:'2031-01-01'},'pending')
+    await save(a,[card,alias,invoice,next,duplicate,client,sub])
+    const p=await preview(a)
+    expect(p.ready_ids.sort()).toEqual([card.id,alias.id,client.id].sort())
+    expect(p.rows.find((r:Item)=>r.id===invoice.id).matches).toHaveLength(1)
+    expect(p.rows.find((r:Item)=>r.id===sub.id).matches).toHaveLength(1)
+    expect(p.rows.find((r:Item)=>r.id===next.id).selection_issues).toContain('Este período aparece duas vezes no rascunho.')
+  })
   it('exige sessão, preserva rascunho sem cadastrar e confirma pessoal/profissional atomicamente',async()=>{
     expect((await request(app).get('/onboarding')).status).toBe(401)
     const a=await account();const card=item('card',{name:'Cartão',due_day:10});const client=item('client',{name:'Cliente'})
@@ -158,6 +236,15 @@ describe('Assistente inicial',()=>{
 })
 
 describe('Extração da IA',()=>{
+  it('não aplica resposta curta a outro campo nem transforma anual em mensal',()=>{
+    const bill=item('bill',{name:'Domínio',amount:40,due_day:10},'pending')
+    const draft={...emptyDraft(),step:'bill' as const,items:[bill]}
+    expect(focusedReply(draft,'é anual mano')?.items[0].fields.recurring).toBe(false)
+    expect(focusedReply(draft,'sim mas só no ano que vem')).toBeNull()
+    expect(focusedReply(draft,'a internet sim, a do site não')).toBeNull()
+    expect(focusedReply({...draft,step:'loan'},'sim')).toBeNull()
+    expect(mergeExtraction(draft,{items:[{id:bill.id,kind:'bill',fields:[{key:'amount',value:'40'}]}]},[])).toEqual(draft)
+  })
   it('extrai vários candidatos, preserva zero e não permite confirmar por IA',()=>{
     const ids=[randomUUID(),randomUUID()];const d=mergeExtraction(emptyDraft(),{items:[{id:ids[0],kind:'config',fields:[{key:'month',value:'1'},{key:'year',value:'2031'},{key:'balance',value:'0'},{key:'estimated_income',value:'3000'}]},{id:ids[1],kind:'bill',fields:[{key:'name',value:'Internet'},{key:'amount',value:'120'}]}]},ids)
     expect(d.items[0].fields.balance).toBe(0);expect(d.items[1].fields.due_day).toBeUndefined();expect(d.items.every(i=>i.action==='pending')).toBe(true)

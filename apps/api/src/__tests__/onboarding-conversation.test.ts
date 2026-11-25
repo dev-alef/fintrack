@@ -5,6 +5,17 @@ const item=(kind:Item['kind'],fields:Item['fields']):Item=>({id:randomUUID(),kin
 const config=()=>item('config',{month:1,year:2031,balance:0,estimated_income:0})
 const draft=()=>({...emptyDraft(),month:1,year:2031,conversation_started:true})
 describe('Conversa inicial',()=>{
+  it('pergunta uma pendência de cada vez, mesmo com várias contas incompletas',()=>{
+    const d={...draft(),step:'bill' as const,items:[
+      item('bill',{name:'Registro.br',amount:40,due_day:10}),
+      item('bill',{name:'E-mail',amount:30,recurring:true}),
+    ]}
+    expect(nextQuestion(d)).toMatch(/Registro.br.*todo mês/)
+    expect(nextQuestion(d)).not.toContain('E-mail')
+    d.items[0].fields.recurring=true
+    expect(nextQuestion(d)).toMatch(/E-mail.*vence|vence.*E-mail/)
+    expect(nextQuestion(d)).not.toContain('Registro.br')
+  })
   it('pede só o que falta e não trata saldo zero como ausente',()=>{
     const d={...draft(),items:[item('config',{month:1,year:2031,balance:0})]}
     expect(conversationState(d).ready).toBe(false);expect(nextQuestion(d)).toContain('receita estimada');expect(nextQuestion(d)).not.toContain(': Saldo Atual')

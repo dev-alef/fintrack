@@ -84,10 +84,25 @@ function publicFields(row: Record<string, any>, original: Item) {
 }
 function previewData(version: number, data: Draft, records: Existing) {
   const resolve = (ref: unknown) => data.items.find(i => i.id === ref && i.action === 'reuse')?.existing_id
+  const resolveSelection = (ref:unknown) => {
+    const parent=data.items.find(i=>i.id===ref&&i.action!=='create'&&i.existing_id)
+    return parent&&records[parent.kind].some(r=>r.id===parent.existing_id)?parent.existing_id:undefined
+  }
   const rows = data.items.map(i => {
     const issues: string[] = []
+    const selection_issues: string[] = []
     const matches = records[i.kind].filter(r => similar(i, r, resolve))
+    const selectionMatches=records[i.kind].filter(r=>similar(i,r,resolveSelection))
     const reused = i.action === 'reuse' ? records[i.kind].find(r => r.id === i.existing_id) : undefined
+    const selectionAction=i.action==='pending'?(i.existing_id?'reuse':'create'):i.action
+    if(!allowed(i.kind,data.profile))selection_issues.push('Fora do perfil escolhido.')
+    if(selectionAction==='reuse'){
+      if(!records[i.kind].some(r=>r.id===i.existing_id))selection_issues.push('Selecione um cadastro existente da sua conta.')
+    }else{
+      selection_issues.push(...validateItem(i).map(f=>`Confira ${f}.`))
+      if(i.kind==='bill'&&i.fields.recurring===false)selection_issues.push('Esta conta não é mensal. Deixe-a pendente; ela não será convertida em uma conta fixa mensal.')
+      if(selectionMatches.length&&(['config','invoice'].includes(i.kind)||!i.duplicate_ack))selection_issues.push('Confira o cadastro semelhante antes de incluir.')
+    }
     if (i.action !== 'pending') {
       if (!allowed(i.kind, data.profile)) issues.push('Fora do perfil escolhido; deixe pendente ou altere o perfil.')
       if (i.action === 'reuse') {
@@ -102,18 +117,23 @@ function previewData(version: number, data: Draft, records: Existing) {
         }
       }
     }
-    return { id: i.id, kind: i.kind, action: i.action, fields: reused ? publicFields(reused,i) : i.fields, existing_id: i.existing_id, issues, matches }
+    return { id: i.id, kind: i.kind, action: i.action, fields: reused ? publicFields(reused,i) : i.fields, existing_id: i.existing_id, issues, selection_issues, matches:i.action==='pending'?selectionMatches:matches }
   })
   // Duplicate names in the same draft also need a deliberate distinct-record choice.
   const identities = new Map<string, Item[]>()
-  for (const i of data.items.filter(i => i.action === 'create' && !['config','invoice'].includes(i.kind))) {
+  for (const i of data.items.filter(i => i.action !== 'reuse' && !i.existing_id && !['config','invoice'].includes(i.kind))) {
     const f=i.fields
-    const key = i.kind === 'loan' ? `${normal(f.person)}:${f.direction}` : i.kind === 'subscription' ? `${resolve(f.client_ref)||f.client_ref}:${normal(f.service_name)}` : i.kind === 'expense' ? `${normal(f.title)}:${f.spent_on}` : normal(f.name)
+    const key = i.kind === 'loan' ? `${normal(f.person)}:${f.direction}` : i.kind === 'subscription' ? `${resolveSelection(f.client_ref)||f.client_ref}:${normal(f.service_name)}` : i.kind === 'expense' ? `${normal(f.title)}:${f.spent_on}` : normal(f.name)
     const identity = `${i.kind}:${key}`
     identities.set(identity,[...(identities.get(identity)||[]),i])
   }
   for (const group of identities.values()) if (group.length > 1) for (const i of group) {
-    if (!i.duplicate_ack) rows.find(r=>r.id===i.id)!.issues.push('Há outro item semelhante neste rascunho. Remova a repetição ou confirme que são cadastros distintos.')
+    if (!i.duplicate_ack) {
+      const message='Há outro item semelhante neste rascunho. Remova a repetição ou confirme que são cadastros distintos.'
+      const row=rows.find(r=>r.id===i.id)!
+      row.selection_issues.push(message)
+      if(i.action==='create'&&group.filter(v=>v.action==='create').length>1)row.issues.push(message)
+    }
   }
   // Multiple draft entries for the same monthly slot would otherwise collide mid-commit.
   const slots = new Set<string>()
@@ -122,7 +142,26 @@ function previewData(version: number, data: Draft, records: Existing) {
     if (slots.has(slot)) rows.find(r => r.id === i.id)!.issues.push('Este período aparece duas vezes no rascunho.')
     slots.add(slot)
   }
+  const pendingSlots=new Map<string,typeof rows>()
+  for(const row of rows.filter(r=>r.action!=='reuse'&&!r.existing_id&&['config','invoice'].includes(r.kind))){
+    const f=row.fields
+    const slot=`${row.kind}:${row.kind==='invoice'?resolveSelection(f.card_ref)||f.card_ref:''}:${f.year}:${f.month}`
+    pendingSlots.set(slot,[...(pendingSlots.get(slot)||[]),row])
+  }
+  for(const group of pendingSlots.values())if(group.length>1)for(const row of group)row.selection_issues.push('Este período aparece duas vezes no rascunho.')
+  // Select only a complete, unambiguous set, including the parents of dependents.
+  // Skipped blocks stay deferred until the user deliberately includes their rows.
+  const ready=new Set(rows.filter(r=>!r.selection_issues.length&&!data.skipped.includes(r.kind==='invoice'?'card':r.kind)).map(r=>r.id))
+  for(const row of rows.filter(r=>r.action!=='reuse'&&!r.existing_id&&['invoice','subscription'].includes(r.kind))){
+    const kind=row.kind==='invoice'?'card':'client'
+    const ref=data.items.find(i=>i.id===row.fields[kind==='card'?'card_ref':'client_ref']&&i.kind===kind)
+    if(!ref||!ready.has(ref.id)){
+      row.selection_issues.push(`Complete e inclua o ${titles[kind]} vinculado.`)
+      ready.delete(row.id)
+    }
+  }
   return { version, rows, pending_count: rows.filter(r => r.action === 'pending').length,
+    ready_ids: [...ready],
     can_commit: rows.some(r => r.action !== 'pending') && rows.every(r => !r.issues.length),
     token: hash({ version, data, records, today: businessToday().slice(0,7) }),
     current_period: businessToday().slice(0,7), reference_period: `${data.year}-${String(data.month).padStart(2,'0')}` }
